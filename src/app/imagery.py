@@ -95,7 +95,8 @@ def make_thumbnails(area_geojson: dict, event_date: str, out_dir: str, run_id: s
         scenes = [s for s in scenes if (s.epsg or epsg) == epsg]
         zones = Zones.build([sq, area.utm], area.epsg, epsg)
         sc, cf = _best_scene(prov, scenes, zones, None, after)
-        if sc is None or cf < 0.9:
+        # burnt or flooded ground is often classed "dark", not cloud: accept a lower clear share after the event
+        if sc is None or cf < (0.6 if after else 0.9):
             continue
         path = os.path.join(out_dir, f"{run_id}_{tag}.png")
         os.makedirs(out_dir, exist_ok=True)
