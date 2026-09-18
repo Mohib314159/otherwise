@@ -38,5 +38,15 @@
   "source": "",
   "type": "clearing",
   "confirmed": false
+ },
+ {
+  "key": "jau",
+  "id": "917915c7bc6e2fb9",
+  "label": "Ja\u00fa National Park, Brazil: nothing documented",
+  "blurb": "Primary forest interior with no documented clearing; a false-alarm check.",
+  "expected": "NOT_REAL",
+  "source": "",
+  "type": "clearing",
+  "confirmed": false
  }
 ]
