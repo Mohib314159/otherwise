@@ -15,7 +15,7 @@ from src.app.run import run_verdict
 
 SITES = [
     dict(key="grunheide", label="Grünheide, Germany: forest cleared for the Tesla factory",
-         bbox=(13.792, 52.388, 13.802, 52.393), event="2020-02-13", type="clearing", post=12,
+         bbox=(13.789, 52.393, 13.797, 52.3975), event="2020-02-13", type="clearing", post=12,
          expected="REAL", source="https://www.pv-magazine.com/2020/02/17/court-stops-tree-clearance-for-teslas-proposed-berlin-gigafactory/",
          blurb="About 92 ha of pine forest felled in February 2020."),
     dict(key="rhodes", label="Rhodes, Greece: July 2023 wildfire",

@@ -1,0 +1,12 @@
+[
+ {
+  "key": "grunheide",
+  "id": "9028a5c4c87fc301",
+  "label": "Gr\u00fcnheide, Germany: forest cleared for the Tesla factory",
+  "blurb": "About 92 ha of pine forest felled in February 2020.",
+  "expected": "REAL",
+  "source": "https://www.pv-magazine.com/2020/02/17/court-stops-tree-clearance-for-teslas-proposed-berlin-gigafactory/",
+  "type": "clearing",
+  "confirmed": false
+ }
+]
