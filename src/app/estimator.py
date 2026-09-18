@@ -156,9 +156,13 @@ def conformal_interval(y, D, pre, lam: float, point: float, scale: float,
     `scale` sets the grid width (use the pre-period RMSE times a few).
     """
     half = max(span * scale, 1e-3)
-    grid = np.linspace(point - half, point + half, n_grid)
-    pv = np.array([conformal_p(y, D, pre, th, lam) for th in grid])
-    acc = grid[pv > alpha]
+    for _ in range(4):                      # widen if the grid missed the accepted set
+        grid = np.linspace(point - half, point + half, n_grid)
+        pv = np.array([conformal_p(y, D, pre, th, lam) for th in grid])
+        acc = grid[pv > alpha]
+        if acc.size and (acc.min() > grid[0] and acc.max() < grid[-1]):
+            break
+        half *= 3.0
     if acc.size == 0:
         lo = hi = point
     else:

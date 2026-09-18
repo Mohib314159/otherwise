@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Otherwise — Track record</title>
+<meta name="description" content="Every known-answer site the tool has been run on, misses included.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+<style>
+  .page-head { padding: 44px 0 8px; }
+  .page-head h1 { font-size: 32px; font-weight: 600; letter-spacing: -0.02em; }
+  .page-head p { max-width: 640px; margin-top: 12px; color: var(--muted); }
+  .summary-line { margin-top: 18px; font-size: 14px; }
+  .table-wrap { margin-top: 24px; padding-bottom: 40px; }
+  td.verdict-cell { font-weight: 500; }
+  .v-REAL.verdict-cell, .v-NOT_REAL.verdict-cell, .v-CANT_TELL.verdict-cell { font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="topbar">
+    <a class="wordmark" href="/">Otherwise</a>
+    <div class="topbar-right">
+      <a href="/">Draw an area</a>
+    </div>
+  </div>
+
+  <main id="content">
+    <div class="loading-state">Loading track record&hellip;</div>
+  </main>
+
+  <div id="site-footer" class="site-footer"></div>
+</div>
+
+<script type="module" src="/static/track.js"></script>
+</body>
+</html>

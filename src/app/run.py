@@ -59,7 +59,8 @@ def _analyse(dates, values, event_np, donor_all_idx, cov, signal, sensor, expect
                        placebo_pre_rmse_median=float(np.median(sp.pre_rmses)),
                        n_pre=int(b.pre.sum()), n_post=int((~b.pre).sum()), n_donors=int(D.shape[0]),
                        placebo_p=sp.p_value, placebo_p_effect=sp.p_effect, placebo_n=int(len(sp.ratios)),
-                       time_placebo_flags=[t.flagged for t in tp])
+                       time_placebo_flags=[t.flagged for t in tp],
+                       placebo_effect_median=float(np.median(sp.effects)))
     band_lo = np.percentile(sp.effect_series, 5, axis=0)
     band_hi = np.percentile(sp.effect_series, 95, axis=0)
     chart = {

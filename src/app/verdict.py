@@ -51,6 +51,7 @@ class SignalResult:
     placebo_p_effect: float
     placebo_n: int
     time_placebo_flags: list[bool] = field(default_factory=list)
+    placebo_effect_median: float = 0.0     # median post-event gap across placebo cells
 
     @property
     def min_effect(self) -> float:
@@ -121,6 +122,13 @@ def decide(r: SignalResult, change_type: str, post_label: str) -> Verdict:
     if not r.pre_fit_ok:
         reasons.append("the control trajectory does not track the area well enough before the event "
                        f"(pre-event error {_fmt(r.pre_rmse, r.signal)} vs typical {_fmt(r.placebo_pre_rmse_median, r.signal)})")
+    if abs(r.placebo_effect_median) >= r.min_effect and np.sign(r.placebo_effect_median) == np.sign(r.point):
+        reasons.append("the control cells themselves shifted by "
+                       f"{_signed(r.placebo_effect_median, r.signal)} at the event date, so the event "
+                       "probably extends beyond the 12 km control ring and no untouched control exists here")
+    if r.lo == r.hi:
+        reasons.append("no effect size was compatible with the data under the conformal test; "
+                       "the post-event behaviour does not look like a simple shift")
     if reasons:
         return Verdict("CANT_TELL", "Can't tell", core + " " + placebo + " But: " + "; ".join(reasons) + ".",
                        reasons, r.signal)

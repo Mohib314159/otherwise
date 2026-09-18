@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Otherwise</title>
+<meta name="description" content="Did it change more than it would have anyway? Draw an area, name the event, and compare it against matched controls that did not get it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
+<link rel="stylesheet" href="/static/app.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  #map { position: fixed; inset: 0; z-index: 0; }
+
+  .side-panel {
+    position: fixed;
+    top: 16px; left: 16px;
+    width: 380px; max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    z-index: 500;
+    padding: 20px;
+  }
+  .side-panel h1 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+  .tagline { margin-top: 4px; font-size: 14px; }
+  .intro-line { margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .panel-section { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule); }
+  .panel-section:first-of-type { border-top: none; }
+
+  .showcase-row { display: flex; gap: 8px; align-items: flex-start; padding: 8px 0; cursor: pointer; border-radius: 4px; }
+  .showcase-row:hover { background: var(--paper); }
+  .showcase-row .dot { margin-top: 6px; }
+  .showcase-row .sc-label { font-weight: 600; font-size: 14px; }
+  .showcase-row .sc-meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+  .area-ha-line { font-size: 13px; margin-top: 8px; }
+  .area-ha-line.bad { color: var(--notreal); }
+
+  .draw-hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  #run-error { color: var(--notreal); font-size: 13px; margin-top: 10px; display: none; }
+
+  .progress-wrap { margin-top: 4px; }
+  .progress-bar-track { height: 4px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: var(--ink); width: 6%; transition: width 0.3s ease; }
+  .progress-stage { font-size: 13px; margin-top: 10px; }
+  .progress-note { font-size: 12px; color: var(--muted); margin-top: 10px; }
+
+  .map-toggle {
+    position: fixed; top: 16px; right: 16px; z-index: 500;
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 7px 12px; font-size: 13px; cursor: pointer; color: var(--ink);
+  }
+  .map-toggle:hover { border-color: var(--ink); }
+  .map-toggle.active { background: var(--ink); color: var(--paper); }
+
+  .panel-footer { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--muted); }
+  .panel-footer a { color: var(--muted); margin-right: 10px; }
+  .panel-footer a:hover { color: var(--ink); }
+  .panel-footer .attribution { display: block; margin-top: 8px; line-height: 1.4; }
+
+  @media (max-width: 640px) {
+    html, body { overflow: auto; height: auto; }
+    #map { position: fixed; inset: 0; height: 100vh; }
+    .side-panel {
+      top: auto; left: 0; right: 0; bottom: 0;
+      width: 100%; max-width: 100%;
+      max-height: 65vh;
+      border-radius: 6px 6px 0 0;
+      border-left: none; border-right: none; border-bottom: none;
+    }
+  }
+</style>
+</head>
+<body>
+<div id="map" role="application" aria-label="Map"></div>
+<button class="map-toggle" id="sat-toggle" type="button">Satellite</button>
+
+<aside class="side-panel" id="side-panel">
+  <h1>Otherwise</h1>
+  <div class="tagline muted">Did it change more than it would have anyway?</div>
+  <p class="intro-line">Draw an area, name the event and its date. Sentinel-1 and Sentinel-2 are compared against matched control areas that did not get the event.</p>
+
+  <div class="panel-section">
+    <div class="label">Showcase</div>
+    <div id="showcase-list" class="stack" style="margin-top:8px;"></div>
+    <div id="showcase-empty" class="muted small" style="display:none;">No showcase runs yet.</div>
+  </div>
+
+  <div class="panel-section">
+    <div class="label">Your own area</div>
+    <div id="draw-block" style="margin-top:10px;">
+      <button class="btn" id="draw-btn" type="button">Draw an area</button>
+      <div class="draw-hint">0.5 to 500 hectares.</div>
+    </div>
+
+    <form id="run-form" style="display:none; margin-top:14px;">
+      <div class="area-ha-line" id="area-ha-line"></div>
+
+      <div class="field-row" style="margin-top:12px;">
+        <label class="field" for="f-change-type">What happened?</label>
+        <select id="f-change-type" name="change_type">
+          <option value="clearing">Forest or vegetation cleared</option>
+          <option value="regrowth">Regrowth or restoration</option>
+          <option value="flood">Flooding</option>
+          <option value="burn">Burn scar</option>
+          <option value="construction">Construction</option>
+          <option value="other">Something else</option>
+        </select>
+      </div>
+
+      <div class="field-row">
+        <label class="field" for="f-date">When?</label>
+        <input type="date" id="f-date" name="event_date" min="2018-01-01" required>
+      </div>
+
+      <div class="field-row">
+        <label class="field" for="f-post-months">Look how long after?</label>
+        <select id="f-post-months" name="post_months">
+          <option value="3">3 months</option>
+          <option value="6">6 months</option>
+          <option value="12" selected>12 months</option>
+          <option value="18">18 months</option>
+        </select>
+      </div>
+
+      <div class="field-row">
+        <label class="field" for="f-label">Label <span class="muted">(optional)</span></label>
+        <input type="text" id="f-label" name="label" placeholder="e.g. Field north of the road" maxlength="120">
+      </div>
+
+      <button class="btn" id="submit-btn" type="submit" style="width:100%;">Check it</button>
+      <div id="run-error"></div>
+    </form>
+
+    <div id="progress-block" style="display:none; margin-top:14px;">
+      <div class="progress-wrap">
+        <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-fill"></div></div>
+      </div>
+      <div class="progress-stage" id="progress-stage">Starting&hellip;</div>
+      <div class="progress-note">Live runs read every Sentinel scene over the area for the last three years and usually take three to eight minutes.</div>
+    </div>
+  </div>
+
+  <div class="panel-footer">
+    <a href="#" data-drawer-trigger>How this works</a>
+    <a href="/track-record">Track record</a>
+    <a href="https://github.com/Mohib314159/carbon-twin" target="_blank" rel="noopener">Source</a>
+    <span class="attribution">Contains modified Copernicus Sentinel data. Land cover &copy; ESA WorldCover. Terrain &copy; Copernicus DEM. Data via Microsoft Planetary Computer.</span>
+  </div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script type="module" src="/static/landing.js"></script>
+</body>
+</html>

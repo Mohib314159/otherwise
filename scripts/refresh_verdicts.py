@@ -16,7 +16,7 @@ def refresh(path: str) -> str:
     if lead not in r["signals"]:
         return r["verdict"]["status"]
     s = r["signals"][lead]
-    sr = SignalResult(**{k: s[k] for k in SignalResult.__dataclass_fields__})
+    sr = SignalResult(**{k: s[k] for k in SignalResult.__dataclass_fields__ if k in s})
     ev = date.fromisoformat(r["event_date"])
     post_label = f"in the {r['post_months']} months after {ev.strftime('%-d %b %Y')}"
     v = decide(sr, r["change_type"], post_label)
