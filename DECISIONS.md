@@ -193,3 +193,10 @@ blocked. With the policy set to Full, every host was re-probed at the byte level
   optical has fewer than three clear post-event bins.
 - **Known-answer sites are proposed in `SITES.md`** with sources and are
   labelled "candidate" until Mohib confirms them.
+- **Convex weights solved by NNLS, not SLSQP.** The first live verdict spent
+  11 CPU-minutes in the placebo stage because `scm.solve_weights` (SLSQP, 80
+  variables) takes 1.4-2.2 s per solve and a verdict needs several hundred
+  solves. The same problem as non-negative least squares with a weighted
+  sum-to-one row returns the same loss (0.00802 vs 0.00802 on real data) in
+  about 1 ms. `scm.py` is left unchanged for the old demo; the app uses
+  `estimator.solve_weights`.

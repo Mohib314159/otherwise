@@ -95,17 +95,21 @@ def _fmt(v: float, signal: str) -> str:
     return f"{abs(v):.1f} dB" if signal in ("VV", "VH", "RATIO") else f"{abs(v):.2f}"
 
 
+def _signed(v: float, signal: str) -> str:
+    unit = " dB" if signal in ("VV", "VH", "RATIO") else ""
+    d = 1 if unit else 2
+    return f"{v:+.{d}f}{unit}".replace("+", "+").replace("-", "\u2212")
+
+
 def decide(r: SignalResult, change_type: str, post_label: str) -> Verdict:
     reasons: list[str] = []
     word = SIGNAL_WORDS[r.signal]
     direction = "fell" if r.point < 0 else "rose"
-    lo, hi = sorted((abs(r.lo), abs(r.hi))) if (r.lo * r.hi > 0) else (0.0, max(abs(r.lo), abs(r.hi)))
     core = (f"{word[0].upper() + word[1:]} {direction} by {_fmt(r.point, r.signal)} relative to the "
-            f"control trajectory {post_label} (90% interval {_fmt(r.lo, r.signal) if r.lo * r.hi > 0 else '0'} "
-            f"to {_fmt(max(abs(r.lo), abs(r.hi)), r.signal)}).")
+            f"control trajectory {post_label} (90% interval {_signed(r.lo, r.signal)} to {_signed(r.hi, r.signal)}).")
+    k = max(int(round(r.placebo_p * (r.placebo_n + 1))) - 1, 0)
     placebo = (f"Of {r.placebo_n} untouched cells given the same test, "
-               f"{max(int(round(r.placebo_p * (r.placebo_n + 1))) - 1, 0)} showed a divergence this large "
-               f"(placebo p = {r.placebo_p:.2f}).")
+               f"{k} showed a divergence this large (placebo p = {r.placebo_p:.2f}).")
 
     # --- can we say anything at all? ---
     if r.n_donors < MIN_DONORS:
