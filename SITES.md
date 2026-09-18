@@ -23,7 +23,11 @@ inside the documented footprint, never on its edge.
   the tool honestly returned CAN'T TELL with that reason. It stays as an example
   of the method's limit. Site 2b (Saddleworth, ~8 km²) fits inside the ring.
 - Site 3 is a flood that stood for weeks, so the 5-day optical revisit and the
-  radar both see it; short floods in cloudy climates would not be a fair test.
+  radar both see it. But like Rhodes it is **larger than the control ring**
+  (the 2022 flood covered tens of thousands of km²), so the controls flooded
+  too and the tool cannot separate the area from its surroundings. It stays as
+  a documented limit. A flood smaller than ~10 km across, in a sunny climate,
+  is still needed for a fair flood test; suggestions welcome.
 - Sites 4 and 5 are the false-alarm checks: the tool must say "not real" or
   "can't tell", never "real".
 
