@@ -114,7 +114,15 @@ def _choose_lambda(y, D, pre, grid=(0.0, 0.03, 0.1, 0.3, 1.0, 3.0)) -> float:
 # Conformal inference
 # ---------------------------------------------------------------------------
 def _stat(u_post: np.ndarray) -> float:
-    return float(np.sqrt(np.mean(u_post ** 2)))
+    """Absolute mean of the post-event residuals.
+
+    The interval is for the AVERAGE post-event effect. With an RMS statistic the
+    sharp null (same shift every period) is rejected for every constant when the
+    real effect varies in time (a clearing that regrows, a construction site that
+    keeps changing), and the interval collapses. The absolute mean tests exactly
+    the quantity we report and stays valid when the effect varies.
+    """
+    return float(abs(np.mean(u_post)))
 
 
 def conformal_p(y: np.ndarray, D: np.ndarray, pre: np.ndarray, theta0: float,
@@ -156,13 +164,16 @@ def conformal_interval(y, D, pre, lam: float, point: float, scale: float,
     `scale` sets the grid width (use the pre-period RMSE times a few).
     """
     half = max(span * scale, 1e-3)
+    max_half = 1.0 if scale < 0.3 else 10.0   # index units, or dB: beyond this the interval carries no information
     for _ in range(4):                      # widen if the grid missed the accepted set
         grid = np.linspace(point - half, point + half, n_grid)
         pv = np.array([conformal_p(y, D, pre, th, lam) for th in grid])
         acc = grid[pv > alpha]
         if acc.size and (acc.min() > grid[0] and acc.max() < grid[-1]):
             break
-        half *= 3.0
+        if half >= max_half:
+            break
+        half = min(half * 3.0, max_half)
     if acc.size == 0:
         lo = hi = point
     else:

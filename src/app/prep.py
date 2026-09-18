@@ -68,3 +68,46 @@ def binned(dates, values, event, bin_days=10, min_cov=0.70) -> Binned:
     b = complete(mid, mat, cnt, event, min_cov)
     b.bin_days = bin_days
     return b
+
+
+def binned_groups(treated_dates, treated_values, groups, event, bin_days: int = 10,
+                  min_cov: float = 0.70) -> Binned:
+    """Wide mode: the treated series and each donor group have their own date
+    axes (different tiles, different orbits). Bin each on the same event-anchored
+    bin index and join on the bins where the treated area was observed.
+
+    treated_values: (T, 1) or (T,) ; groups: list of (dates, values (Tg, ng)).
+    """
+    ev = event.astype("datetime64[D]")
+    tv = np.asarray(treated_values, dtype=float).reshape(len(treated_dates), -1)[:, :1]
+    mid_t, mat_t, cnt_t = bin_series(np.asarray(treated_dates), tv, event, bin_days)
+    keep = cnt_t[:, 0] > 0
+    mid, y = mid_t[keep], mat_t[keep, 0]
+    kidx = np.floor_divide((mid - ev).astype(int) - bin_days // 2, bin_days)   # bin index of each kept bin
+    cols, covs = [], []
+    for dates_g, vals_g in groups:
+        vals_g = np.asarray(vals_g, dtype=float)
+        if vals_g.ndim == 1:
+            vals_g = vals_g[:, None]
+        mid_g, mat_g, _ = bin_series(np.asarray(dates_g), vals_g, event, bin_days)
+        kg = np.floor_divide((mid_g - ev).astype(int) - bin_days // 2, bin_days)
+        lookup = {int(k): i for i, k in enumerate(kg)}
+        rows = [lookup.get(int(k)) for k in kidx]
+        block = np.full((len(mid), vals_g.shape[1]), np.nan)
+        for i, r in enumerate(rows):
+            if r is not None:
+                block[i] = mat_g[r]
+        cols.append(block)
+    donors = np.hstack(cols) if cols else np.zeros((len(mid), 0))
+    cov = np.isfinite(donors).mean(axis=0) if len(mid) else np.zeros(donors.shape[1])
+    good = cov >= min_cov
+    donors = donors[:, good]
+    x = np.arange(len(mid))
+    for j in range(donors.shape[1]):
+        col = donors[:, j]
+        ok = np.isfinite(col)
+        if not ok.all() and ok.sum() >= 2:
+            donors[:, j] = np.interp(x, x[ok], col[ok])
+    pre = mid < ev
+    out = np.column_stack([y, donors]) if donors.size else y[:, None]
+    return Binned(mid, out, cnt_t[keep, 0], pre, cov, bin_days)

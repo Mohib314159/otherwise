@@ -20,7 +20,7 @@ SITES = [
          blurb="About 92 ha of pine forest felled in February 2020."),
     dict(key="rhodes", label="Rhodes, Greece: July 2023 wildfire",
          bbox=(27.915, 36.085, 27.925, 36.095), event="2023-07-18", type="burn", post=6,
-         expected="REAL", source="https://mapping.emergency.copernicus.eu/news/information-bulletin-169-the-copernicus-emergency-management-service-maps-some-critical-wildfires-in-greece-update/",
+         mode="wide", inner_km=20, outer_km=150, expected="REAL", source="https://mapping.emergency.copernicus.eu/news/information-bulletin-169-the-copernicus-emergency-management-service-maps-some-critical-wildfires-in-greece-update/",
          blurb="Copernicus EMS mapped 17,629 ha burnt from 18 July 2023."),
     dict(key="saddleworth", label="Saddleworth Moor, England: June 2018 moorland fire",
          bbox=(-2.012, 53.515, -1.998, 53.524), event="2018-06-24", type="burn", post=6,
@@ -28,7 +28,7 @@ SITES = [
          blurb="Moorland fire from 24 June 2018 that grew to about 8 km² by 27 June."),
     dict(key="sindh", label="Sindh, Pakistan: 2022 monsoon floods near Lake Manchar",
          bbox=(67.745, 27.095, 67.755, 27.105), event="2022-08-25", type="flood", post=3,
-         expected="REAL", source="https://earthobservatory.nasa.gov/images/150306/lake-manchar-is-overflowing",
+         mode="wide", inner_km=150, outer_km=400, expected="REAL", source="https://earthobservatory.nasa.gov/images/150306/lake-manchar-is-overflowing",
          blurb="Lake Manchar grew from 334 to 512 km² between 11 and 26 August 2022."),
     dict(key="austin", label="Austin, Texas: Tesla Gigafactory built on a gravel-pit site",
          bbox=(-97.625, 30.221, -97.615, 30.226), event="2020-07-22", type="construction", post=12,
@@ -66,14 +66,16 @@ def main(keys=None):
         print(f"== {s['key']} ({s['type']} {s['event']})", flush=True)
         try:
             out = run_verdict(geo, s["event"], s["type"], s["post"], label=s["label"],
-                              progress=lambda st, d, tt: None, save=True, runs_dir="showcase")
+                              progress=lambda st, d, tt: None, save=True, runs_dir="showcase",
+                              mode=s.get("mode", "auto"),
+                              inner_m=s.get("inner_km", 0) * 1000 or None, outer_m=s.get("outer_km", 0) * 1000 or None)
         except Exception as e:
             traceback.print_exc()
             continue
         v = out["verdict"]
         lead = v["lead_signal"]
         sig = out["signals"].get(lead, {})
-        print(f"   {v['status']:9s} {lead} point={sig.get('point', float('nan')):+.3f} "
+        print(f"   [{out.get('mode')}] {v['status']:9s} {lead} point={sig.get('point', float('nan')):+.3f} "
               f"[{sig.get('lo', float('nan')):+.3f},{sig.get('hi', float('nan')):+.3f}] placebo p={sig.get('placebo_p', float('nan')):.3f} "
               f"n_pre={sig.get('n_pre')} n_post={sig.get('n_post')} donors={sig.get('n_donors')} "
               f"pre_rmse={sig.get('pre_rmse', float('nan')):.3f} {time.time() - t:.0f}s", flush=True)

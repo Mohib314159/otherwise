@@ -119,7 +119,7 @@ def test_space_placebo_detects_real_effect():
 
 def test_time_placebos_null_series_all_inside_pre_period():
     y, D, pre = synthetic(n_pre=56)
-    tp = time_placebos(y, D, pre, lam=0.3, n=2)
+    tp = time_placebos(y, D, pre, lam=0.3, n=2, min_effect=0.05)
 
     assert len(tp) == 2
     n_pre = int(pre.sum())

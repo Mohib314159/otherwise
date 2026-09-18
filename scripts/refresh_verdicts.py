@@ -8,6 +8,7 @@ import sys
 from datetime import date
 
 from src.app.verdict import SIGNALS, SignalResult, combine
+from src.app.evidence import assess
 
 
 def refresh(path: str) -> str:
@@ -27,6 +28,11 @@ def refresh(path: str) -> str:
     v = combine(sr, opt, r["change_type"], post_label)
     r["verdict"] = {"status": v.status, "headline": v.headline, "statement": v.statement,
                     "reasons": v.reasons, "lead_signal": v.lead_signal}
+    allres = {k: SignalResult(**{kk: x[kk] for kk in SignalResult.__dataclass_fields__ if kk in x})
+              for k, x in r["signals"].items()}
+    ev = assess(allres, r["change_type"])
+    r["evidence"] = {"agreement": ev.agreement, "optical": ev.optical_status, "radar": ev.radar_status,
+                     "p_combined": ev.p_combined, "sentence": ev.sentence}
     json.dump(r, open(path, "w"))
     return v.status
 

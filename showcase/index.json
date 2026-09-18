@@ -58,5 +58,35 @@
   "source": "",
   "type": "clearing",
   "confirmed": false
+ },
+ {
+  "key": "austin",
+  "id": "0423e078c5f38593",
+  "label": "Austin, Texas: Tesla Gigafactory built on a gravel-pit site",
+  "blurb": "Construction began in July 2020 on a former sand and gravel mine by the Colorado River.",
+  "expected": "REAL",
+  "source": "https://en.wikipedia.org/wiki/Gigafactory_Texas",
+  "type": "construction",
+  "confirmed": false
+ },
+ {
+  "key": "lutzerath",
+  "id": "2ee1c9c9753b3a11",
+  "label": "L\u00fctzerath, Germany: village and fields taken by the Garzweiler mine",
+  "blurb": "The village was cleared from 11 January 2023 and excavated for lignite during 2023.",
+  "expected": "REAL",
+  "source": "https://en.wikipedia.org/wiki/L%C3%BCtzerath",
+  "type": "clearing",
+  "confirmed": false
+ },
+ {
+  "key": "tablemountain",
+  "id": "e2519aed970b1913",
+  "label": "Cape Town: April 2021 Table Mountain fire",
+  "blurb": "Fire from 18 April 2021 that burnt about 600 ha of fynbos and buildings.",
+  "expected": "REAL",
+  "source": "https://en.wikipedia.org/wiki/2021_Table_Mountain_fire",
+  "type": "burn",
+  "confirmed": false
  }
 ]

@@ -2,6 +2,7 @@
 scenes near the event date. Purely for the human eye; the verdict never uses them."""
 from __future__ import annotations
 
+import json
 import os
 from datetime import date, timedelta
 
@@ -99,3 +100,39 @@ def make_thumbnails(area_geojson: dict, event_date: str, out_dir: str, run_id: s
         if _rgb_png(prov, sc, zones, path, area):
             out[tag] = {"date": sc.date, "scene_id": sc.id, "clear": round(cf, 2), "file": path}
     return out
+
+
+def make_timelapse(area_geojson: dict, start: str, end: str, out_dir: str, run_id: str,
+                   n_frames: int = 8, min_clear: float = 0.85) -> list[dict]:
+    """Up to `n_frames` clear true-colour frames spread evenly across [start, end],
+    for a time-lapse scrubber. Each frame is the clearest scene in its slot."""
+    from datetime import date as _date, timedelta as _td
+    area = validate_polygon(area_geojson)
+    prov = PlanetaryComputer()
+    sq = _square_bounds(area)
+    from .geometry import reproject
+    bbox = [float(v) for v in reproject(sq, area.epsg, 4326).bounds]
+    d0, d1 = _date.fromisoformat(start), _date.fromisoformat(end)
+    span = (d1 - d0).days
+    frames = []
+    for i in range(n_frames):
+        a = d0 + _td(days=int(span * i / n_frames))
+        b = d0 + _td(days=int(span * (i + 1) / n_frames) - 1)
+        scenes = prov.search_s2(bbox, a.isoformat(), b.isoformat(), max_cloud=40)
+        scenes = [s for s in scenes if s.geometry is None or s.geometry.contains(area.wgs84)]
+        if not scenes:
+            continue
+        epsg = scenes[0].epsg or area.epsg
+        scenes = sorted([s for s in scenes if (s.epsg or epsg) == epsg], key=lambda s: s.props.get("cloud_cover") or 0)
+        zones = Zones.build([sq, area.utm], area.epsg, epsg)
+        sc, cf = _best_scene(prov, scenes, zones, None, True)
+        if sc is None or cf < min_clear:
+            continue
+        path = os.path.join(out_dir, f"{run_id}_t{i}.png")
+        os.makedirs(out_dir, exist_ok=True)
+        if _rgb_png(prov, sc, zones, path, area):
+            frames.append({"index": i, "date": sc.date, "scene_id": sc.id, "clear": round(cf, 2),
+                           "url": f"/api/runs/{run_id}/t{i}.png"})
+    with open(os.path.join(out_dir, f"{run_id}_frames.json"), "w") as f:
+        json.dump(frames, f)
+    return frames
