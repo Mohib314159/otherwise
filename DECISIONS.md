@@ -228,3 +228,28 @@ rules were applied (90% conformal interval, min effect 0.05, placebo p <= 0.10).
   known-answer sites.
 - The cells in this test were not land-cover filtered (the power script uses
   the 60 best pre-fit donors), so it slightly understates the app's power.
+
+## 2026-09-18 — milestone 3: the web app (`web/`, `src/app/server.py`)
+
+- **No framework, no build step.** Plain HTML/CSS/ES modules with Leaflet and
+  a hand-written SVG chart. It loads in under a second, deploys as static files
+  next to the API, and every pixel of the verdict page is under our control.
+- **One FastAPI process serves both the API and the pages.** Live runs are
+  background threads behind a semaphore (one at a time by default), results
+  are JSON files, and `/v/<id>` is the permalink. Showcase results live in
+  `showcase/` in the repo so the landing page never waits on a satellite read.
+- **Basemap is OpenStreetMap's standard tiles.** CARTO's free basemap now
+  returns "API key required" tiles; OSM tiles work with attribution and the
+  traffic here is tiny. A satellite toggle uses Esri World Imagery.
+- **No sample or placeholder data ships.** The frontend was first built
+  against an invented development sample; it was deleted before commit so
+  nothing on the site can be mistaken for a result.
+- **The first big-burn case exposed a real limit, and the verdict says so.**
+  Rhodes 2023 burnt ~17,600 ha, larger than the 12 km control ring, so the
+  control cells burnt too and the tool returned CAN'T TELL. The verdict now
+  states when the control cells shifted with the area at the event date. A
+  smaller burn (Saddleworth Moor 2018, ~800 ha) was added to test the burn
+  path where an untouched ring exists.
+- **Verdict statements are recomputable from stored numbers**
+  (`scripts/refresh_verdicts.py`), so a wording or threshold change never
+  requires refetching satellite data.
