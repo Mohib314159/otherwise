@@ -1,109 +1,85 @@
-# CarbonTwin → "Did it really change?"
+# Otherwise — did it really change?
 
-**Now being turned into a public web app:** draw an area, name the event and its
-date, and get a verdict on whether the area changed *more than it would have
-anyway*, with receipts and a placebo check. See `SPEC.md`, `PLAN.md` and
-`DECISIONS.md`. The app code lives in `src/app/`; the original CarbonTwin engine
-below is reused for the synthetic control and placebo inference.
+**A public web app.** Draw an area on a map, say what supposedly happened there
+and when ("forest cleared in February 2020", "this field flooded"), and get a
+verdict: **real change / not real / can't tell**, with the evidence behind it.
 
-**Milestone 1 (done): data in and cleaned for one area.**
+Most tools tell you *something changed*. Otherwise tells you whether it changed
+**more than it would have anyway**, by comparing the area with matched control
+areas that did not get the event, and by running the same test on untouched
+areas and fake dates to show how often the method finds effects that are not there.
+
+## What it does, in one screen
+
+- **Data:** every Sentinel-2 optical scene and Sentinel-1 radar pass over the
+  area for three years before the event and up to 18 months after, from
+  Microsoft Planetary Computer. Cloud, shadow, haze, tile overlaps and
+  mismatched radar orbits are removed, and every dropped observation is listed
+  as a receipt.
+- **Controls:** a grid of same-sized cells 1–12 km away, filtered to the same
+  land cover (ESA WorldCover) and similar elevation (Copernicus DEM), ranked by
+  pre-event similarity.
+- **Counterfactual:** augmented synthetic control (Ben-Michael, Feller &
+  Rothstein 2021) on the existing CarbonTwin convex-weight engine.
+- **Uncertainty:** conformal inference (Chernozhukov, Wüthrich & Zhu 2021), a
+  90% interval for the post-event effect with no distributional assumptions.
+- **Placebo checks on every verdict:** every control cell tested as if it were
+  the area, plus fake event dates before the real one.
+- **Verdict rules are explicit** (`src/app/verdict.py`) and every verdict page
+  is a permalink.
+
+## Run it
 
 ```bash
 pip install -r requirements.txt
+make serve                      # http://127.0.0.1:8000
+python -m pytest -q             # test suite
 python -m scripts.fetch_area --bbox=-1.290,52.905,-1.282,52.911 --start 2021-01-01 --end 2023-12-31
+python -m scripts.run_sites     # recompute the showcase / known-answer sites
+python -m scripts.power         # detection-power table on cached real data
 ```
 
-Pulls Sentinel-2 L2A and Sentinel-1 RTC from Microsoft Planetary Computer for
-the polygon and a ring of same-size donor cells around it, masks cloud with the
-scene classification, removes the Baseline-04 offset, keeps one radar orbit,
-merges tile overlaps, and prints every observation it threw out and why.
+Deployment (Hugging Face Spaces or Render, free tiers) is in `DEPLOY.md`.
+
+## Where things are
+
+| Path | What |
+|---|---|
+| `src/app/` | the app: `fetch` (data), `estimator` (method), `verdict` (rules), `run` (one verdict), `server` (API) |
+| `web/` | the frontend: map landing page, verdict page, track record |
+| `showcase/` | precomputed verdicts for the showcase and the track-record page |
+| `SPEC.md`, `PLAN.md`, `DECISIONS.md`, `SITES.md` | what we are building, how, why, and the known-answer sites |
+| `src/scm.py`, `src/inference.py`, … | the original CarbonTwin engine (below) |
+
+## Honesty notes
+
+- No number in the app is invented: effect sizes, intervals, placebo rates and
+  the track record are computed from the data on each run.
+- Known-answer sites in `SITES.md` are labelled *candidate* until confirmed.
+- Measured detection power on a cloudy UK area is in `DECISIONS.md`; a 0.05
+  NDVI change is usually below the method's power, and the app says so.
 
 ---
 
-# CarbonTwin (original engine)
+## CarbonTwin (the original engine)
 
 A causal-inference engine for verifying field-scale carbon-farming claims from
-satellite time series. Where most tools ask *"did this field get greener?"* — which a
-wet season can fake — CarbonTwin asks *"did the practice **cause** an additional change,
-and can we put a p-value on it?"*
-
-It builds each field a **synthetic control** ("twin") from its conventional neighbours,
-measures the post-adoption divergence, and tests significance with an Abadie-style
-**permutation (placebo) test**. On top of that sit a fraud/false-claim verdict, a
-reversal monitor, and an indicative carbon/risk layer.
-
-## Design
-
-One data contract, one engine, many interchangeable signals:
-
-```
-satellite data ──[adapter]──▶ Dataset (per-field time series)
-                                  │
-                                  ▼
-                 synthetic control  →  placebo test (p-value)  →  verdict
-                                  │
-            ┌─────────────────────┼─────────────────────┐
-        reversal monitor      carbon band          portfolio / risk
-```
-
-Any signal that can be reduced to a 1-D per-field series — NDVI, red-edge, a tillage
-index, radar backscatter, biomass, within-field texture — flows through the *same*
-engine unchanged. Adding a data source means writing a thin adapter, not touching the core.
-
-## Install
-
-```bash
-pip install -r requirements.txt      # numpy, scipy, pandas, matplotlib, pytest
-                                     # optional: xarray + zarr (Sentinel-2 cubes), streamlit (dashboard)
-```
-
-## Run
-
-```bash
-python -m pytest -q                  # test suite (48 tests)
-python -m scripts.validate           # recover planted ground truth on synthetic data
-python -m scripts.render             # render example figures to assets/
-python scripts/run_real_s2.py <cube.zarr>          # six-signal extraction from a real Sentinel-2 cube
-python -m scripts.run_on_the_day                   # edit CONFIG, then audit real data end-to-end
-```
-
-## Module map (`src/`)
+satellite time series, built for a hackathon. It builds each field a
+**synthetic control** from its neighbours, measures the post-adoption
+divergence, and tests significance with an Abadie-style permutation test.
+`carbon.py`, `actuary.py` and `portfolio.py` (tonnage bands and pricing) are
+kept for reference and are not part of the app.
 
 | Module | Role |
 |---|---|
-| `contract.py` | `FieldSeries` / `Dataset` — the internal data contract; latitude-aware off-season mask |
-| `adapter.py` | Read real formats (Sentinel-2 zarr, long/wide CSV, GeoTIFF stack) → `Dataset` |
-| `scm.py` | Synthetic control: convex weights via SLSQP (non-negative, sum to 1 — no extrapolation) |
-| `inference.py` | Permutation/placebo test → p-value; Benjamini-Hochberg FDR for batches |
-| `audit.py` | Five verdicts: VERIFIED / PARTIAL / INCONCLUSIVE / REJECTED / BASELINE |
-| `monitor.py` | Reversal detection and adoption-year onset detection |
-| `carbon.py` | Verified effect → indicative tCO₂e band (literature-bounded triage, not a measurement) |
-| `actuary.py` | Reversal hazard → survival curve and illustrative premium |
-| `portfolio.py` | Roll-up: verified tonnage, at-risk tonnage, unverifiable exposure |
-| `spectral.py` | Sentinel-2 index stack (NDVI/EVI/NDRE/NDWI/NDMI/NDTI/BSI); Baseline-04.00 harmonisation |
-| `field_signals.py` | Sub-5m extractors: texture, contrast, albedo, perimeter ratio, distribution shape |
-| `phenology.py` | Per-field season metrics (start/peak/end/length/amplitude) from the NDVI curve |
-| `radar.py` | Dual-channel fusion (optical + radar tillage) for cover-crop **and** no-till detection |
-| `management.py` | Intentionality discriminator: within-field texture separates cover crop from weeds |
-| `scenarios.py` | Generalisation harness (aquifer depletion, pre-symptomatic crop disease) |
-| `pipeline.py` | `run_audit` / `audit_all_claims` — orchestration |
-| `plots.py`, `dashboard.py` | Figures and a Streamlit dashboard |
+| `contract.py` | `FieldSeries` / `Dataset` data contract; off-season mask |
+| `adapter.py` | Sentinel-2 zarr, CSV and GeoTIFF loaders |
+| `scm.py` | synthetic control with convex weights (SLSQP) |
+| `inference.py` | placebo permutation p-value; Benjamini-Hochberg FDR |
+| `audit.py` | five-state verdict for carbon claims |
+| `monitor.py` | reversal and onset detection |
+| `spectral.py` | Sentinel-2 index stack with the Baseline-04.00 fix |
+| `radar.py` | **simulated** radar channel (not used by the app) |
+| `dashboard.py` | the old Streamlit demo (`make run`) |
 
-## Method notes
-
-- **Why convex weights:** forcing weights ≥ 0 and summing to 1 makes the twin a
-  weighted *average* of real fields (the convex hull), which forbids the extrapolation
-  that ordinary regression would use to overfit a small, collinear donor pool.
-- **Why a permutation p-value:** with one treated unit there is no parametric standard
-  error, so significance is the rank of the field's post/pre RMSPE ratio against every
-  donor re-tested as a placebo. It floors at 1/(donors+1), so thin pools return
-  INCONCLUSIVE rather than a false accusation.
-- **Honest carbon caveat:** NDVI is greenness, not carbon. The statistics establish
-  *additionality*; the tonnage is a deliberately conservative literature band
-  (~1.3 tCO₂e/ha/yr for cover crops) that requires soil-core calibration. Greenness is
-  never presented as a measured tonnage.
-
-## References
-
-See `REFERENCES.md` (Abadie synthetic control; Fick et al. 2021 SCM on satellite data;
-cover-crop sequestration literature; ESA Sentinel-2 Baseline-04.00 offset).
+References for the method are in `REFERENCES.md`.

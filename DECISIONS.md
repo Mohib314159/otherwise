@@ -200,3 +200,27 @@ blocked. With the policy set to Full, every host was re-probed at the byte level
   sum-to-one row returns the same loss (0.00802 vs 0.00802 on real data) in
   about 1 ms. `scm.py` is left unchanged for the old demo; the app uses
   `estimator.solve_weights`.
+
+### Detection power, measured (`scripts/power.py`)
+
+Real, untouched donor cells around the Midlands test area (400 cells, 2020-2024,
+the cloudiest case we have: 79 clear optical observations in four years). Each
+of 20 randomly chosen cells was treated as "the area", a step effect was added
+after a fake event date at 70% of the window, and the full estimator + verdict
+rules were applied (90% conformal interval, min effect 0.05, placebo p <= 0.10).
+
+| Signal | Injected effect | Called REAL | False alarms |
+|---|---|---|---|
+| NDVI | 0.00 | 0 / 20 | 0 / 20 |
+| NDVI | -0.05 | 6 / 20 (30%) | |
+| NDVI | -0.10 | 17 / 20 (85%) | |
+| NDVI | -0.20 | 19 / 20 (95%) | |
+
+- Reading: a clearing, burn or flood moves NDVI/NBR/NDWI by 0.2 or more, so
+  those are detected almost always even under UK cloud; a 0.05 change is
+  below the method's power there and will usually come back CAN'T TELL or
+  NOT REAL, which is the honest answer. Sunnier sites have 2-3x the clear
+  observations and should do better; this will be re-measured on the
+  known-answer sites.
+- The cells in this test were not land-cover filtered (the power script uses
+  the 60 best pre-fit donors), so it slightly understates the app's power.

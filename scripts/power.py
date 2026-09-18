@@ -26,7 +26,7 @@ def main(cache_dir: str | None = None, signal: str = "NDVI", n_units: int = 20,
     d = AreaData.load(cache_dir)
     ss = d.s2 if signal in ("NDVI", "NDWI", "NBR") else d.s1
     V = ss.values[signal]                      # (T, 1+n)
-    dates = ss.dates
+    dates = ss.dates.astype("datetime64[D]")
     T = len(dates)
     event = np.datetime64(dates[int(T * 0.7)])  # fake event at 70% of the window
     rng = np.random.default_rng(seed)
