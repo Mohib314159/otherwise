@@ -18,5 +18,15 @@
   "source": "https://mapping.emergency.copernicus.eu/news/information-bulletin-169-the-copernicus-emergency-management-service-maps-some-critical-wildfires-in-greece-update/",
   "type": "burn",
   "confirmed": false
+ },
+ {
+  "key": "sindh",
+  "id": "2d6a535e10cc094e",
+  "label": "Sindh, Pakistan: 2022 monsoon floods near Lake Manchar",
+  "blurb": "Lake Manchar grew from 334 to 512 km\u00b2 between 11 and 26 August 2022.",
+  "expected": "REAL",
+  "source": "https://earthobservatory.nasa.gov/images/150306/lake-manchar-is-overflowing",
+  "type": "flood",
+  "confirmed": false
  }
 ]
