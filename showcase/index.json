@@ -28,5 +28,15 @@
   "source": "https://earthobservatory.nasa.gov/images/150306/lake-manchar-is-overflowing",
   "type": "flood",
   "confirmed": false
+ },
+ {
+  "key": "richmond",
+  "id": "f8b923727d8e96f4",
+  "label": "Richmond Park, London: nothing documented",
+  "blurb": "A protected grassland with no documented change; a false-alarm check.",
+  "expected": "NOT_REAL",
+  "source": "",
+  "type": "clearing",
+  "confirmed": false
  }
 ]
