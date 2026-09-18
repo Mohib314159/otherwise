@@ -44,7 +44,7 @@ SEED = 0
 # ---------------------------------------------------------------------------
 # shared helper: exactly what run._analyse + verdict.decide do, on one column
 # ---------------------------------------------------------------------------
-def analyse(dates, V, u, event, signal="NDVI", change_type="other", k=80, n_grid=21,
+def analyse(dates, V, u, event, signal="NDVI", change_type="other", k=80, n_grid=11,
             max_units=60, time_pl=False, sign=None):
     """Treat column `u` of V (T, 1+n) as the area; the other donor columns are the pool."""
     cols = [u] + [c for c in range(1, V.shape[1]) if c != u]
@@ -491,8 +491,104 @@ def e8_gates():
     return out
 
 
+# ---------------------------------------------------------------------------
+# E9: every code path from numbers to a verdict, probed for REAL with < 20
+#     donors or < 3 post bins (verdict.decide, verdict.combine, run.py's lead
+#     switch, evidence.assess, prep/donors NaN paths)
+# ---------------------------------------------------------------------------
+def e9_real_paths():
+    from src.app.evidence import assess, status_of
+    from src.app.verdict import combine
+    out = {}
+    strong = dict(signal="NDVI", sensor="S2", expected_sign=-1, point=-0.30, lo=-0.35, hi=-0.25, p_zero=0.0,
+                  pre_rmse=0.02, placebo_pre_rmse_median=0.02, n_pre=40, n_post=12, n_donors=60,
+                  placebo_p=0.02, placebo_p_effect=0.02, placebo_n=60)
+    radar_ok = dict(strong, signal="VH", sensor="S1", point=-2.0, lo=-2.5, hi=-1.5, pre_rmse=0.3,
+                    placebo_pre_rmse_median=0.3)
+    # (a) decide: sweep the two gates one unit either side of the threshold
+    for nd in (19, 20):
+        for npost in (2, 3):
+            r = SignalResult(**{**strong, "n_donors": nd, "n_post": npost})
+            out[f"decide/donors={nd}/post={npost}"] = decide(r, "clearing", "").status
+    # (b) combine: optical lead with 2 post bins; radar lead REAL while optical has 2 post bins
+    opt2 = SignalResult(**{**strong, "n_post": 2})
+    out["combine/optical_lead_2post"] = combine(opt2, opt2, "clearing", "").status
+    out["combine/radar_lead_REAL_optical_2post"] = combine(SignalResult(**radar_ok), opt2, "clearing", "").status
+    out["combine/radar_lead_REAL_optical_19donors"] = combine(
+        SignalResult(**radar_ok), SignalResult(**{**strong, "n_donors": 19}), "clearing", "").status
+    # (c) evidence.status_of: is a signal with 19 donors or a bad pre-fit still 'supportive'?
+    out["evidence/19_donors_supportive"] = status_of(SignalResult(**{**strong, "n_donors": 19}))
+    out["evidence/pre_fit_bad_supportive"] = status_of(SignalResult(**{**strong, "pre_rmse": 0.2}))
+    out["evidence/controls_shifted_supportive"] = status_of(SignalResult(**{**strong, "placebo_effect_median": -0.3}))
+    out["evidence/2_post_bins"] = status_of(SignalResult(**{**strong, "n_post": 2}))
+    ev = assess({"NDVI": SignalResult(**{**strong, "n_donors": 19}), "VH": SignalResult(**{**radar_ok, "n_donors": 19})}, "clearing")
+    out["evidence/assess_19_donors_both"] = {"agreement": ev.agreement, "sentence": ev.sentence[:60]}
+    # (d) run.py lead switch: optical with < 3 post bins hands the lead to radar; the optical
+    #     'too large to dismiss' guard only fires on a radar NOT_REAL, never on a radar REAL
+    out["run/lead_switch_rule"] = "lead = radar if optical.n_post < 3 and radar.n_post >= 3 (run.py:182-186)"
+    # (e) NaN inside the pipeline: a donor column that binned_groups could not interpolate
+    rng = np.random.default_rng(0)
+    T = 60; D = rng.normal(0, 0.05, (30, T)) + 0.5; y = D[:5].mean(axis=0) + rng.normal(0, 0.01, T)
+    pre = np.arange(T) < 45
+    D2 = D.copy(); D2[3, 10] = np.nan
+    f = fit_ascm(y, D2, pre)
+    point = float(np.mean(f.effect[~pre]))
+    r = SignalResult(**{**strong, "point": point, "lo": point, "hi": point, "pre_rmse": f.pre_rmse})
+    out["nan_donor/point"] = point
+    out["nan_donor/decide"] = decide(r, "clearing", "").status
+    # (f) donors: fewer than 20 columns pass coverage -> n_donors as reported by run._analyse
+    T = 50
+    dates = np.datetime64("2021-01-01") + (np.arange(T) * 7).astype("timedelta64[D]")
+    V = 0.5 + rng.normal(0, 0.03, (T, 1 + 25))
+    V[:, 1:19] = V[:, 1:19]; V[::3, 19:] = np.nan; V[1::3, 19:] = np.nan     # 7 donors at 33% coverage
+    ev_np = dates[35]
+    b = binned(dates, V, ev_np, bin_days=10)
+    sel = select_donors(b.matrix, b.pre, b.donor_cov, None, k=80)
+    out["donors/columns_after_coverage"] = int(b.matrix.shape[1] - 1)
+    out["donors/n_kept"] = int(len(sel.index))
+    for k, v in out.items():
+        print("E9", k, json.dumps(v), flush=True)
+    return out
+
+
+# ---------------------------------------------------------------------------
+# E10: pure synthetic common shock (deterministic; mirrored in tests/test_redteam.py)
+# ---------------------------------------------------------------------------
+def synth_panel(seed=0, n_donors=60, T=110, n_pre=75, noise=0.03, shock=0.0, treated_extra=0.0):
+    """Every unit shares a seasonal curve and drops by `shock` after the event;
+    the treated unit drops by `shock + treated_extra`."""
+    rng = np.random.default_rng(seed)
+    t = np.arange(T)
+    season = 0.2 * np.sin(2 * math.pi * t / 36.5)
+    amp = rng.uniform(0.8, 1.2, n_donors + 1); off = rng.normal(0, 0.05, n_donors + 1)
+    V = 0.5 + season[:, None] * amp[None, :] + off[None, :] + rng.normal(0, noise, (T, n_donors + 1))
+    post = t >= n_pre
+    V[post, :] += shock
+    V[post, 0] += treated_extra
+    dates = np.datetime64("2020-01-01") + (t * 10).astype("timedelta64[D]")
+    return dates, V, dates[n_pre]
+
+
+def e10_synthetic_shock(seeds=range(N_UNITS), shock=-0.10):
+    out = {}
+    for label, extra in (("common_only", 0.0), ("common_plus_treated-0.10", -0.10)):
+        rows = []
+        for s in seeds:
+            dates, V, ev = synth_panel(seed=s, shock=shock, treated_extra=extra)
+            r = analyse(dates, V, 0, ev, change_type="clearing")
+            if r:
+                rows.append(r)
+        out[label] = {"n": len(rows), "status": _count(rows),
+                      "median_point": round(float(np.median([r["point"] for r in rows])), 3),
+                      "median_placebo_eff": round(float(np.median([r["placebo_eff_med"] for r in rows])), 3),
+                      "controls_shifted_fired": int(sum("control cells themselves shifted" in " ".join(r["reasons"]) for r in rows))}
+        print("E10", label, json.dumps(out[label]), flush=True)
+    return out
+
+
 EXPERIMENTS = {"e1": e1_date_selection, "e2": e2_leakage, "e3": e3_regional_shock, "e4": e4_seasonal,
-               "e5": e5_pretrend, "e6": e6_relaxation, "e7": e7_despike_flood, "e8": e8_gates}
+               "e5": e5_pretrend, "e6": e6_relaxation, "e7": e7_despike_flood, "e8": e8_gates,
+               "e9": e9_real_paths, "e10": e10_synthetic_shock}
 
 
 if __name__ == "__main__":

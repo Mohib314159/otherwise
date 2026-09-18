@@ -1,12 +1,12 @@
 [
  {
-  "key": "saddleworth",
-  "id": "40bc25d4d731d8d7",
-  "label": "Saddleworth Moor, England: June 2018 moorland fire",
-  "blurb": "Moorland fire from 24 June 2018 that grew to about 8 km\u00b2 by 27 June.",
+  "key": "grunheide",
+  "id": "5a5f8d14423c28f0",
+  "label": "Gr\u00fcnheide, Germany: forest cleared for the Tesla factory",
+  "blurb": "About 92 ha of pine forest felled in February 2020.",
   "expected": "REAL",
-  "source": "https://en.wikipedia.org/wiki/2018_United_Kingdom_wildfires",
-  "type": "burn",
+  "source": "https://www.pv-magazine.com/2020/02/17/court-stops-tree-clearance-for-teslas-proposed-berlin-gigafactory/",
+  "type": "clearing",
   "confirmed": false
  },
  {
@@ -17,6 +17,56 @@
   "expected": "REAL",
   "source": "https://mapping.emergency.copernicus.eu/news/information-bulletin-169-the-copernicus-emergency-management-service-maps-some-critical-wildfires-in-greece-update/",
   "type": "burn",
+  "confirmed": false
+ },
+ {
+  "key": "tablemountain",
+  "id": "e2519aed970b1913",
+  "label": "Cape Town: April 2021 Table Mountain fire",
+  "blurb": "Fire from 18 April 2021 that burnt about 600 ha of fynbos and buildings.",
+  "expected": "REAL",
+  "source": "https://en.wikipedia.org/wiki/2021_Table_Mountain_fire",
+  "type": "burn",
+  "confirmed": false
+ },
+ {
+  "key": "austin",
+  "id": "0423e078c5f38593",
+  "label": "Austin, Texas: Tesla Gigafactory built on a gravel-pit site",
+  "blurb": "Construction began in July 2020 on a former sand and gravel mine by the Colorado River.",
+  "expected": "REAL",
+  "source": "https://en.wikipedia.org/wiki/Gigafactory_Texas",
+  "type": "construction",
+  "confirmed": false
+ },
+ {
+  "key": "saddleworth",
+  "id": "40bc25d4d731d8d7",
+  "label": "Saddleworth Moor, England: June 2018 moorland fire",
+  "blurb": "Moorland fire from 24 June 2018 that grew to about 8 km\u00b2 by 27 June.",
+  "expected": "REAL",
+  "source": "https://en.wikipedia.org/wiki/2018_United_Kingdom_wildfires",
+  "type": "burn",
+  "confirmed": false
+ },
+ {
+  "key": "lutzerath",
+  "id": "2ee1c9c9753b3a11",
+  "label": "L\u00fctzerath, Germany: village and fields taken by the Garzweiler mine",
+  "blurb": "The village was cleared from 11 January 2023 and excavated for lignite during 2023.",
+  "expected": "REAL",
+  "source": "https://en.wikipedia.org/wiki/L%C3%BCtzerath",
+  "type": "clearing",
+  "confirmed": false
+ },
+ {
+  "key": "hasankeyf",
+  "id": "4cf27cafaf37cb06",
+  "label": "Hasankeyf, Turkey: old town flooded by the Il\u0131su reservoir",
+  "blurb": "The Il\u0131su reservoir, filling since July 2019, reached the town in early January 2020.",
+  "expected": "REAL",
+  "source": "https://earthobservatory.nasa.gov/images/146439/slowly-flooding-history",
+  "type": "flood",
   "confirmed": false
  },
  {
@@ -46,56 +96,6 @@
   "blurb": "Primary forest interior with no documented clearing; a false-alarm check.",
   "expected": "NOT_REAL",
   "source": "",
-  "type": "clearing",
-  "confirmed": false
- },
- {
-  "key": "austin",
-  "id": "0423e078c5f38593",
-  "label": "Austin, Texas: Tesla Gigafactory built on a gravel-pit site",
-  "blurb": "Construction began in July 2020 on a former sand and gravel mine by the Colorado River.",
-  "expected": "REAL",
-  "source": "https://en.wikipedia.org/wiki/Gigafactory_Texas",
-  "type": "construction",
-  "confirmed": false
- },
- {
-  "key": "lutzerath",
-  "id": "2ee1c9c9753b3a11",
-  "label": "L\u00fctzerath, Germany: village and fields taken by the Garzweiler mine",
-  "blurb": "The village was cleared from 11 January 2023 and excavated for lignite during 2023.",
-  "expected": "REAL",
-  "source": "https://en.wikipedia.org/wiki/L%C3%BCtzerath",
-  "type": "clearing",
-  "confirmed": false
- },
- {
-  "key": "tablemountain",
-  "id": "e2519aed970b1913",
-  "label": "Cape Town: April 2021 Table Mountain fire",
-  "blurb": "Fire from 18 April 2021 that burnt about 600 ha of fynbos and buildings.",
-  "expected": "REAL",
-  "source": "https://en.wikipedia.org/wiki/2021_Table_Mountain_fire",
-  "type": "burn",
-  "confirmed": false
- },
- {
-  "key": "hasankeyf",
-  "id": "4cf27cafaf37cb06",
-  "label": "Hasankeyf, Turkey: old town flooded by the Il\u0131su reservoir",
-  "blurb": "The Il\u0131su reservoir, filling since July 2019, reached the town in early January 2020.",
-  "expected": "REAL",
-  "source": "https://earthobservatory.nasa.gov/images/146439/slowly-flooding-history",
-  "type": "flood",
-  "confirmed": false
- },
- {
-  "key": "grunheide",
-  "id": "5a5f8d14423c28f0",
-  "label": "Gr\u00fcnheide, Germany: forest cleared for the Tesla factory",
-  "blurb": "About 92 ha of pine forest felled in February 2020.",
-  "expected": "REAL",
-  "source": "https://www.pv-magazine.com/2020/02/17/court-stops-tree-clearance-for-teslas-proposed-berlin-gigafactory/",
   "type": "clearing",
   "confirmed": false
  }

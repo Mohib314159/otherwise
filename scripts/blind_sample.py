@@ -9,9 +9,13 @@ is a fixed release and every random choice comes from a seeded generator.
 Sources
 -------
 1. Hansen Global Forest Change 2023 v1.11 (30 m, lossyear + treecover2000),
-   read as windows through /vsicurl/ from Google Cloud Storage. Events are
-   connected components of one calendar year's loss; nulls are fully
-   forested boxes with no loss 2001-2023 in the box or a 300 m buffer.
+   read through /vsicurl/ from Google Cloud Storage. The tiles are stored as
+   1 x 40000 LZW strips, so a 200 x 200 window costs the same as the whole
+   200-row band: each attempt reads one band and picks a window uniformly
+   among the windows of that band that hold enough of the year's loss
+   (`qualifying_offsets`). Events are connected components of one calendar
+   year's loss; nulls are fully forested boxes with no loss 2001-2023 in the
+   box or a 300 m buffer, placed uniformly in the band.
 2. MTBS burned-area perimeters (USA, optional, --mtbs path/to/zip): events are
    boxes inside a fire perimeter with the ignition date; nulls are boxes of
    the same sizes in tree-covered land at least 5 km from every perimeter.
@@ -21,8 +25,9 @@ Usage
     python -m scripts.blind_sample --seed 20260918 --n-events 60 --n-null 60 \
         --out showcase/blind/sample.json [--mtbs path/to/mtbs_perimeter_data.zip]
 
-The pure functions `pick_component` and `pick_null_box` work on plain numpy
-arrays so they are testable without the network (tests/test_blind_sample.py).
+The pure functions `pick_component`, `pick_null_box`, `box_sums` and
+`qualifying_offsets` work on plain numpy arrays so they are testable without
+the network (tests/test_blind_sample.py).
 """
 from __future__ import annotations
 
@@ -78,6 +83,7 @@ MIN_LOSS_FRAC = 0.60
 TC_EVENT = 30                   # treecover2000 >= 30% for a loss pixel to count
 TC_NULL = 50                    # treecover2000 >= 50% everywhere in a null box
 NULL_BUFFER_M = 300.0
+NULL_TRIES = 200                # uniform placements tried per band before giving up
 POST_MONTHS_CLEARING = 18
 
 # MTBS criteria
@@ -181,6 +187,26 @@ def pick_null_box(lossyear: np.ndarray, treecover: np.ndarray, h: int, w: int, r
     return None
 
 
+def box_sums(mask: np.ndarray, h: int, w: int) -> np.ndarray:
+    """Number of True pixels in every h x w box of a 2-D mask, by 2-D cumulative sum.
+    Shape (H-h+1, W-w+1); element [r, c] is the box whose top-left corner is (r, c)."""
+    H, W = mask.shape
+    if h > H or w > W:
+        return np.zeros((0, 0), dtype=np.int32)
+    c = np.zeros((H + 1, W + 1), dtype=np.int32)
+    c[1:, 1:] = np.cumsum(np.cumsum(mask.astype(np.int32), axis=0), axis=1)
+    return c[h:, w:] - c[:-h, w:] - c[h:, :-w] + c[:-h, :-w]
+
+
+def qualifying_offsets(mask: np.ndarray, h: int, w: int, min_px: int) -> np.ndarray:
+    """Column offsets, in a band exactly h rows tall, of the h x w windows holding
+    at least min_px True pixels. Every window position is considered."""
+    s = box_sums(mask, h, w)
+    if s.size == 0:
+        return np.zeros(0, dtype=np.int64)
+    return np.flatnonzero(s[0] >= min_px)
+
+
 def size_bucket(ha: float) -> str:
     return "<50 ha" if ha < 50 else ("50-150 ha" if ha <= 150 else ">150 ha")
 
@@ -272,26 +298,30 @@ def allowed_years(today: dt.date) -> list[int]:
 
 def draw_hansen_events(tiles: HansenTiles, ok_tiles: list[str], n: int, rng: np.random.Generator,
                        years: list[int], max_attempts: int, log) -> tuple[list[dict], dict]:
-    items, attempts, reasons = [], 0, {"no_loss": 0, "no_component": 0, "rejected_frac": 0, "read_error": 0}
+    """Each attempt draws a tile, a band of WINDOW_PX rows and a loss year uniformly,
+    reads the band, and draws the window uniformly among the WINDOW_PX x WINDOW_PX
+    windows of that band holding at least MIN_COMP_HA of that year's loss."""
+    items, attempts, reasons = [], 0, {"no_loss": 0, "no_component": 0, "read_error": 0}
     while len(items) < n and attempts < max_attempts:
         attempts += 1
         tile = ok_tiles[int(rng.integers(len(ok_tiles)))]
         row = int(rng.integers(0, TILE_PX - WINDOW_PX + 1))
-        col = int(rng.integers(0, TILE_PX - WINDOW_PX + 1))
         year = int(years[int(rng.integers(len(years)))])
-        # the component pick consumes one more draw only when candidates exist (rng passed through)
         try:
-            ly = tiles.read(tile, "lossyear", row, col, WINDOW_PX, WINDOW_PX)
+            band = tiles.read(tile, "lossyear", row, 0, WINDOW_PX, TILE_PX)
             lat = window_lat(tiles.bounds(tile), row, WINDOW_PX)
             ph = pixel_ha(lat)
             code = year - LOSSYEAR_FIRST + 1
-            if (ly == code).sum() * ph < MIN_COMP_HA:
+            offsets = qualifying_offsets(band == code, WINDOW_PX, WINDOW_PX, int(math.ceil(MIN_COMP_HA / ph)))
+            if len(offsets) == 0:
                 reasons["no_loss"] += 1
                 continue
+            col = int(offsets[int(rng.integers(len(offsets)))])
+            ly = band[:, col:col + WINDOW_PX]
             tc = tiles.read(tile, "treecover2000", row, col, WINDOW_PX, WINDOW_PX)
         except Exception as e:                            # noqa: BLE001
             reasons["read_error"] += 1
-            log(f"  read error {tile} r{row} c{col}: {e}")
+            log(f"  read error {tile} r{row}: {e}")
             continue
         pick = pick_component(ly, tc, year, rng, ph)
         if pick is None:
@@ -314,6 +344,7 @@ def draw_hansen_events(tiles: HansenTiles, ok_tiles: list[str], n: int, rng: np.
             "label": f"Blind sample {k:03d}: Hansen forest loss {year}, tile {tile}",
             "provenance": {"dataset": f"Hansen {HANSEN_VERSION} lossyear/treecover2000", "tile": tile,
                            "window_rc": [row, col], "window_px": WINDOW_PX, "attempt": attempts,
+                           "band_row": row, "n_windows_in_band": int(len(offsets)),
                            "box_rc": [r0, r1, c0, c1], "box_px": [r1 - r0, c1 - c0],
                            "component_px": pick["component_px"], "component_ha": pick["component_ha"],
                            "loss_fraction": pick["loss_fraction"], "n_candidates": pick["n_candidates"],
@@ -326,6 +357,9 @@ def draw_hansen_events(tiles: HansenTiles, ok_tiles: list[str], n: int, rng: np.
 
 def draw_hansen_nulls(tiles: HansenTiles, ok_tiles: list[str], n: int, rng: np.random.Generator,
                       events: list[dict], max_attempts: int, log) -> tuple[list[dict], dict]:
+    """Same tiles and band design as the events: read a band of WINDOW_PX rows and
+    place the box uniformly among the positions that satisfy the cover and no-loss
+    rules (rejection sampling inside pick_null_box)."""
     items, attempts, reasons = [], 0, {"no_box": 0, "read_error": 0}
     sizes_m = [e["box_m"] for e in events] or [[600, 600]]
     years = [e["event_year"] for e in events] or EVENT_YEARS
@@ -333,7 +367,7 @@ def draw_hansen_nulls(tiles: HansenTiles, ok_tiles: list[str], n: int, rng: np.r
         attempts += 1
         tile = ok_tiles[int(rng.integers(len(ok_tiles)))]
         row = int(rng.integers(0, TILE_PX - WINDOW_PX + 1))
-        col = int(rng.integers(0, TILE_PX - WINDOW_PX + 1))
+        col = 0
         year = int(years[int(rng.integers(len(years)))])
         hm, wm = sizes_m[int(rng.integers(len(sizes_m)))]
         lat = window_lat(tiles.bounds(tile), row, WINDOW_PX)
@@ -341,16 +375,16 @@ def draw_hansen_nulls(tiles: HansenTiles, ok_tiles: list[str], n: int, rng: np.r
         h, w = max(1, int(round(hm / dy))), max(1, int(round(wm / dx)))
         br, bc = int(math.ceil(NULL_BUFFER_M / dy)), int(math.ceil(NULL_BUFFER_M / dx))
         try:
-            tc = tiles.read(tile, "treecover2000", row, col, WINDOW_PX, WINDOW_PX)
+            tc = tiles.read(tile, "treecover2000", row, col, WINDOW_PX, TILE_PX)
             if (tc >= TC_NULL).sum() < h * w:
                 reasons["no_box"] += 1
                 continue
-            ly = tiles.read(tile, "lossyear", row, col, WINDOW_PX, WINDOW_PX)
+            ly = tiles.read(tile, "lossyear", row, col, WINDOW_PX, TILE_PX)
         except Exception as e:                            # noqa: BLE001
             reasons["read_error"] += 1
-            log(f"  read error {tile} r{row} c{col}: {e}")
+            log(f"  read error {tile} r{row}: {e}")
             continue
-        pick = pick_null_box(ly, tc, h, w, rng, br, bc)
+        pick = pick_null_box(ly, tc, h, w, rng, br, bc, tries=NULL_TRIES)
         if pick is None:
             reasons["no_box"] += 1
             continue
@@ -369,7 +403,7 @@ def draw_hansen_nulls(tiles: HansenTiles, ok_tiles: list[str], n: int, rng: np.r
             "lon": round(clon, 5), "lat": round(clat, 5), "geojson": geo,
             "label": f"Blind sample null {k:03d}: intact forest, no Hansen loss 2001-2023, tile {tile}",
             "provenance": {"dataset": f"Hansen {HANSEN_VERSION} lossyear/treecover2000", "tile": tile,
-                           "window_rc": [row, col], "window_px": WINDOW_PX, "attempt": attempts,
+                           "band_row": row, "window_px": WINDOW_PX, "attempt": attempts,
                            "box_rc": [r0, r1, c0, c1], "box_px": [h, w], "buffer_px": [br, bc],
                            "size_from_event_box_m": [hm, wm], "treecover_min_required": TC_NULL,
                            "treecover_min_found": pick["min_treecover"], "window_lat": round(lat, 4)},
@@ -383,8 +417,11 @@ def draw_hansen_nulls(tiles: HansenTiles, ok_tiles: list[str], n: int, rng: np.r
 # ----------------------------------------------------------------------------
 
 def mtbs_climate(lon: float, lat: float) -> str:
-    """Fixed rule: the interior West (between 118W and 100W) is 'dry'
-    (Great Basin, Rockies, Southwest); everything else in the USA is 'temperate'."""
+    """Fixed rule: latitude >= 55 N is 'boreal' (Alaska); the interior West (between
+    118W and 100W) is 'dry' (Great Basin, Rockies, Southwest); everything else in
+    the USA is 'temperate'."""
+    if lat >= 55.0:
+        return "boreal"
     return "dry" if -118.0 <= lon <= -100.0 else "temperate"
 
 

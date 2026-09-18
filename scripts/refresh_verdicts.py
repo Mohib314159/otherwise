@@ -40,6 +40,6 @@ def refresh(path: str) -> str:
 if __name__ == "__main__":
     paths = sys.argv[1:] or glob.glob("showcase/*.json")
     for p in paths:
-        if p.endswith(("index.json", "track_record.json")) or "_before" in p or "_after" in p:
+        if p.endswith(("index.json", "track_record.json")) or any(t in p for t in ("_before", "_after", "_frames", "_change")):
             continue
         print(p, refresh(p))

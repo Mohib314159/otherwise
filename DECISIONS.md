@@ -361,3 +361,81 @@ parked, and what the evidence says.
   (now addressed by wide mode, unproven at the stop), (b) thin optical
   archives before 2018, and (c) gradual changes (addressed by the absolute-
   mean statistic; Austin should be re-run). Each CAN'T TELL states its reason.
+
+## HANDOFF (2026-09-18, end of session)
+
+### Done and on `main`
+- **Method**: NNLS convex weights + ridge augmentation; conformal 90% interval
+  on the absolute-mean statistic (capped widening); in-space and in-time
+  placebos; explicit verdict rules (`src/app/verdict.py`, incl. `combine`);
+  cross-sensor evidence sentence (`evidence.py`); **wide-area matched
+  controls** (`fetch.py::_fetch_wide`, `run.py mode="wide"/"auto"`), proven
+  on Rhodes: NBR -0.47 (-0.49 to -0.31), placebo p 0.02, 42 controls 20-150 km
+  away, REAL.
+- **Known-answer track record** (`showcase/track_record.json`, page
+  `/track-record`): 9 counted, 4 REAL hits (Grünheide, Rhodes, Table
+  Mountain, Austin), 0 misses, 0 false alarms, 5 can't tell (Saddleworth:
+  radar interval too wide; Lützerath, Richmond, Jaú: pre-event fit worse than
+  1.5x the placebo median; Sindh: ring result, wide rerun unfinished).
+- **Null power** (`scripts/power.py`, cached Midlands 2020-24): NDVI 0/20
+  false alarms, 7/20 at -0.05, 19/20 at -0.10, 19/20 at -0.20; VH 0/20, then
+  0, 7, 20 of 20 at -0.5, -1, -2 dB.
+- **Product**: landing map with showcase cards, place search and satellite
+  toggle; story-first verdict page; track record; batch upload `/batch` with
+  Markdown/JSON reports; permalinks; time-lapse frames (`*_frames.json`,
+  served as `/api/runs/<id>/t<i>.png` only once a route is added, see below);
+  pixel change test module (`pixels.py`, not yet wired into `run.py`).
+- **Docs**: `docs/METHOD.md`, `docs/REDTEAM.md` (adversarial review with
+  numbers), `SITES.md`, `DEPLOY.md`, `PLAN.md`.
+- **Tests**: `python -m pytest -q` is green (xfails are deliberate:
+  `tests/test_redteam.py` encodes 7 known weaknesses with strict xfail so a fix
+  flips them; `tests/test_app_breakdate.py` has one xfail).
+
+### Unfinished, and where it lives
+1. **Sindh wide rerun** (`python -m scripts.run_sites sindh`, mode wide,
+   150-400 km) was still running at the stop; if `showcase/` has no updated
+   Sindh JSON with `"mode": "wide"`, rerun it (about an hour).
+2. **Design pass**: branch `wip-design` (commit 239b46e) holds the four-act
+   verdict story with the before/after slider; `docs/design-pass-slider.patch`
+   is the first attempt. Direction: Act 1 "What we saw" = slider (drag divider,
+   Before/After labels, optional change-map overlay, time-lapse scrubber from
+   `_frames.json`); Act 2 "What would have happened anyway" = trajectory
+   chart with the actual line drawing in on scroll; Act 3 "The difference" =
+   gap chart + the effect number counting up; Act 4 "How sure" = placebo strip,
+   fake dates, evidence sentence, then the verdict word and, for CAN'T TELL,
+   "Why not decisive" + "What would fix it"; sticky verdict pill; scroll
+   reveal; Inter, paper/ink, hairline rules, no dashboard chrome. The critic
+   agent's baseline critique was not written; run one (screenshots at 1280 and
+   390, judge against Linear/Stripe/Planet Explorer) before merging.
+3. **Blind validation**: `scripts/blind_sample.py` (seeded Hansen loss-year
+   sampler, 663 lines) and `scripts/blind_validation.py` (parallel runner,
+   writes `showcase/blind/results.jsonl`, `summary.json`,
+   `docs/BLIND_VALIDATION.md`) exist with tests; `showcase/blind/sample.json`
+   holds a partial draw. No verdict results yet. Resume with
+   `python -m scripts.blind_sample --seed 20260918 ...` then
+   `python -m scripts.blind_validation --sample showcase/blind/sample.json --parallel 3`.
+4. **Red-team fixes** (ranked in `docs/REDTEAM.md`, not yet applied):
+   (a) a flagged in-time placebo must return CAN'T TELL and disable the 4x
+   pre-fit bypass (pre-trends were confirmed as events 9-14/15);
+   (b) the haze despike deletes short floods: make it NDWI-aware in
+   `s2.despike` and its three call sites; (c) `evidence.status_of` must apply
+   the donor/pre-bin/pre-fit/controls-shifted gates. Then the edge-to-edge
+   donor buffer in `geometry.donor_grid` and a nearest-cells "controls
+   shifted" test. Re-run `scripts/power.py` after each.
+5. **Wiring left**: `pixels.compute_pixel_change` into `run.py` (change map
+   on the page); `/api/runs/<id>/t<i>.png` and `/frames` routes in
+   `server.py`; `breakdate.py` ("when did it change?") behind a UI toggle;
+   share-preview images, progressive results, rate limiting and health
+   checks were specified but not started.
+6. **Deployment** needs Mohib's Hugging Face or Render account (DEPLOY.md).
+
+### Exact next steps, in order
+1. `git checkout main && python -m pytest -q` (expect green with xfails).
+2. Apply red-team fixes (a)-(c); re-run `python -m scripts.power` and
+   `python -m scripts.validate_app`; commit with the numbers.
+3. Finish Sindh wide; refresh with `python -m scripts.refresh_verdicts &&
+   python -m scripts.track_record`; commit `showcase/`.
+4. Merge `wip-design` after finishing acts 2-4 and a screenshot pass.
+5. Run blind validation (target 100+), publish `summary.json` on the track
+   record page (add a "Blind validation" section reading it), log failures here.
+6. Deploy (DEPLOY.md), then send links.

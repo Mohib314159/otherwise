@@ -106,9 +106,10 @@ def test_box_sums_and_qualifying_offsets():
     m[:, 3:6] = True                           # a 4 x 3 solid block
     s = box_sums(m, 4, 4)
     assert s.shape == (1, 7)
-    assert s[0].tolist() == [1, 2, 3, 3, 2, 1, 0]
-    assert qualifying_offsets(m, 4, 4, 3).tolist() == [2, 3]
+    assert s[0].tolist() == [4, 8, 12, 12, 8, 4, 0]     # 4 rows x (1, 2, 3, 3, 2, 1, 0) overlapping columns
+    assert qualifying_offsets(m, 4, 4, 9).tolist() == [2, 3]
     assert qualifying_offsets(m, 4, 4, 13).tolist() == []
+    assert qualifying_offsets(m, 5, 4, 1).tolist() == []                # band shorter than the window
 
 
 def test_rng_substreams_are_deterministic_and_independent():
