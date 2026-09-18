@@ -439,3 +439,19 @@ parked, and what the evidence says.
 5. Run blind validation (target 100+), publish `summary.json` on the track
    record page (add a "Blind validation" section reading it), log failures here.
 6. Deploy (DEPLOY.md), then send links.
+
+### Design pass, merged (2026-09-18, final)
+- The verdict page is now: one plain-English verdict line (serif display type,
+  centred), the before/after slider with change-map toggle and time-lapse
+  scrubber, one big plain number (percent of expected greenness for NDVI;
+  value on the -1 to 1 scale for burn/water signals; dB for radar), the two
+  charts with a one-line caption, one "how sure" sentence with the placebo
+  strip, and everything else (numbers, control areas, receipts, method) behind
+  details toggles. Judged on Grünheide and Rhodes desktop screenshots against
+  incident.io's hero as the reference. Mobile only checked for nothing broken.
+- After-images start 10 days after the event (smoke, standing water) and
+  accept a 60% clear share, because burnt ground is classed "dark" by the scene
+  classifier; Rhodes now shows the scar on 17 Aug 2023.
+- Landing: serif wordmark, showcase cards with thumbnails and effect sizes,
+  hover labels with dot markers on the map. Branches `design` and `wip-design`
+  are merged/superseded; `main` is the state to deploy.
