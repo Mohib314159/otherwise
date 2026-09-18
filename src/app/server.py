@@ -59,6 +59,16 @@ def _load_run(rid: str) -> dict:
     with open(p) as f:
         out = json.load(f)
     out["imagery"] = {}
+    for d in (RUNS_DIR, SHOWCASE_DIR):
+        cj = os.path.join(d, f"{rid}_change.json")
+        if os.path.exists(cj) and os.path.exists(os.path.join(d, f"{rid}_change.png")):
+            try:
+                px = json.load(open(cj))
+                px["map"] = f"/api/runs/{rid}/change.png"
+                out["pixels"] = px
+            except Exception:
+                pass
+            break
     for tag in ("before", "after"):
         for d in (RUNS_DIR, SHOWCASE_DIR):
             png = os.path.join(d, f"{rid}_{tag}.png")
@@ -136,9 +146,19 @@ def get_run(rid: str):
     return _load_run(rid)
 
 
+@app.get("/api/runs/{rid}/frames")
+def get_frames(rid: str):
+    for d in (RUNS_DIR, SHOWCASE_DIR):
+        p = os.path.join(d, f"{rid}_frames.json")
+        if os.path.exists(p):
+            return json.load(open(p))
+    return []
+
+
 @app.get("/api/runs/{rid}/{tag}.png")
 def get_thumb(rid: str, tag: str):
-    if tag not in ("before", "after"):
+    import re as _re
+    if tag not in ("before", "after", "change") and not _re.fullmatch(r"t\d{1,2}", tag):
         raise HTTPException(404)
     for d in (RUNS_DIR, SHOWCASE_DIR):
         p = os.path.join(d, f"{rid}_{tag}.png")

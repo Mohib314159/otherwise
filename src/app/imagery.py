@@ -28,8 +28,10 @@ def _square_bounds(area, factor: float = 3.0):
 def _best_scene(prov, scenes, zones, area_poly_zone, want_after: bool):
     """Return (scene, clear_fraction) for the clearest scene over the area."""
     best, best_cf = None, 0.0
-    order = sorted(scenes, key=lambda s: s.datetime, reverse=not want_after)
-    for sc in order[:12]:
+    # nearest first, but only among scenes that are not obviously cloudy; then widen
+    near = sorted(scenes, key=lambda s: s.datetime, reverse=not want_after)
+    order = [s for s in near if (s.props.get("cloud_cover") or 0) <= 20] + [s for s in near if (s.props.get("cloud_cover") or 0) > 20]
+    for sc in order[:20]:
         try:
             r = read_window(prov.sign(sc.hrefs["SCL"]), zones, out_res=10.0)
         except Exception:
@@ -93,7 +95,7 @@ def make_thumbnails(area_geojson: dict, event_date: str, out_dir: str, run_id: s
         scenes = [s for s in scenes if (s.epsg or epsg) == epsg]
         zones = Zones.build([sq, area.utm], area.epsg, epsg)
         sc, cf = _best_scene(prov, scenes, zones, None, after)
-        if sc is None or cf < 0.5:
+        if sc is None or cf < 0.9:
             continue
         path = os.path.join(out_dir, f"{run_id}_{tag}.png")
         os.makedirs(out_dir, exist_ok=True)
