@@ -37,7 +37,7 @@ def _best_scene(prov, scenes, zones, area_poly_zone, want_after: bool):
             continue
         scl, tr, _ = r
         lab = labels_for(zones, tr, scl.shape)
-        inside = lab == 1
+        inside = lab == 2          # zones are [square, area]; the area is painted last
         if not inside.any():
             continue
         cf = float(np.isin(scl[inside], SCL_CLEAR).mean())
@@ -63,7 +63,7 @@ def _rgb_png(prov, sc, zones, path: str, area_poly):
     img = Image.fromarray((rgb * 255).astype("uint8"))
     lab = labels_for(zones, tr, rgb.shape[:2])
     # outline of the area: pixels inside whose 4-neighbour is outside
-    inside = lab == 1
+    inside = lab == 2
     edge = inside & ~(np.roll(inside, 1, 0) & np.roll(inside, -1, 0) & np.roll(inside, 1, 1) & np.roll(inside, -1, 1))
     arr = np.array(img)
     arr[edge] = [255, 255, 255]
@@ -90,7 +90,7 @@ def make_thumbnails(area_geojson: dict, event_date: str, out_dir: str, run_id: s
             continue
         epsg = scenes[0].epsg or area.epsg
         scenes = [s for s in scenes if (s.epsg or epsg) == epsg]
-        zones = Zones.build([area.utm, sq], area.epsg, epsg)
+        zones = Zones.build([sq, area.utm], area.epsg, epsg)
         sc, cf = _best_scene(prov, scenes, zones, None, after)
         if sc is None or cf < 0.5:
             continue
