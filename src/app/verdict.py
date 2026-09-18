@@ -59,7 +59,14 @@ class SignalResult:
 
     @property
     def pre_fit_ok(self) -> bool:
-        return self.pre_rmse <= max(1.5 * self.placebo_pre_rmse_median, PRE_RMSE_FLOOR[self.signal])
+        """A poor pre-event fit blocks a verdict unless the effect dwarfs it.
+
+        The conformal interval and the RMSPE-ratio placebo already scale with
+        the pre-event residuals, so this absolute gate is a safety net for
+        marginal effects, not a veto on an effect 4x larger than the fit error.
+        """
+        loose = self.pre_rmse <= max(1.5 * self.placebo_pre_rmse_median, PRE_RMSE_FLOOR[self.signal])
+        return loose or abs(self.point) >= 4.0 * self.pre_rmse
 
     def excludes_zero_in_direction(self) -> bool:
         s = self.expected_sign

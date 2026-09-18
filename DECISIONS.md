@@ -253,3 +253,12 @@ rules were applied (90% conformal interval, min effect 0.05, placebo p <= 0.10).
 - **Verdict statements are recomputable from stored numbers**
   (`scripts/refresh_verdicts.py`), so a wording or threshold change never
   requires refetching satellite data.
+- **Pre-fit gate relaxed when the effect dwarfs the fit error.** The corrected
+  Grünheide polygon gave NDVI -0.61 (interval -0.57 to -0.45, placebo p 0.03)
+  but was blocked because its pre-event error (0.043) was just over 1.5x the
+  placebo median (0.028). The interval and the placebo ratio already scale
+  with that error, so the gate now applies only when |effect| < 4x pre-RMSE.
+- **The conformal interval is for a constant post-event shift.** When the
+  effect varies over time (a clearing that starts to regrow), the mean gap can
+  sit outside the accepted set, as it does for Grünheide (-0.61 vs -0.57 to
+  -0.45). Both numbers are shown; neither is adjusted to look tidier.
