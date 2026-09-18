@@ -69,8 +69,13 @@ async function loadShowcase() {
     const layer = L.geoJSON(entry.area.geojson, {
       style: { color: "var(--ink)", weight: 1.5, fill: false },
     }).addTo(map);
-    layer.bindTooltip(entry.label, { permanent: true, direction: "center", className: "area-label" });
+    layer.bindTooltip(entry.label, { permanent: false, direction: "top", className: "area-label" });
     bounds.extend(layer.getBounds());
+    // a small dot so each showcase site is visible at world zoom; hover for the name, click to open
+    const c = layer.getBounds().getCenter();
+    const dot = L.circleMarker(c, { radius: 5, color: "#f6f4ee", weight: 1.5, fillColor: "#161616", fillOpacity: 0.9 }).addTo(map);
+    dot.bindTooltip(entry.label, { permanent: false, direction: "top", className: "area-label" });
+    dot.on("click", () => { location.href = `/v/${entry.id}`; });
 
     card.addEventListener("mouseenter", () => layer.setStyle({ color: "var(--counter)", weight: 2.5 }));
     card.addEventListener("mouseleave", () => layer.setStyle({ color: "var(--ink)", weight: 1.5 }));
