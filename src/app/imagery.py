@@ -77,7 +77,7 @@ def _rgb_png(prov, sc, zones, path: str, area_poly):
 
 
 def make_thumbnails(area_geojson: dict, event_date: str, out_dir: str, run_id: str,
-                    days: int = 120) -> dict:
+                    days: int = 120, after_min_days: int = 10) -> dict:
     area = validate_polygon(area_geojson)
     ev = date.fromisoformat(event_date)
     prov = PlanetaryComputer()
@@ -86,7 +86,7 @@ def make_thumbnails(area_geojson: dict, event_date: str, out_dir: str, run_id: s
     bbox = [float(v) for v in reproject(sq, area.epsg, 4326).bounds]
     out = {}
     for tag, start, end, after in (("before", ev - timedelta(days=days), ev - timedelta(days=1), False),
-                                   ("after", ev + timedelta(days=1), ev + timedelta(days=days), True)):
+                                   ("after", ev + timedelta(days=after_min_days), ev + timedelta(days=days + after_min_days), True)):
         scenes = prov.search_s2(bbox, start.isoformat(), end.isoformat(), max_cloud=60)
         scenes = [s for s in scenes if s.geometry is None or s.geometry.contains(area.wgs84)]
         if not scenes:
