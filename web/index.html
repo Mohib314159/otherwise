@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
 <link rel="stylesheet" href="/static/app.css">
+<link rel="stylesheet" href="/static/landing.css">
 <style>
   html, body { height: 100%; overflow: hidden; }
   #map { position: fixed; inset: 0; z-index: 0; }
@@ -32,12 +33,6 @@
   .intro-line { margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.5; }
   .panel-section { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule); }
   .panel-section:first-of-type { border-top: none; }
-
-  .showcase-row { display: flex; gap: 8px; align-items: flex-start; padding: 8px 0; cursor: pointer; border-radius: 4px; }
-  .showcase-row:hover { background: var(--paper); }
-  .showcase-row .dot { margin-top: 6px; }
-  .showcase-row .sc-label { font-weight: 600; font-size: 14px; }
-  .showcase-row .sc-meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
 
   .area-ha-line { font-size: 13px; margin-top: 8px; }
   .area-ha-line.bad { color: var(--notreal); }
@@ -89,12 +84,21 @@
 
   <div class="panel-section">
     <div class="label">Showcase</div>
+    <p class="showcase-note">Real cases with documented sources. Sources and confirmation status are on the Track record page.</p>
     <div id="showcase-list" class="stack" style="margin-top:8px;"></div>
     <div id="showcase-empty" class="muted small" style="display:none;">No showcase runs yet.</div>
   </div>
 
   <div class="panel-section">
     <div class="label">Your own area</div>
+    <div class="place-search">
+      <div class="place-search-row">
+        <input type="text" id="place-search-input" placeholder="Search a place" aria-label="Search a place">
+        <button class="btn btn-quiet" id="place-search-btn" type="button">Go</button>
+      </div>
+      <div class="place-search-note">Search by OpenStreetMap Nominatim</div>
+      <div class="place-search-error" id="place-search-error" style="display:none;"></div>
+    </div>
     <div id="draw-block" style="margin-top:10px;">
       <button class="btn" id="draw-btn" type="button">Draw an area</button>
       <div class="draw-hint">0.5 to 500 hectares.</div>
@@ -151,6 +155,7 @@
   <div class="panel-footer">
     <a href="#" data-drawer-trigger>How this works</a>
     <a href="/track-record">Track record</a>
+    <a href="/batch">Batch</a>
     <a href="https://github.com/Mohib314159/carbon-twin" target="_blank" rel="noopener">Source</a>
     <span class="attribution">Contains modified Copernicus Sentinel data. Land cover &copy; ESA WorldCover. Terrain &copy; Copernicus DEM. Data via Microsoft Planetary Computer.</span>
   </div>

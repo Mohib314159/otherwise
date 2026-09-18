@@ -1,0 +1,55 @@
+{
+ "status": "ok",
+ "signal": "NDVI",
+ "expected_sign": -1,
+ "fraction_changed": 0.012,
+ "expected_null_fraction": 0.05,
+ "placebo_p": 1.0,
+ "n_placebo_cells": 2,
+ "median_cell_fraction": 0.028,
+ "p95_cell_fraction": 0.037,
+ "n_area_pixels": 4647,
+ "n_area_pixels_total": 4647,
+ "n_control_pixels": 143154,
+ "landcover_class": 30,
+ "landcover": "grassland",
+ "landcover_fraction": 0.53,
+ "worldcover_year": 2021,
+ "tile": "30UXC",
+ "epsg": 32630,
+ "cell_px": 68,
+ "pre": {
+  "n_scenes": 8,
+  "dates": [
+   "2022-03-19",
+   "2022-03-19",
+   "2021-07-22",
+   "2022-03-24",
+   "2021-11-22",
+   "2022-01-13",
+   "2021-12-04",
+   "2021-07-17"
+  ]
+ },
+ "post": {
+  "n_scenes": 8,
+  "dates": [
+   "2022-10-18",
+   "2022-10-18",
+   "2022-08-11",
+   "2022-08-11",
+   "2022-10-10",
+   "2022-10-10",
+   "2022-11-04",
+   "2022-07-10"
+  ]
+ },
+ "threshold": -0.067,
+ "median_delta_area": 0.164,
+ "median_delta_controls": 0.067,
+ "map": "f8b923727d8e96f4_change.png",
+ "notes": [
+  "Only 2 placebo cells; placebo_p is coarse.",
+  "The area is mixed land cover: 53% in the dominant class (grassland); controls match that class only."
+ ]
+}

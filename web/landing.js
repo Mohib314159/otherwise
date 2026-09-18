@@ -1,5 +1,8 @@
 // Otherwise — landing page: map, showcase, draw-and-run form.
-import { apiGet, apiPost, fmtDate, todayISO, initHowItWorksDrawer } from "./common.js";
+import {
+  apiGet, apiPost, fmtDate, fmtHa, fmtSignalValue, todayISO, initHowItWorksDrawer,
+  VERDICT_LABEL, CHANGE_TYPE_LABEL, SIGNAL_LABEL,
+} from "./common.js";
 
 const LIGHT_TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const LIGHT_ATTR = "&copy; OpenStreetMap contributors";
@@ -12,6 +15,7 @@ initHowItWorksDrawer();
 // ---- map -------------------------------------------------------------------
 
 const map = L.map("map", { zoomControl: true, attributionControl: true }).setView([20, 0], 2);
+window.__DEBUG_MAP = map;
 const lightLayer = L.tileLayer(LIGHT_TILES, { attribution: LIGHT_ATTR, maxZoom: 19, subdomains: "abcd" }).addTo(map);
 const satLayer = L.tileLayer(SAT_TILES, { attribution: SAT_ATTR, maxZoom: 19 });
 
@@ -44,13 +48,22 @@ async function loadShowcase() {
 
   const bounds = L.latLngBounds([]);
   entries.forEach((entry) => {
-    const row = document.createElement("div");
-    row.className = "showcase-row";
-    row.innerHTML = `
-      <span class="dot dot-${entry.status}"></span>
-      <div>
+    const card = document.createElement("div");
+    card.className = "sc-card";
+
+    const thumb = entry.thumb
+      ? `<img class="sc-thumb" src="${escapeHtml(entry.thumb)}" alt="" loading="lazy">`
+      : `<div class="sc-thumb placeholder"></div>`;
+    const verdictLabel = VERDICT_LABEL[entry.status] || entry.status;
+    const changeLabel = CHANGE_TYPE_LABEL[entry.change_type] || entry.change_type;
+
+    card.innerHTML = `
+      ${thumb}
+      <div class="sc-body">
         <div class="sc-label">${escapeHtml(entry.label)}</div>
-        <div class="sc-meta">${escapeHtml(entry.change_type)} &middot; ${fmtDate(entry.event_date)} &middot; ${entry.area.ha} ha</div>
+        <div class="sc-meta">${escapeHtml(changeLabel)} &middot; ${fmtDate(entry.event_date)} &middot; ${fmtHa(entry.area.ha)}</div>
+        <div class="sc-verdict"><span class="dot dot-${entry.status}"></span><span class="v-${entry.status}">${escapeHtml(verdictLabel)}</span></div>
+        <div class="sc-effect" data-effect></div>
       </div>`;
 
     const layer = L.geoJSON(entry.area.geojson, {
@@ -59,13 +72,39 @@ async function loadShowcase() {
     layer.bindTooltip(entry.label, { permanent: true, direction: "center", className: "area-label" });
     bounds.extend(layer.getBounds());
 
-    row.addEventListener("mouseenter", () => layer.setStyle({ color: "var(--counter)", weight: 2.5 }));
-    row.addEventListener("mouseleave", () => layer.setStyle({ color: "var(--ink)", weight: 1.5 }));
-    row.addEventListener("click", () => { location.href = `/v/${entry.id}`; });
+    card.addEventListener("mouseenter", () => layer.setStyle({ color: "var(--counter)", weight: 2.5 }));
+    card.addEventListener("mouseleave", () => layer.setStyle({ color: "var(--ink)", weight: 1.5 }));
+    card.addEventListener("click", () => { location.href = `/v/${entry.id}`; });
 
-    listEl.appendChild(row);
+    listEl.appendChild(card);
+    loadEffectSize(entry.id, card.querySelector("[data-effect]"));
   });
   if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+}
+
+/** Signal value with sign, using a proper Unicode minus (U+2212) for negatives. */
+function fmtSigned(signal, value) {
+  if (value === null || value === undefined || Number.isNaN(value)) return null;
+  const s = fmtSignalValue(signal, value, { sign: true });
+  return value < 0 ? s.replace("-", "−") : s;
+}
+
+/** Lazily fills in a card's effect-size line from its run JSON. Fails quietly. */
+async function loadEffectSize(id, el) {
+  let run;
+  try {
+    run = await apiGet(`/api/runs/${id}`);
+  } catch (_) {
+    return;
+  }
+  const lead = run.verdict && run.verdict.lead_signal;
+  const sig = lead && run.signals && run.signals[lead];
+  if (!sig) return;
+  const point = fmtSigned(lead, sig.point);
+  if (point === null) return;
+  const label = SIGNAL_LABEL[lead] || lead;
+  const p = typeof sig.placebo_p === "number" ? sig.placebo_p.toFixed(3) : null;
+  el.textContent = p !== null ? `${label} ${point} · placebo p ${p}` : `${label} ${point}`;
 }
 
 function escapeHtml(s) {
@@ -75,6 +114,50 @@ function escapeHtml(s) {
 }
 
 loadShowcase();
+
+// ---- place search ----------------------------------------------------------
+
+const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
+const placeInput = document.getElementById("place-search-input");
+const placeBtn = document.getElementById("place-search-btn");
+const placeError = document.getElementById("place-search-error");
+let lastPlaceSearchAt = 0;
+
+async function searchPlace() {
+  const q = placeInput.value.trim();
+  if (!q) return;
+  const now = Date.now();
+  if (now - lastPlaceSearchAt < 1000) return; // at most one request per second
+  lastPlaceSearchAt = now;
+  placeError.style.display = "none";
+  placeError.textContent = "";
+  try {
+    const url = `${NOMINATIM_URL}?format=json&limit=1&q=${encodeURIComponent(q)}`;
+    const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+    const results = res.ok ? await res.json() : [];
+    if (!results.length) {
+      placeError.textContent = "No place found";
+      placeError.style.display = "block";
+      return;
+    }
+    const r = results[0];
+    if (Array.isArray(r.boundingbox) && r.boundingbox.length === 4) {
+      const [south, north, west, east] = r.boundingbox.map(Number);
+      map.fitBounds([[south, west], [north, east]], { padding: [40, 40] });
+    } else {
+      map.setView([Number(r.lat), Number(r.lon)], 14);
+    }
+  } catch (_) {
+    placeError.textContent = "No place found";
+    placeError.style.display = "block";
+  }
+}
+
+window.__DEBUG_SEARCH = searchPlace;
+placeBtn.addEventListener("click", searchPlace);
+placeInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); searchPlace(); }
+});
 
 // ---- draw an area --------------------------------------------------------------
 

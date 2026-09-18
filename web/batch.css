@@ -1,0 +1,60 @@
+/* Otherwise — batch page. Layout only; colours/tokens come from app.css. */
+
+.page-head { padding: 44px 0 8px; }
+.page-head h1 { font-size: 32px; font-weight: 600; letter-spacing: -0.02em; }
+.page-head p { max-width: 640px; margin-top: 12px; color: var(--muted); }
+.page-head code {
+  font-size: 12.5px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+.batch-form {
+  margin-top: 24px;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  max-width: 640px;
+}
+
+textarea {
+  font: inherit;
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  padding: 8px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--ink);
+  width: 100%;
+  resize: vertical;
+}
+textarea:focus { outline: 2px solid var(--counter); outline-offset: 1px; }
+
+.defaults-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-top: 4px;
+}
+@media (max-width: 640px) {
+  .defaults-grid { grid-template-columns: 1fr; }
+}
+
+.batch-error { color: var(--notreal); font-size: 13px; margin-top: 10px; min-height: 1em; }
+
+.batch-result { margin-top: 36px; padding-bottom: 40px; }
+.batch-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.table-wrap { margin-top: 16px; }
+td.status-cell.stage-error { color: var(--notreal); }
+td.links-cell a { margin-right: 10px; font-size: 13px; }
+td.links-cell .muted { font-size: 13px; }

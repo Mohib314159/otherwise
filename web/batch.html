@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Otherwise — Batch</title>
+<meta name="description" content="Run several areas at once from a GeoJSON FeatureCollection and download the reports.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+<link rel="stylesheet" href="/static/batch.css">
+</head>
+<body>
+<div class="container">
+  <div class="topbar">
+    <a class="wordmark" href="/">Otherwise</a>
+    <div class="topbar-right">
+      <a href="/">Draw an area</a>
+      <a href="/track-record">Track record</a>
+    </div>
+  </div>
+
+  <section class="page-head">
+    <h1>Batch</h1>
+    <p>Upload a GeoJSON FeatureCollection of polygons. Each feature may carry
+      <code>event_date</code>, <code>change_type</code>, <code>post_months</code> and
+      <code>label</code> properties; defaults below apply otherwise.</p>
+  </section>
+
+  <form id="batch-form" class="batch-form">
+    <div class="field-row">
+      <label class="field" for="f-file">GeoJSON file</label>
+      <input type="file" id="f-file" accept=".json,.geojson,application/geo+json,application/json">
+    </div>
+    <div class="field-row">
+      <label class="field" for="f-paste">&hellip;or paste a FeatureCollection</label>
+      <textarea id="f-paste" rows="6" placeholder='{"type": "FeatureCollection", "features": [...]}'></textarea>
+    </div>
+
+    <div class="defaults-grid">
+      <div class="field-row">
+        <label class="field" for="f-change-type">Default change type</label>
+        <select id="f-change-type">
+          <option value="clearing">Forest or vegetation cleared</option>
+          <option value="regrowth">Regrowth or restoration</option>
+          <option value="flood">Flooding</option>
+          <option value="burn">Burn scar</option>
+          <option value="construction">Construction</option>
+          <option value="other" selected>Something else</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <label class="field" for="f-event-date">Default event date</label>
+        <input type="date" id="f-event-date" min="2018-01-01">
+      </div>
+      <div class="field-row">
+        <label class="field" for="f-post-months">Default post months</label>
+        <select id="f-post-months">
+          <option value="3">3 months</option>
+          <option value="6">6 months</option>
+          <option value="12" selected>12 months</option>
+          <option value="18">18 months</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn" id="submit-btn" type="submit">Run batch</button>
+    <div id="batch-error" class="batch-error"></div>
+  </form>
+
+  <div id="batch-result" class="batch-result" style="display:none;">
+    <div class="batch-result-head">
+      <div class="label">Batch</div>
+      <a class="btn btn-quiet" id="dl-batch-report" href="#" download>Download batch report (.md)</a>
+    </div>
+    <div class="table-wrap">
+      <table class="track-table" id="batch-table">
+        <thead>
+          <tr><th>Label</th><th>Status</th><th>Verdict</th><th>Effect</th><th>Links</th></tr>
+        </thead>
+        <tbody id="batch-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="site-footer" class="site-footer"></div>
+</div>
+
+<script type="module" src="/static/batch.js"></script>
+</body>
+</html>

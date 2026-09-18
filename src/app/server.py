@@ -14,11 +14,12 @@ import uuid
 from collections import OrderedDict
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from .geometry import PolygonError, validate_polygon
+from .report import render_report, fmt_p, fmt_signal, interval_str as report_interval
 from .run import RUNS_DIR, run_id, run_verdict
 from .verdict import SIGNALS
 
@@ -198,6 +199,149 @@ def verdict_page(rid: str):
 @app.get("/track-record")
 def track_page():
     return FileResponse(os.path.join(WEB_DIR, "track.html"))
+
+
+# ---- reports, downloads, batch runs ----------------------------------------
+
+_batches: "dict[str, dict]" = {}
+MAX_BATCH_FEATURES = 25
+
+
+def _run_json(rid: str) -> dict | None:
+    p = _find_run(rid)
+    if not p:
+        return None
+    with open(p) as f:
+        return json.load(f)
+
+
+@app.get("/api/runs/{rid}/report.md")
+def run_report(rid: str):
+    run = _run_json(rid)
+    if run is None:
+        raise HTTPException(404, "No such run")
+    md = render_report(run)
+    return Response(content=md, media_type="text/markdown",
+                    headers={"Content-Disposition": f'attachment; filename="otherwise-{rid}.md"'})
+
+
+@app.get("/api/runs/{rid}/run.json")
+def run_json_download(rid: str):
+    p = _find_run(rid)
+    if not p:
+        raise HTTPException(404, "No such run")
+    return FileResponse(p, media_type="application/json", filename=f"otherwise-{rid}.json")
+
+
+class BatchRequest(BaseModel):
+    features: list[dict]
+    default_change_type: str = "other"
+    default_post_months: int = 12
+    default_event_date: str | None = None
+
+
+def _batch_item_status(item: dict) -> dict:
+    """A batch item plus its current status, computed live (never stored)."""
+    it = dict(item)
+    if it.get("error"):
+        it["status"] = "error"
+        return it
+    if it.get("done") or (it.get("run_id") and _find_run(it["run_id"])):
+        it["status"], it["done"] = "done", True
+        return it
+    job = _jobs.get(it.get("job_id")) if it.get("job_id") else None
+    if job:
+        it["status"] = job.get("status", "queued")
+        it["stage"] = job.get("stage")
+        if it["status"] == "done":
+            it["done"] = True
+    else:
+        it["status"] = "unknown"
+    return it
+
+
+@app.post("/api/batch")
+def submit_batch(req: BatchRequest):
+    if len(req.features) > MAX_BATCH_FEATURES:
+        raise HTTPException(413, f"At most {MAX_BATCH_FEATURES} features per batch.")
+    items = []
+    for i, feat in enumerate(req.features):
+        props = (feat.get("properties") or {}) if isinstance(feat, dict) else {}
+        label = str(props.get("label", "") or "")[:120]
+        item = {"index": i, "label": label, "run_id": None, "job_id": None, "done": False, "error": None}
+        try:
+            event_date = props.get("event_date") or req.default_event_date
+            if not event_date:
+                raise ValueError("event_date is required, per feature or as default_event_date")
+            change_type = props.get("change_type") or req.default_change_type
+            post_months = props.get("post_months", req.default_post_months)
+            run_req = RunRequest(geojson=feat, event_date=str(event_date), change_type=str(change_type),
+                                 post_months=int(post_months), label=label)
+            result = submit(run_req)
+            item["run_id"] = result.get("run_id")
+            item["job_id"] = result.get("job_id")
+            item["done"] = bool(result.get("done", False))
+        except HTTPException as e:
+            item["error"] = str(e.detail)
+        except (ValidationError, PolygonError, ValueError) as e:
+            item["error"] = str(e)
+        except Exception as e:
+            item["error"] = str(e)[:300]
+        items.append(item)
+    batch_id = uuid.uuid4().hex[:12]
+    with _lock:
+        _batches[batch_id] = {"items": items, "created": time.time()}
+    return {"batch_id": batch_id, "items": items}
+
+
+@app.get("/api/batch/{batch_id}")
+def batch_status(batch_id: str):
+    b = _batches.get(batch_id)
+    if not b:
+        raise HTTPException(404, "No such batch")
+    return {"batch_id": batch_id, "items": [_batch_item_status(it) for it in b["items"]]}
+
+
+@app.get("/api/batch/{batch_id}/report.md")
+def batch_report(batch_id: str):
+    b = _batches.get(batch_id)
+    if not b:
+        raise HTTPException(404, "No such batch")
+    items = [_batch_item_status(it) for it in b["items"]]
+    lines = ["# Otherwise — batch report", "",
+             f"Batch `{batch_id}`, {len(items)} feature(s).", "",
+             "| Label | Verdict | Lead signal | Effect | 90% interval | Placebo p | Link |",
+             "|---|---|---|---|---|---|---|"]
+    full_reports = []
+    for it in items:
+        label = it.get("label") or f"Feature {it['index']}"
+        if it.get("error"):
+            lines.append(f"| {label} | error | — | — | — | — | {it['error']} |")
+            continue
+        run = _run_json(it["run_id"]) if it.get("status") == "done" and it.get("run_id") else None
+        if run is None:
+            lines.append(f"| {label} | pending | — | — | — | — | — |")
+            continue
+        verdict = run.get("verdict") or {}
+        lead = verdict.get("lead_signal")
+        sig = (run.get("signals") or {}).get(lead) or {}
+        effect = fmt_signal(lead, sig.get("point"))
+        interval = report_interval(lead, sig.get("lo"), sig.get("hi"))
+        pval = fmt_p(sig.get("placebo_p"))
+        permalink = f"/v/{run.get('id')}"
+        lines.append(f"| {label} | {verdict.get('status', 'n/a')} | {lead or 'n/a'} | {effect} | "
+                     f"{interval} | {pval} | [{permalink}]({permalink}) |")
+        full_reports.append(render_report(run))
+    md = "\n".join(lines) + "\n"
+    if full_reports:
+        md += "\n---\n\n" + "\n\n---\n\n".join(full_reports)
+    return Response(content=md, media_type="text/markdown",
+                    headers={"Content-Disposition": f'attachment; filename="otherwise-batch-{batch_id}.md"'})
+
+
+@app.get("/batch")
+def batch_page():
+    return FileResponse(os.path.join(WEB_DIR, "batch.html"))
 
 
 if os.path.isdir(WEB_DIR):

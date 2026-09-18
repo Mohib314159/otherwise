@@ -27,6 +27,22 @@ areas and fake dates to show how often the method finds effects that are not the
   the area, plus fake event dates before the real one.
 - **Verdict rules are explicit** (`src/app/verdict.py`) and every verdict page
   is a permalink.
+- **Full method write-up:** [`docs/METHOD.md`](docs/METHOD.md) — data
+  cleaning, control selection, the estimator and its uncertainty, the placebo
+  checks, the verdict thresholds, known limits and validation to date, for
+  anyone who wants to check the reasoning rather than take the verdict on
+  trust.
+
+## For institutional users
+
+Carbon-credit checkers, journalists and researchers who need more than one
+verdict at a time can upload a GeoJSON FeatureCollection of areas at `/batch`
+and get every feature run through the same pipeline as a single draw-an-area
+request — no manual repeats. Each run, batch or single, can be exported as a
+Markdown report (`report.md`) or the raw numbers behind it (`run.json`), so a
+verdict can be filed, attached or diffed without screenshotting the page.
+These endpoints are being added alongside this document; treat them as
+in-progress until they show up in a showcase link.
 
 ## Run it
 
@@ -49,6 +65,7 @@ Deployment (Hugging Face Spaces or Render, free tiers) is in `DEPLOY.md`.
 | `web/` | the frontend: map landing page, verdict page, track record |
 | `showcase/` | precomputed verdicts for the showcase and the track-record page |
 | `SPEC.md`, `PLAN.md`, `DECISIONS.md`, `SITES.md` | what we are building, how, why, and the known-answer sites |
+| `docs/METHOD.md` | the full method write-up: data, estimator, uncertainty, placebo checks, verdict rules, limits |
 | `src/scm.py`, `src/inference.py`, … | the original CarbonTwin engine (below) |
 
 ## Honesty notes
