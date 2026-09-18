@@ -314,3 +314,50 @@ rules were applied (90% conformal interval, min effect 0.05, placebo p <= 0.10).
   reported in one sentence. It never loosens the single-signal verdict rules.
 - **Time-lapse frames** (`imagery.make_timelapse`): up to eight clear
   true-colour frames across the window for the scrubber.
+
+## 2026-09-18 (late) — state at the spend limit, and what is where
+
+The monthly spend limit stopped the parallel agents mid-flight. Everything on
+`main` runs and passes its tests; this entry records what landed, what is
+parked, and what the evidence says.
+
+**Landed and merged**
+- Method: NNLS convex weights, ridge augmentation, conformal interval on the
+  absolute-mean statistic, in-space and in-time placebos, explicit verdict
+  rules, cross-sensor evidence sentence, radar-over-optical guard, wide-area
+  matched controls (`mode="wide"`, auto-escalation when ring controls shift).
+- Data: Planetary Computer S2 L2A + S1 RTC, SCL-first reads, receipts, cache,
+  covariates (WorldCover, DEM), before/after thumbnails, 8-frame time-lapses.
+- Product: map landing page with showcase cards and place search, story-first
+  verdict page, track-record page, batch upload (`/batch`) with Markdown and
+  JSON report export, permalinks, Docker/Render/Hugging Face deploy config.
+- Validation: null power test (0/20 false alarms on NDVI and VH; 19/20
+  detection at -0.10 NDVI, 20/20 at -2 dB VH), ten known-answer runs in
+  `showcase/` with sources in SITES.md, `scripts/validate_app.py`,
+  `docs/METHOD.md`, pixel-level change test (`src/app/pixels.py`),
+  calibration and red-team scripts (`scripts/calibration.py`,
+  `scripts/redteam.py`; their write-ups were not finished).
+
+**Parked, not lost**
+- Design pass (before/after slider, four-act story): the slider works; Acts
+  2-4 were not finished when the agent stopped. The diff is saved as
+  `docs/design-pass-slider.patch`; apply it and finish `web/verdict.js`
+  render of acts 2-4 before shipping. The committed page is the story-first
+  version, which is complete.
+- Break-date search (`src/app/breakdate.py`): implemented with a
+  search-aware placebo, one accuracy test marked xfail; not wired into the
+  product.
+- Blind validation (`scripts/blind_sample.py`, `scripts/blind_validation.py`):
+  the Hansen-loss sampler and harness exist; no results were produced before
+  the stop. Run per docs/BLIND_VALIDATION.md when credit allows.
+- Wide-area reruns of Rhodes and Sindh were in progress at the stop; their
+  results, when present, are in `showcase/` under the site keys.
+
+**What the evidence says today**
+- Sharp, well-bounded changes are called REAL with tight intervals and near-
+  zero placebo rates (Grünheide: NDVI -0.61, placebo p 0.03).
+- No false alarm has been produced on any null site or null cell.
+- CAN'T TELL still dominates on (a) events larger than the control ring
+  (now addressed by wide mode, unproven at the stop), (b) thin optical
+  archives before 2018, and (c) gradual changes (addressed by the absolute-
+  mean statistic; Austin should be re-run). Each CAN'T TELL states its reason.
