@@ -84,10 +84,14 @@ def scl_breakdown(scl: np.ndarray, labels: np.ndarray) -> dict[str, float]:
     return {SCL_NAMES.get(int(v), str(v)): float(c / tot) for v, c in zip(vals, counts)}
 
 
-def process_scene(scene: Scene, zones: Zones, sign) -> tuple[S2Observation | None, Receipt | None]:
-    """Extract one S2 scene for all zones. zone 0 is the treated area."""
+def process_scene(scene: Scene, zones: Zones, sign, res: float = 10.0,
+                  require_zone0: bool = True) -> tuple[S2Observation | None, Receipt | None]:
+    """Extract one S2 scene for all zones. zone 0 is the treated area unless
+    `require_zone0` is False (a donor-only group), in which case the scene is
+    kept whenever any zone is usable. `res` is the read resolution in metres;
+    donor-only groups are read at 40 m from the COG overviews."""
     n = len(zones.polygons)
-    r = read_window(sign(scene.hrefs["SCL"]), zones, out_res=10.0)
+    r = read_window(sign(scene.hrefs["SCL"]), zones, out_res=res)
     if r is None:
         return None, Receipt("S2", scene.date, scene.id, "outside",
                              "Scene footprint does not cover the area.")
@@ -97,10 +101,13 @@ def process_scene(scene: Scene, zones: Zones, sign) -> tuple[S2Observation | Non
     _, n_clear, n_total = zone_means(np.zeros_like(scl, dtype="float32"), clear, labels, n)
     with np.errstate(invalid="ignore", divide="ignore"):
         clear_frac = np.where(n_total > 0, n_clear / np.maximum(n_total, 1), 0.0)
-    if n_total[0] == 0:
+    if not require_zone0:
+        if not np.any(clear_frac >= CLEAR_MIN):
+            return None, Receipt("S2", scene.date, scene.id, "cloud", "No donor cell in this group is clear.")
+    elif n_total[0] == 0:
         return None, Receipt("S2", scene.date, scene.id, "outside",
                              "Scene footprint does not cover the area.")
-    if clear_frac[0] < CLEAR_MIN:
+    elif clear_frac[0] < CLEAR_MIN:
         bd = scl_breakdown(scl, labels)
         worst = max(((k, v) for k, v in bd.items() if k not in ("vegetation", "bare", "water")),
                     key=lambda kv: kv[1], default=("cloud", 1 - clear_frac[0]))
@@ -110,7 +117,7 @@ def process_scene(scene: Scene, zones: Zones, sign) -> tuple[S2Observation | Non
                              value=float(clear_frac[0]))
     bands = {}
     for b in ("B03", "B04", "B08", "B12"):
-        rr = read_window(sign(scene.hrefs[b]), zones, out_res=10.0)
+        rr = read_window(sign(scene.hrefs[b]), zones, out_res=res)
         if rr is None or rr[0].shape != scl.shape:
             return None, Receipt("S2", scene.date, scene.id, "read-error",
                                  f"Band {b} window did not match the mask window.")

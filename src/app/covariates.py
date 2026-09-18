@@ -56,12 +56,12 @@ class Covariates:
         return WC_CLASSES.get(int(self.landcover[i]), "unknown")
 
 
-def _accumulate(url_fn, zones: Zones, step: float, reduce):
+def _accumulate(url_fn, zones: Zones, step: float, reduce, out_res: float | None = None):
     """Read every tile touching the zone bounds and let `reduce` add to sums."""
     for cx, cy in _tiles(zones.bounds, step):
         url = url_fn(cx, cy)
         try:
-            r = read_window(url, zones)
+            r = read_window(url, zones, out_res=out_res)
         except Exception:
             continue
         if r is None:
@@ -71,8 +71,12 @@ def _accumulate(url_fn, zones: Zones, step: float, reduce):
         reduce(arr, labels, nodata, tr)
 
 
-def fetch_covariates(polygons_utm: list, src_epsg: int, year: int) -> Covariates:
+def fetch_covariates(polygons_utm: list, src_epsg: int, year: int, coarse: bool = False) -> Covariates:
+    """coarse=True reads WorldCover at ~100 m and the DEM at ~60 m, for wide
+    search areas where the native windows would be tens of millions of pixels."""
     zones = Zones.build(polygons_utm, src_epsg, 4326)
+    wc_res = 8.333333333333333e-4 if coarse else None
+    dem_res = 5.555555555555556e-4 if coarse else None
     n = len(polygons_utm)
     codes = sorted(WC_CLASSES)
     class_counts = np.zeros((n, len(codes)))
@@ -100,8 +104,8 @@ def fetch_covariates(polygons_utm: list, src_epsg: int, year: int) -> Covariates
         ms, ns_, _ = zone_means(np.nan_to_num(slope), sv, labels, n)
         slope_sum[:] += np.nan_to_num(ms) * ns_; slope_n[:] += ns_
 
-    _accumulate(lambda x, y: worldcover_url(x, y, year), zones, 3.0, wc_reduce)
-    _accumulate(dem_url, zones, 1.0, dem_reduce)
+    _accumulate(lambda x, y: worldcover_url(x, y, year), zones, 3.0, wc_reduce, out_res=wc_res)
+    _accumulate(dem_url, zones, 1.0, dem_reduce, out_res=dem_res)
 
     tot = class_counts.sum(axis=1)
     dom = np.where(tot > 0, np.asarray(codes)[np.argmax(class_counts, axis=1)], 0)

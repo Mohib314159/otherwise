@@ -1,4 +1,4 @@
-.PHONY: install run serve validate demo test lint clean
+.PHONY: install run serve validate validate-app demo test lint clean
 
 install:        ## install dependencies
 	pip install -r requirements.txt
@@ -11,6 +11,9 @@ serve:          ## launch the Otherwise web app on http://127.0.0.1:8000
 
 validate:       ## prove the method recovers planted ground truth
 	python -m scripts.validate
+
+validate-app:   ## reproduce the app's validation evidence into showcase/validation.md
+	python -m scripts.validate_app
 
 demo:           ## render the static demo PNGs into assets/
 	python -m scripts.render

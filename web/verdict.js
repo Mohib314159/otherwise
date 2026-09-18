@@ -16,6 +16,13 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
+/** Signal value with sign, using a proper Unicode minus (U+2212) for negatives. */
+function fmtSigned(signal, value) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "—";
+  const s = fmtSignalValue(signal, value, { sign: true });
+  return value < 0 ? s.replace("-", "−") : s;
+}
+
 function getRunId() {
   const parts = location.pathname.split("/").filter(Boolean);
   return parts[parts.length - 1] || "";
@@ -43,28 +50,90 @@ function showGenericError(msg) {
 
 // ---- section builders ------------------------------------------------------
 
-function renderHero(d) {
-  const statusLabel = VERDICT_LABEL[d.verdict.status] || d.verdict.status;
-  const parts = [CHANGE_TYPE_LABEL[d.change_type] || d.change_type, fmtDate(d.event_date), `${d.area.ha} ha`];
-  if (d.area.landcover) parts.push(d.area.landcover);
-  const headline = (d.verdict.headline || "").trim();
-  const showHeadline = headline && headline !== statusLabel;
+function renderStoryImagery(d) {
+  const im = d.imagery || {};
+  if (!im.before && !im.after) {
+    return `<div class="story-imagery-empty">No clear Sentinel-2 scene within 120 days on either side of the event</div>`;
+  }
+  return `
+    <div class="imagery-grid">
+      ${im.before ? `<figure><img src="${im.before.url}" alt="Before the event" loading="lazy"><figcaption>Before · ${fmtDate(im.before.date)}</figcaption></figure>` : ""}
+      ${im.after ? `<figure><img src="${im.after.url}" alt="After the event" loading="lazy"><figcaption>After · ${fmtDate(im.after.date)}</figcaption></figure>` : ""}
+    </div>
+    <div class="chart-caption">The white outline in the image is the drawn area.</div>`;
+}
+
+function renderWhatChanged(d) {
+  const lead = d.verdict.lead_signal;
+  const sig = d.signals[lead];
+  const status = d.verdict.status;
+  return `
+    <div class="story-section">
+      <div class="label">What changed</div>
+      <div class="story-number tnum v-${status}">${fmtSigned(lead, sig.point)}</div>
+      <div class="story-number-sub muted">${escapeHtml(SIGNAL_LABEL[lead] || lead)} relative to the no-event trajectory, ${d.post_months} months after the event</div>
+      <div class="story-number-sub muted tnum">90% interval ${fmtSigned(lead, sig.lo)} to ${fmtSigned(lead, sig.hi)}</div>
+    </div>`;
+}
+
+function renderHowSure(d) {
+  const lead = d.verdict.lead_signal;
+  const sig = d.signals[lead];
+  const chart = d.charts[lead];
+  const k = Math.max(0, Math.round(sig.placebo_p * (sig.placebo_n + 1)) - 1);
+  const timePlacebos = (chart && chart.time_placebos) || [];
+  const nFlagged = timePlacebos.filter((tp) => tp.flagged).length;
+  const lines = [`Placebo: ${k} of ${sig.placebo_n} untouched cells showed a gap this large (p = ${sig.placebo_p.toFixed(3)})`];
+  if (timePlacebos.length) {
+    lines.push(`Fake dates before the event: ${nFlagged} of ${timePlacebos.length} false alarms`);
+  }
+  lines.push(`${sig.n_pre} clear observation periods before, ${sig.n_post} after; ${sig.n_donors} control cells`);
+  radarSignals(d).forEach(([rk, rv]) => {
+    lines.push(`Radar (${rk}): ${fmtSigned(rk, rv.point)}, interval ${fmtSigned(rk, rv.lo)} to ${fmtSigned(rk, rv.hi)}`);
+  });
+  return `
+    <div class="story-section">
+      <div class="label">How sure</div>
+      <div class="story-lines tnum">${lines.map((l) => `<div>${escapeHtml(l)}</div>`).join("")}</div>
+    </div>`;
+}
+
+function renderStoryVerdict(d) {
+  const status = d.verdict.status;
+  const statusLabel = VERDICT_LABEL[status] || status;
   let reasonsHtml = "";
-  if (d.verdict.status === "CANT_TELL" && d.verdict.reasons && d.verdict.reasons.length) {
+  if (status === "CANT_TELL" && d.verdict.reasons && d.verdict.reasons.length) {
     reasonsHtml = `
       <div class="reasons-why">
-        <div class="label">Why</div>
+        <div class="label">Why not decisive</div>
         <ul>${d.verdict.reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join("")}</ul>
       </div>`;
   }
   return `
-    <section class="hero">
-      <div class="label">${parts.map(escapeHtml).join(" · ")}</div>
-      ${d.label ? `<div class="hero-label-line">${escapeHtml(d.label)}</div>` : ""}
-      <div class="verdict-word v-${d.verdict.status}">${statusLabel}</div>
-      ${showHeadline ? `<div class="muted" style="font-size:16px;margin-top:-2px;">${escapeHtml(headline)}</div>` : ""}
+    <div class="story-section">
+      <div class="label">Verdict</div>
+      <div class="story-verdict-word v-${status}">${statusLabel}</div>
       <p class="statement">${escapeHtml(d.verdict.statement)}</p>
       ${reasonsHtml}
+    </div>`;
+}
+
+function renderStoryHero(d) {
+  const parts = [CHANGE_TYPE_LABEL[d.change_type] || d.change_type, fmtDate(d.event_date), `${d.area.ha} ha`];
+  if (d.area.landcover) parts.push(d.area.landcover);
+  return `
+    <section class="story-hero">
+      <div class="label">${parts.map(escapeHtml).join(" · ")}</div>
+      <div class="story-title">${escapeHtml(d.label || "Drawn area")}</div>
+      <div class="story-grid">
+        <div class="story-imagery">${renderStoryImagery(d)}</div>
+        <div class="story-summary">
+          ${renderWhatChanged(d)}
+          ${renderHowSure(d)}
+          ${renderStoryVerdict(d)}
+        </div>
+      </div>
+      <div class="story-caption muted">The images show what a person would see; the number is how much more the area changed than its matched controls; the verdict is whether that difference survives the placebo checks.</div>
     </section>`;
 }
 
@@ -87,20 +156,6 @@ function renderChartsSection(d) {
         <h3>Gap between actual and counterfactual</h3>
         <div class="chart-wrap" id="gap-chart"></div>
       </div>
-    </section>`;
-}
-
-function renderImagery(d) {
-  const im = d.imagery || {};
-  if (!im.before && !im.after) return "";
-  return `
-    <section class="block">
-      <div class="label">Before / after</div>
-      <div class="imagery-grid">
-        ${im.before ? `<figure><img src="${im.before.url}" alt="Before the event" loading="lazy"><figcaption>Before · ${fmtDate(im.before.date)}</figcaption></figure>` : ""}
-        ${im.after ? `<figure><img src="${im.after.url}" alt="After the event" loading="lazy"><figcaption>After · ${fmtDate(im.after.date)}</figcaption></figure>` : ""}
-      </div>
-      <div class="chart-caption">The white outline in the image is the drawn area.</div>
     </section>`;
 }
 
@@ -316,9 +371,8 @@ function render(d) {
   document.getElementById("copy-link-btn").style.display = "inline-block";
 
   contentEl.innerHTML =
-    renderHero(d) +
+    renderStoryHero(d) +
     renderChartsSection(d) +
-    renderImagery(d) +
     renderEvidenceSection(d) +
     renderReceiptsSection(d) +
     renderMethodSection(d);

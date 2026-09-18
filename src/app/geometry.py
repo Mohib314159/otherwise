@@ -132,3 +132,20 @@ def bbox_wgs84(area: Area, grid: DonorGrid | None = None, pad_m: float = 100.0) 
     maxy = max(g.bounds[3] for g in geoms) + pad_m
     b = reproject(box(minx, miny, maxx, maxy), area.epsg, 4326).bounds
     return [float(v) for v in b]
+
+
+def wide_candidates(area: Area, inner_m: float, outer_m: float, n: int = 600,
+                    seed: int = 0) -> DonorGrid:
+    """Candidate control cells spread uniformly over a wide annulus around the
+    area (for events larger than the local ring). Cells keep the area's
+    footprint. Land cover, terrain and pre-event similarity filter them later."""
+    side = max(math.sqrt(area.utm.area), 100.0)
+    cx, cy = area.utm.centroid.x, area.utm.centroid.y
+    rng = np.random.default_rng(seed)
+    u = rng.random(n); th = rng.random(n) * 2 * math.pi
+    r = np.sqrt(u * (outer_m ** 2 - inner_m ** 2) + inner_m ** 2)      # uniform by area
+    xs, ys = cx + r * np.cos(th), cy + r * np.sin(th)
+    cells = [box(x - side / 2, y - side / 2, x + side / 2, y + side / 2) for x, y in zip(xs, ys)]
+    order = np.argsort(r)
+    return DonorGrid(cells=[cells[k] for k in order], epsg=area.epsg, cell_m=side,
+                     distances_m=np.asarray(r, dtype=float)[order])

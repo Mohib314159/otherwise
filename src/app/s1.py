@@ -39,13 +39,14 @@ def to_db(x: np.ndarray) -> np.ndarray:
         return np.where(x > 0, 10.0 * np.log10(x), np.nan)
 
 
-def process_scene(scene: Scene, zones: Zones, sign) -> tuple[S1Observation | None, Receipt | None]:
+def process_scene(scene: Scene, zones: Zones, sign, res: float | None = None,
+                  require_zone0: bool = True) -> tuple[S1Observation | None, Receipt | None]:
     n = len(zones.polygons)
     lin = {}
     valid_all = None
     labels = None
     for pol in POLS:
-        r = read_window(sign(scene.hrefs[pol]), zones)
+        r = read_window(sign(scene.hrefs[pol]), zones, out_res=res)
         if r is None:
             return None, Receipt("S1", scene.date, scene.id, "outside",
                                  "Scene footprint does not cover the area.")
@@ -68,10 +69,13 @@ def process_scene(scene: Scene, zones: Zones, sign) -> tuple[S1Observation | Non
                 vf = np.where(n_total > 0, n_valid / np.maximum(n_total, 1), 0.0)
         m[vf < VALID_MIN] = np.nan
         values[pol] = to_db(m)          # mean in linear power, then dB
-    if n_total[0] == 0:
-        return None, Receipt("S1", scene.date, scene.id, "outside",
-                             "Scene footprint does not cover the area.")
-    if vf[0] == 0:
+    if not require_zone0:
+        if not np.any(vf >= VALID_MIN):
+            return None, Receipt("S1", scene.date, scene.id, "outside", "No donor cell in this group is covered.")
+        values["RATIO"] = values["VH"] - values["VV"]
+        return S1Observation(scene.id, scene.date, scene.minute_key, values, vf, n_total,
+                             props=dict(scene.props)), None
+    if n_total[0] == 0 or vf[0] == 0:
         return None, Receipt("S1", scene.date, scene.id, "outside",
                              "Scene footprint does not cover the area.")
     if vf[0] < VALID_MIN:

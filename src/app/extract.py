@@ -78,9 +78,9 @@ def read_window(href: str, zones: Zones, out_res: float | None = None):
             win = _window(ds, zones.bounds)
             if win is None:
                 return None
-            if out_res and abs(ds.res[0] - out_res) > 1e-6:
-                f = ds.res[0] / out_res
-                out_shape = (int(round(win.height * f)), int(round(win.width * f)))
+            if out_res and (abs(ds.res[0] - out_res) > 1e-9 or abs(ds.res[1] - out_res) > 1e-9):
+                fy, fx = ds.res[1] / out_res, ds.res[0] / out_res
+                out_shape = (max(int(round(win.height * fy)), 1), max(int(round(win.width * fx)), 1))
                 arr = ds.read(1, window=win, out_shape=out_shape,
                               resampling=rasterio.enums.Resampling.nearest)
                 tr = ds.window_transform(win)
