@@ -1,15 +1,5 @@
 [
  {
-  "key": "grunheide",
-  "id": "5a5f8d14423c28f0",
-  "label": "Gr\u00fcnheide, Germany: forest cleared for the Tesla factory",
-  "blurb": "About 92 ha of pine forest felled in February 2020.",
-  "expected": "REAL",
-  "source": "https://www.pv-magazine.com/2020/02/17/court-stops-tree-clearance-for-teslas-proposed-berlin-gigafactory/",
-  "type": "clearing",
-  "confirmed": false
- },
- {
   "key": "saddleworth",
   "id": "40bc25d4d731d8d7",
   "label": "Saddleworth Moor, England: June 2018 moorland fire",
@@ -87,6 +77,26 @@
   "expected": "REAL",
   "source": "https://en.wikipedia.org/wiki/2021_Table_Mountain_fire",
   "type": "burn",
+  "confirmed": false
+ },
+ {
+  "key": "hasankeyf",
+  "id": "4cf27cafaf37cb06",
+  "label": "Hasankeyf, Turkey: old town flooded by the Il\u0131su reservoir",
+  "blurb": "The Il\u0131su reservoir, filling since July 2019, reached the town in early January 2020.",
+  "expected": "REAL",
+  "source": "https://earthobservatory.nasa.gov/images/146439/slowly-flooding-history",
+  "type": "flood",
+  "confirmed": false
+ },
+ {
+  "key": "grunheide",
+  "id": "5a5f8d14423c28f0",
+  "label": "Gr\u00fcnheide, Germany: forest cleared for the Tesla factory",
+  "blurb": "About 92 ha of pine forest felled in February 2020.",
+  "expected": "REAL",
+  "source": "https://www.pv-magazine.com/2020/02/17/court-stops-tree-clearance-for-teslas-proposed-berlin-gigafactory/",
+  "type": "clearing",
   "confirmed": false
  }
 ]
