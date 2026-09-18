@@ -48,5 +48,15 @@
   "source": "https://www.pv-magazine.com/2020/02/17/court-stops-tree-clearance-for-teslas-proposed-berlin-gigafactory/",
   "type": "clearing",
   "confirmed": false
+ },
+ {
+  "key": "saddleworth",
+  "id": "40bc25d4d731d8d7",
+  "label": "Saddleworth Moor, England: June 2018 moorland fire",
+  "blurb": "Moorland fire from 24 June 2018 that grew to about 8 km\u00b2 by 27 June.",
+  "expected": "REAL",
+  "source": "https://en.wikipedia.org/wiki/2018_United_Kingdom_wildfires",
+  "type": "burn",
+  "confirmed": false
  }
 ]
