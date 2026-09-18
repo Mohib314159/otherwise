@@ -1,4 +1,26 @@
-# CarbonTwin
+# CarbonTwin → "Did it really change?"
+
+**Now being turned into a public web app:** draw an area, name the event and its
+date, and get a verdict on whether the area changed *more than it would have
+anyway*, with receipts and a placebo check. See `SPEC.md`, `PLAN.md` and
+`DECISIONS.md`. The app code lives in `src/app/`; the original CarbonTwin engine
+below is reused for the synthetic control and placebo inference.
+
+**Milestone 1 (done): data in and cleaned for one area.**
+
+```bash
+pip install -r requirements.txt
+python -m scripts.fetch_area --bbox=-1.290,52.905,-1.282,52.911 --start 2021-01-01 --end 2023-12-31
+```
+
+Pulls Sentinel-2 L2A and Sentinel-1 RTC from Microsoft Planetary Computer for
+the polygon and a ring of same-size donor cells around it, masks cloud with the
+scene classification, removes the Baseline-04 offset, keeps one radar orbit,
+merges tile overlaps, and prints every observation it threw out and why.
+
+---
+
+# CarbonTwin (original engine)
 
 A causal-inference engine for verifying field-scale carbon-farming claims from
 satellite time series. Where most tools ask *"did this field get greener?"* — which a

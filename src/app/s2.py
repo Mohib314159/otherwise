@@ -1,0 +1,192 @@
+"""Sentinel-2 L2A: cloud masking, baseline harmonisation, index means, receipts.
+
+Order of operations per scene:
+  1. read SCL (20 m) for the window; compute the clear fraction of every zone
+  2. if the treated area is not clear enough -> receipt, stop (no band reads)
+  3. read B03/B04/B08 (10 m) and B12 (20 m, resampled to 10 m), remove the
+     Baseline-04 offset by processing baseline, compute NDVI / NDWI / NBR per
+     pixel, and take the per-zone mean over clear pixels only
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+import numpy as np
+
+from .extract import Zones, labels_for, read_window, zone_means
+from .providers import Scene
+
+# SCL classes kept as "clear ground": vegetation, bare soil, water. Everything
+# else (nodata, saturated, dark, cloud shadow, unclassified, cloud, cirrus, snow)
+# is treated as unusable. Conservative on purpose: a missed thin cloud pulls NDVI
+# down and looks exactly like clearing.
+SCL_CLEAR = (4, 5, 6)
+SCL_NAMES = {0: "no data", 1: "saturated", 2: "dark", 3: "cloud shadow", 4: "vegetation",
+             5: "bare", 6: "water", 7: "unclassified", 8: "cloud (medium)",
+             9: "cloud (high)", 10: "cirrus", 11: "snow"}
+CLEAR_MIN = 0.80          # zone must be at least this clear to yield an observation
+INDICES = ("NDVI", "NDWI", "NBR")
+OFFSET_BASELINE = "04.00"
+DN_OFFSET = 1000.0
+
+
+def needs_offset(baseline: str) -> bool:
+    try:
+        return float(baseline) >= float(OFFSET_BASELINE)
+    except (TypeError, ValueError):
+        return False
+
+
+def reflectance(dn: np.ndarray, baseline: str) -> np.ndarray:
+    x = dn.astype("float32")
+    if needs_offset(baseline):
+        x = np.clip(x - DN_OFFSET, 0.0, None)
+    return x / 10000.0
+
+
+def _nd(a, b):
+    den = a + b
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return np.where(den > 0, (a - b) / den, np.nan)
+
+
+def indices_from_bands(b03, b04, b08, b12) -> dict[str, np.ndarray]:
+    return {"NDVI": _nd(b08, b04), "NDWI": _nd(b03, b08), "NBR": _nd(b08, b12)}
+
+
+@dataclass
+class S2Observation:
+    scene_id: str
+    date: str
+    minute_key: str
+    values: dict[str, np.ndarray]      # index -> (n_zones,) mean, NaN where not clear
+    clear_frac: np.ndarray             # (n_zones,)
+    n_pixels: np.ndarray               # (n_zones,) total pixels in the zone
+    props: dict = field(default_factory=dict)
+
+
+@dataclass
+class Receipt:
+    sensor: str
+    date: str
+    scene_id: str
+    reason: str          # short machine-ish label
+    detail: str          # human sentence
+    value: float | None = None
+
+
+def scl_breakdown(scl: np.ndarray, labels: np.ndarray) -> dict[str, float]:
+    m = labels == 1
+    if not m.any():
+        return {}
+    vals, counts = np.unique(scl[m], return_counts=True)
+    tot = counts.sum()
+    return {SCL_NAMES.get(int(v), str(v)): float(c / tot) for v, c in zip(vals, counts)}
+
+
+def process_scene(scene: Scene, zones: Zones, sign) -> tuple[S2Observation | None, Receipt | None]:
+    """Extract one S2 scene for all zones. zone 0 is the treated area."""
+    n = len(zones.polygons)
+    r = read_window(sign(scene.hrefs["SCL"]), zones, out_res=10.0)
+    if r is None:
+        return None, Receipt("S2", scene.date, scene.id, "outside",
+                             "Scene footprint does not cover the area.")
+    scl, tr, _ = r
+    labels = labels_for(zones, tr, scl.shape)
+    clear = np.isin(scl, SCL_CLEAR)
+    _, n_clear, n_total = zone_means(np.zeros_like(scl, dtype="float32"), clear, labels, n)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        clear_frac = np.where(n_total > 0, n_clear / np.maximum(n_total, 1), 0.0)
+    if n_total[0] == 0:
+        return None, Receipt("S2", scene.date, scene.id, "outside",
+                             "Scene footprint does not cover the area.")
+    if clear_frac[0] < CLEAR_MIN:
+        bd = scl_breakdown(scl, labels)
+        worst = max(((k, v) for k, v in bd.items() if k not in ("vegetation", "bare", "water")),
+                    key=lambda kv: kv[1], default=("cloud", 1 - clear_frac[0]))
+        return None, Receipt("S2", scene.date, scene.id, "cloud",
+                             f"Only {clear_frac[0]:.0%} of the area is clear "
+                             f"({worst[0]} over {worst[1]:.0%}); dropped.",
+                             value=float(clear_frac[0]))
+    bands = {}
+    for b in ("B03", "B04", "B08", "B12"):
+        rr = read_window(sign(scene.hrefs[b]), zones, out_res=10.0)
+        if rr is None or rr[0].shape != scl.shape:
+            return None, Receipt("S2", scene.date, scene.id, "read-error",
+                                 f"Band {b} window did not match the mask window.")
+        bands[b] = reflectance(rr[0], scene.props.get("baseline", "00.00"))
+    idx = indices_from_bands(bands["B03"], bands["B04"], bands["B08"], bands["B12"])
+    values = {}
+    for k, arr in idx.items():
+        v = clear & np.isfinite(arr)
+        m, _, _ = zone_means(np.nan_to_num(arr), v, labels, n)
+        m[clear_frac < CLEAR_MIN] = np.nan
+        values[k] = m
+    return S2Observation(scene.id, scene.date, scene.minute_key, values, clear_frac, n_total,
+                         props=dict(scene.props)), None
+
+
+def merge_duplicates(obs):
+    """Two MGRS tiles (or two S1 frames) can carry the same acquisition, each
+    covering some of the donor cells. Merge them zone by zone (mean of the
+    copies that have a value) so no cell loses coverage to a tile boundary."""
+    groups: dict[str, list] = {}
+    for o in sorted(obs, key=lambda o: o.minute_key):
+        groups.setdefault(o.minute_key, []).append(o)
+    out, receipts = [], []
+    for k, g in groups.items():
+        if len(g) == 1:
+            out.append(g[0])
+            continue
+        g.sort(key=lambda o: -float(_frac(o)[0]))
+        base = g[0]
+        with np.errstate(invalid="ignore"):
+            for name in base.values:
+                base.values[name] = np.nanmean(np.vstack([o.values[name] for o in g]), axis=0)
+            _set_frac(base, np.max(np.vstack([_frac(o) for o in g]), axis=0))
+        base.props["merged_with"] = [o.scene_id for o in g[1:]]
+        out.append(base)
+        for o in g[1:]:
+            receipts.append(Receipt(base.__class__.__name__[:2], o.date, o.scene_id, "duplicate",
+                                    f"Same acquisition as {base.scene_id} (tile overlap); the two copies were merged."))
+    return out, receipts
+
+
+def _frac(o):
+    return o.clear_frac if hasattr(o, "clear_frac") else o.valid_frac
+
+
+def _set_frac(o, v):
+    if hasattr(o, "clear_frac"):
+        o.clear_frac = v
+    else:
+        o.valid_frac = v
+
+
+dedupe_by_minute = merge_duplicates
+
+
+def despike(dates: np.ndarray, ndvi: np.ndarray, window_days: int = 40,
+            min_drop: float = 0.12, k_mad: float = 3.0) -> np.ndarray:
+    """Flag residual cloud/haze the SCL missed: an NDVI value far below the
+    median of its temporal neighbours. Returns a boolean 'suspect' array.
+
+    Cloud contamination only ever lowers NDVI, so the test is one-sided; a real
+    clearing also lowers NDVI but stays low, so its neighbours drop with it.
+    """
+    n = len(ndvi)
+    suspect = np.zeros(n, dtype=bool)
+    d = dates.astype("datetime64[D]").astype(int)
+    for i in range(n):
+        if not np.isfinite(ndvi[i]):
+            continue
+        near = (np.abs(d - d[i]) <= window_days) & (np.arange(n) != i) & np.isfinite(ndvi)
+        if near.sum() < 2:
+            continue
+        nb = ndvi[near]
+        med = np.median(nb)
+        mad = np.median(np.abs(nb - med)) * 1.4826
+        thr = max(min_drop, k_mad * mad)
+        if med - ndvi[i] > thr:
+            suspect[i] = True
+    return suspect

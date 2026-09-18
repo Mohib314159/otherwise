@@ -114,3 +114,40 @@ blocked. With the policy set to Full, every host was re-probed at the byte level
   free tier. Nothing chosen until the compute cost of a live run is measured.
 - Known-answer validation sites. To be proposed with sources, then confirmed
   by Mohib before they are treated as ground truth.
+
+## 2026-09-18 — milestone 1: data in and cleaned for one area (`src/app/`)
+
+- **New package `src/app/`, old modules untouched.** `geometry` (validation, UTM,
+  donor grid), `providers` (STAC), `extract` (windowed zonal stats), `s2`, `s1`,
+  `series` (cache format), `fetch` (orchestrator). CLI: `python -m scripts.fetch_area`.
+- **One read per band per scene for every polygon.** The drawn area and all donor
+  cells are rasterised to one label image and reduced with `bincount`, so a run
+  costs about five range requests per usable Sentinel-2 scene, not hundreds.
+- **SCL first, bands only if clear.** The 20 m scene classification is read first;
+  bands are read only when >= 80% of the drawn area is clear (classes 4, 5, 6:
+  vegetation, bare, water). Unclassified (7) is treated as unusable, because it
+  often marks cloud edges and a missed thin cloud looks exactly like clearing.
+- **Area limits 0.5-500 ha.** Below 0.5 ha there are fewer than ~50 pixels and
+  speckle/edge effects dominate; above 500 ha the donor cells (same footprint)
+  make the read window impractically large.
+- **Donor cells match the treated footprint** (side = sqrt(area)), in a ring
+  1-12 km out, thinned evenly to at most 400. Same footprint means comparable
+  noise; the inner exclusion is the spillover buffer; the ring keeps the climate
+  and phenology shared.
+- **Scenes are filtered by footprint before any read**, and Planetary Computer's
+  multiple processing versions of one acquisition are collapsed to the newest
+  baseline. Tile overlaps (same minute, two MGRS tiles) are merged zone by zone
+  so donor cells on a tile boundary keep their coverage.
+- **Radar: one relative orbit, chosen before reading.** The relative orbit with
+  the most passes over the area is kept; other orbits are logged as receipts.
+  Means are taken in linear power and converted to dB afterwards.
+- **A second cloud filter on the series.** SCL misses haze; an NDVI value far
+  below its temporal neighbours (within 40 days, more than max(0.12, 3 MAD))
+  is dropped with a "haze" receipt. It is one-sided and local, so a real,
+  persistent drop is not flagged.
+- **Every dropped observation gets a receipt** with a reason (cloud, haze,
+  duplicate, orbit, edge, read-error) and a human sentence; scene-footprint
+  misses are counted but not shown.
+- **Timing, small Midlands field, 30 cells, 6 months:** 63 s end to end
+  (S2 40 s over 51 covering scenes, S1 20 s over 15 scenes) with 16 threads
+  through the sandbox proxy. **Three years, 100 cells, same field: 191 s** (S2 66 s over 286 covering scenes, 57 clear observations; S1 114 s over 117 scenes on one orbit, 117 observations). Median donor coverage of the treated area's clear dates is 0.74, so the donor coverage threshold is set at 0.70.

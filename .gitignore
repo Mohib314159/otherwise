@@ -9,3 +9,4 @@ data/validation_results.csv
 data/cache/
 .DS_Store
 DONOTREAD/
+data/runs/
