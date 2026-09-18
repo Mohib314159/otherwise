@@ -151,3 +151,45 @@ blocked. With the policy set to Full, every host was re-probed at the byte level
 - **Timing, small Midlands field, 30 cells, 6 months:** 63 s end to end
   (S2 40 s over 51 covering scenes, S1 20 s over 15 scenes) with 16 threads
   through the sandbox proxy. **Three years, 100 cells, same field: 191 s** (S2 66 s over 286 covering scenes, 57 clear observations; S1 114 s over 117 scenes on one orbit, 117 observations). Median donor coverage of the treated area's clear dates is 0.74, so the donor coverage threshold is set at 0.70.
+
+## 2026-09-18 — milestone 2: method (`src/app/estimator.py`, `prep.py`, `donors.py`, `verdict.py`, `run.py`)
+
+- **Product name: "Otherwise".** As in "more than it would have changed
+  otherwise". Short, says what the counterfactual is, and does not sound like a
+  dashboard. SPEC.md allowed a rename.
+- **Bins of 10 days anchored on the event date**, median within a bin. The
+  treated column is never interpolated: a bin without a real observation is
+  dropped, so every point on the chart is evidence. Donor gaps are interpolated
+  and donors under 70% coverage are dropped.
+- **Donor pool: filter, then rank.** Coverage, then same WorldCover class
+  (2020 map for events before 2022, else 2021, so the map is pre-event), then
+  elevation within 150 m, each relaxed in turn if fewer than 30 cells remain,
+  then the 80 cells with the lowest pre-event RMSE to the area. Reasons and
+  counts are returned so the page can show why a cell was used.
+- **Estimator: augmented SCM.** Convex weights from the existing `scm.py`,
+  plus a ridge correction (Ben-Michael, Feller & Rothstein 2021) for whatever
+  the convex fit could not match. The ridge penalty is chosen by holding out
+  the last quarter of the pre-period. `lam=0` recovers plain SCM, so the old
+  method is still available for comparison.
+- **Uncertainty: conformal inference**, moving-block permutations
+  (Chernozhukov, Wuthrich & Zhu 2021), 90% interval by test inversion over a
+  41-point grid. On synthetic data with 60 donors and 100 steps it recovered a
+  planted -0.20 effect as -0.19 [-0.24, -0.16] and gave p = 0.66 on the null.
+- **Two placebo checks, both shown.** In-space: every donor is treated as if
+  it were the area (Abadie RMSPE-rank p, plus the share of donors whose gap is
+  at least as large in the same direction). In-time: three fake event dates in
+  the pre-period, each with its own conformal interval; a "significant" fake
+  effect is reported as a false alarm on the verdict page.
+- **Verdict rules are explicit** (`verdict.py`): REAL needs the 90% interval
+  to exclude zero in the claimed direction, an effect of at least 0.05 index
+  units (1 dB for radar), and in-space placebo p <= 0.10. NOT REAL needs the
+  interval to rule out a 0.05 change. Anything else, or fewer than 20 donors,
+  20 pre-event bins, 3 post-event bins, or a pre-event fit worse than 1.5x the
+  placebo median, is CAN'T TELL with the reason attached. The 0.05 / 1 dB
+  minimum is a design threshold, not a measurement, and is labelled as such.
+- **Radar corroborates, and leads only when optical cannot.** The optical
+  index for the change type is the lead signal; a radar polarisation is
+  analysed the same way and shown beside it. Radar becomes the lead only when
+  optical has fewer than three clear post-event bins.
+- **Known-answer sites are proposed in `SITES.md`** with sources and are
+  labelled "candidate" until Mohib confirms them.

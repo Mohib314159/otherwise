@@ -1,10 +1,13 @@
-.PHONY: install run validate demo test lint clean
+.PHONY: install run serve validate demo test lint clean
 
 install:        ## install dependencies
 	pip install -r requirements.txt
 
-run:            ## launch the dashboard
+run:            ## launch the old CarbonTwin dashboard
 	streamlit run src/dashboard.py
+
+serve:          ## launch the Otherwise web app on http://127.0.0.1:8000
+	uvicorn src.app.server:app --reload --port 8000
 
 validate:       ## prove the method recovers planted ground truth
 	python -m scripts.validate

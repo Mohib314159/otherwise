@@ -14,8 +14,8 @@ from shapely.geometry import shape
 PC_STAC = "https://planetarycomputer.microsoft.com/api/stac/v1"
 ES_STAC = "https://earth-search.aws.element84.com/v1"
 
-_S2_BANDS = ("B03", "B04", "B08", "B12", "SCL")
-_ES_NAMES = {"B03": "green", "B04": "red", "B08": "nir", "B12": "swir22", "SCL": "scl"}
+_S2_BANDS = ("B02", "B03", "B04", "B08", "B12", "SCL")
+_ES_NAMES = {"B02": "blue", "B03": "green", "B04": "red", "B08": "nir", "B12": "swir22", "SCL": "scl"}
 
 
 @dataclass

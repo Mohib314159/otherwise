@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: otherwise
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: APP_FETCH_WORKERS
+        value: 8
+      - key: APP_MAX_LIVE_JOBS
+        value: 1

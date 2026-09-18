@@ -1,0 +1,215 @@
+"""Augmented synthetic control with conformal inference.
+
+Why not the hackathon estimator alone: with ~20 donors and 24 monthly steps the
+Abadie permutation p-value floors at 0.048 and the answer is a binary rank. Here:
+
+* **Augmented SCM** (Ben-Michael, Feller & Rothstein 2021). Convex SCM weights
+  from `src/scm.py`, plus a ridge correction for whatever the convex fit could
+  not match in the pre-period. Reduces bias when the donor pool is large and
+  noisy, which is exactly the app's situation.
+* **Conformal inference** (Chernozhukov, Wuthrich & Zhu 2021). To test "the
+  average post-event effect equals theta0", subtract theta0 from the treated
+  post-event outcomes, refit on all periods, and compare the post-period
+  residual size with the same statistic on every cyclic block shift of the
+  residual sequence. Inverting the test over theta0 gives a confidence interval
+  for the average effect. No parametric noise model, valid with one treated unit.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import numpy as np
+
+from ..scm import solve_weights
+
+
+@dataclass
+class Fit:
+    weights: np.ndarray            # (m,) convex weights
+    eta: np.ndarray                # (Tpre, T) ridge coefficients, or zeros
+    synthetic: np.ndarray          # (T,) counterfactual, augmented
+    synthetic_scm: np.ndarray      # (T,) plain convex SCM counterfactual
+    effect: np.ndarray             # (T,) observed - counterfactual
+    pre_rmse: float
+    lam: float
+
+
+def _ridge_eta(X_pre: np.ndarray, Y: np.ndarray, lam: float) -> np.ndarray:
+    """X_pre: (m, Tpre) donors' pre outcomes; Y: (m, T). eta: (Tpre, T)."""
+    Xc = X_pre - X_pre.mean(axis=0, keepdims=True)
+    Yc = Y - Y.mean(axis=0, keepdims=True)
+    A = Xc.T @ Xc + lam * np.eye(Xc.shape[1])
+    return np.linalg.solve(A, Xc.T @ Yc)
+
+
+def fit_ascm(y: np.ndarray, D: np.ndarray, pre: np.ndarray, lam: float | None = None) -> Fit:
+    """y: (T,) treated; D: (m, T) donors; pre: (T,) bool. All finite.
+
+    lam=None picks the ridge penalty by holding out the last 25% of the
+    pre-period: fit on the first 75%, choose the lam with the smallest holdout
+    error. lam=0 gives plain convex SCM.
+    """
+    T = y.shape[0]
+    m = D.shape[0]
+    X_pre = D[:, pre]                              # (m, Tpre)
+    w = solve_weights(y[pre], X_pre.T)
+    synth_scm = D.T @ w
+    if lam is None:
+        lam = _choose_lambda(y, D, pre)
+    if lam <= 0 or m < 3:
+        eta = np.zeros((int(pre.sum()), T))
+        synth = synth_scm
+    else:
+        scale = np.trace(X_pre.T @ X_pre) / max(X_pre.shape[1], 1)
+        eta = _ridge_eta(X_pre, D, lam * scale)
+        resid_pre = y[pre] - X_pre.T @ w            # what the convex fit missed
+        synth = synth_scm + resid_pre @ eta
+    effect = y - synth
+    pre_rmse = float(np.sqrt(np.mean(effect[pre] ** 2)))
+    return Fit(w, eta, synth, synth_scm, effect, pre_rmse, float(lam))
+
+
+def _choose_lambda(y, D, pre, grid=(0.0, 0.03, 0.1, 0.3, 1.0, 3.0)) -> float:
+    idx = np.where(pre)[0]
+    if len(idx) < 12:
+        return 0.3
+    cut = idx[int(len(idx) * 0.75)]
+    train = pre.copy(); train[cut:] = False
+    hold = pre & ~train
+    best, best_err = 0.3, np.inf
+    for lam in grid:
+        f = fit_ascm(y, D, train, lam=lam)
+        err = float(np.sqrt(np.mean(f.effect[hold] ** 2)))
+        if err < best_err - 1e-12:
+            best, best_err = lam, err
+    return best
+
+
+# ---------------------------------------------------------------------------
+# Conformal inference
+# ---------------------------------------------------------------------------
+def _stat(u_post: np.ndarray) -> float:
+    return float(np.sqrt(np.mean(u_post ** 2)))
+
+
+def conformal_p(y: np.ndarray, D: np.ndarray, pre: np.ndarray, theta0: float,
+                lam: float, block: int | None = None) -> float:
+    """p-value for H0: mean post effect == theta0 (moving-block permutations)."""
+    post = ~pre
+    y0 = y.copy()
+    y0[post] -= theta0
+    all_pre = np.ones_like(pre)                     # under H0 every period is "pre"
+    f = fit_ascm(y0, D, all_pre, lam=lam)
+    u = f.effect
+    T = len(u)
+    q = int(post.sum())
+    s_obs = _stat(u[post])
+    # cyclic block shifts of the residual sequence, evaluated on q-length windows
+    stats = []
+    for shift in range(T):
+        idx = (np.arange(q) + shift) % T
+        stats.append(_stat(u[idx]))
+    stats = np.asarray(stats)
+    return float(np.mean(stats >= s_obs - 1e-12))
+
+
+@dataclass
+class Conformal:
+    point: float
+    lo: float
+    hi: float
+    alpha: float
+    p_zero: float                  # p-value for "no effect"
+    grid: np.ndarray
+    pvals: np.ndarray
+
+
+def conformal_interval(y, D, pre, lam: float, point: float, scale: float,
+                       alpha: float = 0.10, n_grid: int = 41, span: float = 4.0) -> Conformal:
+    """Invert the conformal test over a grid of theta0 around the point estimate.
+
+    `scale` sets the grid width (use the pre-period RMSE times a few).
+    """
+    half = max(span * scale, 1e-3)
+    grid = np.linspace(point - half, point + half, n_grid)
+    pv = np.array([conformal_p(y, D, pre, th, lam) for th in grid])
+    acc = grid[pv > alpha]
+    if acc.size == 0:
+        lo = hi = point
+    else:
+        lo, hi = float(acc.min()), float(acc.max())
+        # widen by half a grid step: the true boundary lies between grid points
+        step = grid[1] - grid[0]
+        lo, hi = lo - step / 2, hi + step / 2
+    p0 = conformal_p(y, D, pre, 0.0, lam)
+    return Conformal(point, lo, hi, alpha, p0, grid, pv)
+
+
+# ---------------------------------------------------------------------------
+# Placebos
+# ---------------------------------------------------------------------------
+@dataclass
+class SpacePlacebo:
+    p_value: float                     # rank of the treated RMSPE ratio among donors
+    p_effect: float                    # share of donors with a post effect at least as large (same sign)
+    treated_ratio: float
+    ratios: np.ndarray
+    effects: np.ndarray                # mean post effect of each donor treated as if it were the area
+    pre_rmses: np.ndarray
+    effect_series: np.ndarray          # (units, T) effect path of each placebo unit
+
+
+def _ratio(effect, pre):
+    return float(np.sqrt(np.mean(effect[~pre] ** 2)) / (np.sqrt(np.mean(effect[pre] ** 2)) + 1e-9))
+
+
+def space_placebo(y, D, pre, lam: float, treated_effect: float, max_units: int = 60) -> SpacePlacebo:
+    """Each donor becomes the 'treated' unit, fitted on the other donors.
+    Uses the same estimator as the real fit so the comparison is like for like."""
+    f = fit_ascm(y, D, pre, lam=lam)
+    t_ratio = _ratio(f.effect, pre)
+    m = D.shape[0]
+    units = np.arange(m) if m <= max_units else np.linspace(0, m - 1, max_units).round().astype(int)
+    ratios, effects, pres, paths = [], [], [], []
+    for j in units:
+        keep = np.ones(m, dtype=bool); keep[j] = False
+        g = fit_ascm(D[j], D[keep], pre, lam=lam)
+        ratios.append(_ratio(g.effect, pre))
+        effects.append(float(np.mean(g.effect[~pre])))
+        pres.append(g.pre_rmse)
+        paths.append(g.effect)
+    ratios, effects, pres = map(np.asarray, (ratios, effects, pres))
+    p = (np.sum(ratios >= t_ratio) + 1) / (len(ratios) + 1)
+    sign = np.sign(treated_effect) if treated_effect != 0 else 1.0
+    p_eff = (np.sum(sign * effects >= sign * treated_effect) + 1) / (len(effects) + 1)
+    return SpacePlacebo(float(p), float(p_eff), t_ratio, ratios, effects, pres, np.vstack(paths))
+
+
+@dataclass
+class TimePlacebo:
+    fake_index: int
+    effect: float
+    lo: float
+    hi: float
+    flagged: bool
+
+
+def time_placebos(y, D, pre, lam: float, n: int = 3, min_effect: float = 0.0,
+                  alpha: float = 0.10) -> list[TimePlacebo]:
+    """Pretend the event happened at fake dates inside the pre-period, using
+    only pre-period data. A method that 'finds' effects here is not trustworthy."""
+    idx = np.where(pre)[0]
+    Tpre = len(idx)
+    out = []
+    if Tpre < 24:
+        return out
+    for k in range(1, n + 1):
+        cut = int(Tpre * k / (n + 1))
+        fake_pre = np.zeros(Tpre, dtype=bool); fake_pre[:cut] = True
+        yy, DD = y[idx], D[:, idx]
+        f = fit_ascm(yy, DD, fake_pre, lam=lam)
+        point = float(np.mean(f.effect[~fake_pre]))
+        ci = conformal_interval(yy, DD, fake_pre, lam, point, f.pre_rmse, alpha=alpha, n_grid=21)
+        flagged = bool((ci.lo > 0 or ci.hi < 0) and abs(point) >= min_effect)
+        out.append(TimePlacebo(int(idx[cut]), point, ci.lo, ci.hi, flagged))
+    return out
