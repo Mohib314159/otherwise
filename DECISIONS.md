@@ -290,3 +290,27 @@ rules were applied (90% conformal interval, min effect 0.05, placebo p <= 0.10).
   added. A wider ring for small areas and a 2020-2024 window (denser archive)
   are the obvious next improvements.
 - **Sites remain candidates until Mohib confirms them.**
+
+## 2026-09-18 (evening) — decisive where honest: method changes, each re-tested on the null
+
+- **Conformal statistic is the absolute mean of post-event residuals, not their
+  RMS.** With RMS, a time-varying effect (construction that keeps changing,
+  clearing that regrows) rejects every constant shift and the interval
+  collapsed to a point; Austin (NDVI -0.19, placebo p 0.016) came back CAN'T
+  TELL for that reason alone. The absolute mean tests exactly the average
+  effect we report. Null power test after the change: NDVI false alarms 0/20;
+  detection 7/20 at -0.05, 19/20 at -0.10, 19/20 at -0.20 (was 6, 17, 19).
+- **Interval widening is capped** at ±1.0 index units (±10 dB), beyond which
+  an interval carries no information; fake-date placebos no longer print ±6.
+- **Wide-area matched controls (`mode="wide"`).** For events larger than the
+  ring: candidate cells are sampled uniformly over an annulus (e.g. 20-150 km),
+  filtered by WorldCover class, elevation and slope from coarse reads, then
+  read in compact groups at 40 m from the COG overviews. Each group has its own
+  date axis; series are joined on event-anchored 10-day bins. `mode="auto"`
+  runs the ring first and escalates to wide when the ring's placebo cells
+  shifted with the area.
+- **Evidence across sensors (`evidence.py`).** One p-value per sensor (indices
+  within a sensor are correlated), Bonferroni across sensors, agreement
+  reported in one sentence. It never loosens the single-signal verdict rules.
+- **Time-lapse frames** (`imagery.make_timelapse`): up to eight clear
+  true-colour frames across the window for the scrubber.
