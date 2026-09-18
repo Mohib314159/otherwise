@@ -1,5 +1,5 @@
 FROM python:3.11-slim
-
+RUN apt-get update && apt-get install -y --no-install-recommends libexpat1 && rm -rf /var/lib/apt/lists/*
 # rasterio wheels bundle GDAL; no system packages needed beyond certificates
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 
