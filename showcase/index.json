@@ -8,5 +8,15 @@
   "source": "https://www.pv-magazine.com/2020/02/17/court-stops-tree-clearance-for-teslas-proposed-berlin-gigafactory/",
   "type": "clearing",
   "confirmed": false
+ },
+ {
+  "key": "rhodes",
+  "id": "0c2af4baa8c24486",
+  "label": "Rhodes, Greece: July 2023 wildfire",
+  "blurb": "Copernicus EMS mapped 17,629 ha burnt from 18 July 2023.",
+  "expected": "REAL",
+  "source": "https://mapping.emergency.copernicus.eu/news/information-bulletin-169-the-copernicus-emergency-management-service-maps-some-critical-wildfires-in-greece-update/",
+  "type": "burn",
+  "confirmed": false
  }
 ]
