@@ -16,7 +16,7 @@ from .estimator import conformal_interval, fit_ascm, space_placebo, time_placebo
 from .fetch import fetch_area
 from .geometry import validate_polygon, donor_grid
 from .prep import binned
-from .verdict import ALPHA, SIGNALS, SignalResult, Verdict, decide, MIN_EFFECT
+from .verdict import ALPHA, SIGNALS, SignalResult, Verdict, combine, MIN_EFFECT
 
 RUNS_DIR = os.environ.get("APP_RUNS_DIR", "data/runs")
 PRE_YEARS = 3
@@ -133,7 +133,7 @@ def run_verdict(area_geojson: dict, event_date: str, change_type: str = "other",
                           "Not enough clear observations to build a control trajectory for this area and window.",
                           ["no usable series"], primary_sig)
     else:
-        verdict = decide(results[lead], change_type, post_label)
+        verdict = combine(results[lead], results.get(primary_sig), change_type, post_label)
 
     out = {
         "id": rid, "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),

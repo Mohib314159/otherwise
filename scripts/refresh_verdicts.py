@@ -7,7 +7,7 @@ import json
 import sys
 from datetime import date
 
-from src.app.verdict import SignalResult, decide
+from src.app.verdict import SIGNALS, SignalResult, combine
 
 
 def refresh(path: str) -> str:
@@ -19,7 +19,12 @@ def refresh(path: str) -> str:
     sr = SignalResult(**{k: s[k] for k in SignalResult.__dataclass_fields__ if k in s})
     ev = date.fromisoformat(r["event_date"])
     post_label = f"in the {r['post_months']} months after {ev.strftime('%-d %b %Y')}"
-    v = decide(sr, r["change_type"], post_label)
+    primary = SIGNALS.get(r["change_type"], SIGNALS["other"])[0]
+    opt = None
+    if primary in r["signals"] and primary != lead:
+        o = r["signals"][primary]
+        opt = SignalResult(**{k: o[k] for k in SignalResult.__dataclass_fields__ if k in o})
+    v = combine(sr, opt, r["change_type"], post_label)
     r["verdict"] = {"status": v.status, "headline": v.headline, "statement": v.statement,
                     "reasons": v.reasons, "lead_signal": v.lead_signal}
     json.dump(r, open(path, "w"))

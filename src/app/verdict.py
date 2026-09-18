@@ -163,3 +163,21 @@ def decide(r: SignalResult, change_type: str, post_label: str) -> Verdict:
     reasons.append("the interval is too wide to rule a meaningful change in or out")
     return Verdict("CANT_TELL", "Can't tell", core + " " + placebo + " " +
                    "The interval is too wide to rule a meaningful change in or out.", reasons, r.signal)
+
+
+def combine(lead: SignalResult, optical: "SignalResult | None", change_type: str, post_label: str) -> Verdict:
+    """Decide on the lead signal, but never let a radar NOT_REAL override an
+    optical series that shows a large effect it simply could not sample well."""
+    v = decide(lead, change_type, post_label)
+    if optical is None or optical is lead or v.status != "NOT_REAL":
+        return v
+    s = optical.expected_sign
+    big = abs(optical.point) >= 2 * optical.min_effect and (s == 0 or np.sign(optical.point) == s)
+    if big and optical.n_post < MIN_POST_BINS:
+        word = SIGNAL_WORDS[optical.signal]
+        reason = (f"only {optical.n_post} clear optical observation period(s) after the event, and they show "
+                  f"{word} {'down' if optical.point < 0 else 'up'} by {_fmt(optical.point, optical.signal)}; "
+                  "too few to confirm, too large to dismiss")
+        return Verdict("CANT_TELL", "Can't tell", v.statement + " But: " + reason + ".",
+                       v.reasons + [reason], lead.signal)
+    return v

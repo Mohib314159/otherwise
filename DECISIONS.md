@@ -262,3 +262,31 @@ rules were applied (90% conformal interval, min effect 0.05, placebo p <= 0.10).
   effect varies over time (a clearing that starts to regrow), the mean gap can
   sit outside the accepted set, as it does for Grünheide (-0.61 vs -0.57 to
   -0.45). Both numbers are shown; neither is adjusted to look tidier.
+
+## 2026-09-18 — milestone 4: known-answer results (candidate sites, `showcase/`)
+
+| Site | Type | Expected | Verdict | Lead signal | Effect (90% interval) | Placebo p |
+|---|---|---|---|---|---|---|
+| Grünheide 2020 (Tesla site) | clearing | REAL | **REAL** | NDVI | -0.61 (-0.57 to -0.45) | 0.03 |
+| Saddleworth Moor 2018 | burn | REAL | CAN'T TELL | VH (NBR had 2 post bins) | NBR -0.40 on 2 observations | 0.03 |
+| Rhodes 2023 | burn | REAL | CAN'T TELL | NBR | controls burnt too | 0.61 |
+| Sindh 2022 | flood | REAL | CAN'T TELL | NDWI | controls flooded too | 0.51 |
+| Richmond Park (null) | none | NOT REAL | CAN'T TELL | NDVI | -0.01 (-0.10 to +0.10) | 0.93 |
+| Jaú NP (null) | none | NOT REAL | CAN'T TELL | NDVI | -0.01 (-0.07 to +0.06) | 0.64 |
+
+- **Zero false alarms**, one clean hit, four honest "can't tell"s, each with
+  the reason on the page. Nothing is claimed that the data do not support.
+- **Two lessons already changed the product.** (1) Events larger than the
+  12 km control ring (Rhodes, Sindh) cannot be tested this way; the verdict
+  now says so. (2) A radar NOT REAL must not override an optical series that
+  shows a large effect on too few observations (Saddleworth: NBR -0.40 on two
+  post-event bins because Planetary Computer's Sentinel-2 archive is thin over
+  the UK before 2018); `verdict.combine` returns CAN'T TELL there.
+- **Null sites came back CAN'T TELL rather than NOT REAL** because their
+  intervals are too wide to rule out a 0.05 change (Jaú: saturated, cloudy
+  forest; Richmond: few comparable cells in London). That is the right
+  answer for a method that refuses to over-claim, but it means the track
+  record's "correct" count will stay low until sites with denser data are
+  added. A wider ring for small areas and a 2020-2024 window (denser archive)
+  are the obvious next improvements.
+- **Sites remain candidates until Mohib confirms them.**

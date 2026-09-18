@@ -91,8 +91,8 @@
    "type": "burn",
    "expected": "REAL",
    "confirmed": false,
-   "status": "NOT_REAL",
-   "headline": "No real change",
+   "status": "CANT_TELL",
+   "headline": "Can't tell",
    "signal": "VH",
    "effect": -0.9085472191810481,
    "lo": -0.7286337089508279,
@@ -106,9 +106,9 @@
  "summary": {
   "n": 6,
   "hits": 1,
-  "misses": 1,
+  "misses": 0,
   "false_alarms": 0,
-  "cant_tell": 4,
+  "cant_tell": 5,
   "note": "Expected answers come from the documented sources; sites marked unconfirmed are candidates awaiting confirmation. No-change sites rest on the absence of any documented event."
  }
 }
