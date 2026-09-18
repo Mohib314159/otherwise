@@ -215,6 +215,10 @@ rules were applied (90% conformal interval, min effect 0.05, placebo p <= 0.10).
 | NDVI | -0.05 | 6 / 20 (30%) | |
 | NDVI | -0.10 | 17 / 20 (85%) | |
 | NDVI | -0.20 | 19 / 20 (95%) | |
+| VH (radar, dB) | 0.0 | 0 / 20 | 0 / 20 |
+| VH | -0.5 | 0 / 20 | |
+| VH | -1.0 | 7 / 20 (35%) | |
+| VH | -2.0 | 20 / 20 (100%) | |
 
 - Reading: a clearing, burn or flood moves NDVI/NBR/NDWI by 0.2 or more, so
   those are detected almost always even under UK cloud; a 0.05 change is
