@@ -148,9 +148,18 @@ def main() -> int:
         t0 = time.time()
         live, err = None, None
         try:
+            # Hold the control geometry constant and vary only the profile. With
+            # mode="auto" the live arm could escalate to wide while the full arm
+            # was ring, and the comparison would then be measuring mode and
+            # profile together. Rhodes' full run is wide, so its live arm is wide
+            # too, with the same radii.
+            mode = full.get("mode") or "ring"
+            ctrl = full.get("controls") or {}
             live = run_verdict(full["area"]["geojson"], full["event_date"], full["change_type"],
                                full["post_months"], label=full.get("label", ""), save=True,
-                               runs_dir=a.runs_dir, mode="auto", profile="live")
+                               runs_dir=a.runs_dir, mode=mode, profile="live",
+                               inner_m=ctrl.get("inner_m") if mode == "wide" else None,
+                               outer_m=ctrl.get("outer_m") if mode == "wide" else None)
         except Exception as ex:
             err = f"{type(ex).__name__}: {ex}"
             traceback.print_exc()
@@ -161,7 +170,7 @@ def main() -> int:
         merged = {**prev, **{x["key"]: x for x in rows}}
         with open(OUT, "w") as f:
             json.dump({"rows": [merged[k] for k in merged], "generated": time.time()}, f, indent=1)
-        print(f"    {key}: full={r['full']['verdict']} live="
+        print(f"    {key}: mode={full.get('mode') or 'ring'} full={r['full']['verdict']} live="
               f"{r['live']['verdict'] if r['live'] else 'ERROR'} ({r['live_seconds']}s)", flush=True)
 
     merged = {**prev, **{x["key"]: x for x in rows}}
