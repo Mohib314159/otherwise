@@ -8,7 +8,20 @@ const LIGHT_TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const LIGHT_ATTR = "&copy; OpenStreetMap contributors";
 const SAT_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const SAT_ATTR = "Esri, Maxar, Earthstar Geographics";
-const EARTH_R = 6371008.8; // mean earth radius, m
+
+// Area limits and the WGS84 / UTM constants behind them. These mirror
+// src/app/geometry.py: the server reprojects the drawn polygon to its local UTM
+// zone, takes the planar area and raises PolygonError outside these bounds, so
+// the client has to measure the same way or the two numbers disagree.
+const MIN_HA = 0.5;
+const MAX_HA = 500;
+const WGS84_A = 6378137.0;                     // semi-major axis, m
+const WGS84_F = 1 / 298.257223563;             // flattening
+const WGS84_E2 = WGS84_F * (2 - WGS84_F);      // first eccentricity squared
+const WGS84_EP2 = WGS84_E2 / (1 - WGS84_E2);   // second eccentricity squared
+const UTM_K0 = 0.9996;                         // UTM central-meridian scale
+const DEG = Math.PI / 180;
+const COORD_PRECISION = 1e6;                   // 6 dp, as Leaflet's toGeoJSON writes
 
 initHowItWorksDrawer();
 
@@ -189,40 +202,112 @@ map.on(L.Draw.Event.CREATED, (e) => {
   onPolygonReady(e.layer);
 });
 
-function polygonAreaHa(latlngs) {
-  // Local equirectangular projection about the ring's mean latitude, then shoelace.
-  const lat0 = (latlngs.reduce((s, p) => s + p.lat, 0) / latlngs.length) * (Math.PI / 180);
-  const pts = latlngs.map((p) => ({
-    x: (p.lng * Math.PI / 180) * EARTH_R * Math.cos(lat0),
-    y: (p.lat * Math.PI / 180) * EARTH_R,
-  }));
+/** Longitude into [-180, 180). Leaflet pans across world copies, so a drawn
+ *  ring can carry lng 358.5 for a point that is really at -1.5. */
+function wrapLng(lng) {
+  return lng - Math.floor((lng + 180) / 360) * 360;
+}
+
+/** Leaflet's toGeoJSON rounds to 6 dp; measure exactly what we will send. */
+function round6(x) {
+  return Math.round(x * COORD_PRECISION) / COORD_PRECISION;
+}
+
+/** UTM zone for a longitude, clamped as src/app/geometry.py::utm_epsg does. */
+function utmZone(lon) {
+  return Math.min(Math.max(Math.floor((lon + 180) / 6) + 1, 1), 60);
+}
+
+/** WGS84 lon/lat to UTM easting/northing (Snyder's series; mm-accurate in zone). */
+function toUTM(lon, lat, zone) {
+  const lon0 = (zone - 1) * 6 - 180 + 3;
+  const phi = lat * DEG;
+  const sp = Math.sin(phi), cp = Math.cos(phi), tp = Math.tan(phi);
+  const n = WGS84_A / Math.sqrt(1 - WGS84_E2 * sp * sp);
+  const t = tp * tp;
+  const c = WGS84_EP2 * cp * cp;
+  const a = ((lon - lon0) * DEG) * cp;
+  const a2 = a * a;
+  const e2 = WGS84_E2, e4 = e2 * e2, e6 = e4 * e2;
+  const m = WGS84_A * (
+    (1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256) * phi
+    - (3 * e2 / 8 + 3 * e4 / 32 + 45 * e6 / 1024) * Math.sin(2 * phi)
+    + (15 * e4 / 256 + 45 * e6 / 1024) * Math.sin(4 * phi)
+    - (35 * e6 / 3072) * Math.sin(6 * phi));
+  const x = UTM_K0 * n * (a
+    + (1 - t + c) * a2 * a / 6
+    + (5 - 18 * t + t * t + 72 * c - 58 * WGS84_EP2) * a2 * a2 * a / 120) + 500000;
+  const y = UTM_K0 * (m + n * tp * (a2 / 2
+    + (5 - t + 9 * c + 4 * c * c) * a2 * a2 / 24
+    + (61 - 58 * t + t * t + 600 * c - 330 * WGS84_EP2) * a2 * a2 * a2 / 720));
+  return [x, y];
+}
+
+/** Planar centroid of a [lon, lat] ring — the same point shapely picks the zone from. */
+function ringCentroid(ring) {
+  let a2 = 0, cx = 0, cy = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const [x0, y0] = ring[i], [x1, y1] = ring[(i + 1) % ring.length];
+    const cross = x0 * y1 - x1 * y0;
+    a2 += cross; cx += (x0 + x1) * cross; cy += (y0 + y1) * cross;
+  }
+  if (a2 === 0) {
+    const n = ring.length;
+    return [ring.reduce((s, p) => s + p[0], 0) / n, ring.reduce((s, p) => s + p[1], 0) / n];
+  }
+  return [cx / (3 * a2), cy / (3 * a2)];
+}
+
+/** Hectares, measured as the server does: local UTM, then shoelace. */
+function polygonAreaHa(ring) {
+  const zone = utmZone(ringCentroid(ring)[0]);
+  const pts = ring.map(([lon, lat]) => toUTM(lon, lat, zone));
   let area2 = 0;
   for (let i = 0; i < pts.length; i++) {
     const a = pts[i], b = pts[(i + 1) % pts.length];
-    area2 += a.x * b.y - b.x * a.y;
+    area2 += a[0] * b[1] - b[0] * a[1];
   }
   return Math.abs(area2 / 2) / 10000; // m^2 -> ha
 }
 
-function onPolygonReady(layer) {
+/** Drawn layer to an open [lon, lat] ring: longitudes unwrapped to one world
+ *  copy, coordinates rounded to what will actually be posted. */
+function ringFromLayer(layer) {
   const latlngs = layer.getLatLngs()[0];
-  currentHa = polygonAreaHa(latlngs);
-  currentGeoJSON = layer.toGeoJSON().geometry;
+  // Shift every vertex by the same multiple of 360 so the ring stays contiguous.
+  const shift = wrapLng(latlngs[0].lng) - latlngs[0].lng;
+  return latlngs.map((p) => [round6(p.lng + shift), round6(p.lat)]);
+}
+
+function areaOk() {
+  return currentHa !== null && currentHa >= MIN_HA && currentHa <= MAX_HA;
+}
+
+function onPolygonReady(layer) {
+  const ring = ringFromLayer(layer);
+  currentHa = polygonAreaHa(ring);
+  currentGeoJSON = { type: "Polygon", coordinates: [ring.concat([ring[0]])] };
   renderHa();
   runForm.style.display = "block";
   drawBtn.textContent = "Redraw area";
-  document.getElementById("run-error").style.display = "none";
+  runErrorEl.style.display = "none";
+  // The panel scrolls, and the form opens below the fold on a short window:
+  // bring the button the user now needs into view.
+  submitBtn.scrollIntoView({ block: "nearest" });
 }
 
 function renderHa() {
-  const ok = currentHa >= 0.5 && currentHa <= 500;
+  const ok = areaOk();
   areaHaLine.classList.toggle("bad", !ok);
   const haStr = currentHa.toFixed(currentHa < 10 ? 2 : 1);
   areaHaLine.textContent = ok
     ? `${haStr} ha`
-    : `${haStr} ha — must be between 0.5 and 500 hectares`;
+    : `${haStr} ha — must be between ${MIN_HA} and ${MAX_HA} hectares`;
   submitBtn.disabled = !ok;
 }
+
+// Exposed for the browser regression test, alongside __DEBUG_MAP above.
+window.__DEBUG_AREA = { polygonAreaHa, ringFromLayer, wrapLng, areaOk: () => areaOk() };
 
 // ---- form ------------------------------------------------------------------
 
@@ -279,19 +364,20 @@ function stageProgressFraction(job) {
 function showRunError(msg) {
   runErrorEl.textContent = msg;
   runErrorEl.style.display = "block";
+  runErrorEl.scrollIntoView({ block: "nearest" });
 }
 
 function resetToForm() {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   progressBlock.style.display = "none";
   runForm.style.display = "block";
-  submitBtn.disabled = false;
+  submitBtn.disabled = !areaOk();
   submitBtn.textContent = "Check it";
 }
 
 runForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!currentGeoJSON || !(currentHa >= 0.5 && currentHa <= 500)) return;
+  if (!currentGeoJSON || !areaOk()) return;
   runErrorEl.style.display = "none";
   submitBtn.disabled = true;
   submitBtn.textContent = "Checking…";
