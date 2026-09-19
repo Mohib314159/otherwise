@@ -815,3 +815,103 @@ breaks the exchangeability the placebo test rests on and makes every published
 p anti-conservative. The fix is to re-select donors for each placebo unit, or to
 drop the truncation for the placebo distribution. It will move published
 numbers, so it belongs with a re-run of `scripts/power.py` and the showcase.
+
+## 2026-09-19 — CRITIQUE #4: making the placebo test symmetric (pre-registered)
+
+**Written before implementing the change and before looking at any new numbers,
+deliberately.** The finding this fixes is that verdict rules were adjusted after
+seeing which sites they rescued (`CRITIQUE.md` issue 1). Deciding the fix first,
+in writing, and then publishing whatever the re-runs produce, is the only way
+this change does not repeat that mistake. Mohib's instruction: every placebo unit
+must go through the identical donor-selection procedure as the treated unit, then
+re-run `scripts/power.py` and all showcase sites and publish the result even if
+verdicts weaken.
+
+### The defect, stated precisely
+
+`run._analyse` does this:
+
+1. `b.matrix` holds the treated series in column 0 and **every** covered
+   candidate cell in columns 1..n (n is 120 in live mode, up to 400 in full).
+2. `select_donors` ranks those candidates by pre-event RMSE **to the treated
+   series**, filters them by the **treated** area's land cover and elevation, and
+   keeps the best `k` (80 full, 40 live).
+3. The treated unit is fitted on that pool.
+4. `space_placebo` then takes each donor **inside that pool** and fits it on the
+   other K-1 members of the same pool, reusing the treated unit's tuned ridge
+   penalty.
+
+So the treated unit's counterfactual is built from an argmax over n candidates,
+while a placebo unit's counterfactual is built from a pool selected for a
+*different* unit. Three separate asymmetries, all pushing the same way:
+
+- **Selection.** The treated pool is chosen by minimising pre-period fit error on
+  the same pre-period the RMSPE ratio's denominator is computed from. That
+  denominator is therefore optimistically small for the treated unit and honest
+  for every placebo. Since the placebo p is `P(ratio_j >= ratio_treated)` and the
+  ratio is `RMSE_post / RMSE_pre`, shrinking the treated denominator inflates the
+  treated ratio and **shrinks p**. Anti-conservative, on every published run.
+- **Covariates.** Candidates are filtered to match the treated area's land cover
+  and elevation. A placebo unit in a different class is compared against a pool
+  matched to the treated area, not to itself, so its counterfactual is poor for
+  reasons that have nothing to do with an event — which again makes the treated
+  unit look unusually good.
+- **Ridge penalty.** `space_placebo` is passed `lam=f.lam`, the value
+  `_choose_lambda` tuned on the treated unit's own holdout. Placebos inherit a
+  hyperparameter fitted to someone else's data.
+
+The RMSPE *ratio* statistic (Abadie's device) partly protects against
+heterogeneous fit quality, which is presumably why this was not obvious. It does
+not protect against in-sample optimisation of its own denominator.
+
+### The fix, exactly
+
+`space_placebo` takes the **full candidate pool** and a selection callable, and
+for each placebo unit j:
+
+1. re-runs `select_donors` with j in the treated slot, over all candidates except
+   j, using **j's own** land cover and elevation, with the same `k` and the same
+   relaxation rules;
+2. fits j on **its own** selected pool;
+3. chooses **its own** ridge penalty by the same holdout rule (`lam=None`),
+   rather than inheriting the treated unit's.
+
+One further change follows from the same principle and is part of this fix:
+**placebo units are drawn from all candidates, not from the treated unit's
+selected K.** The reference distribution should be over comparable units, not
+over units pre-selected for resembling the treated area — otherwise the
+comparison set is itself chosen by the thing being tested.
+
+Two asymmetries remain and are accepted, with reasons:
+
+- A placebo unit chooses from n-1 candidates while the treated unit chooses from
+  n. Unavoidable, and negligible at n = 120.
+- The treated unit is never offered as a donor to a placebo unit, because it may
+  carry the event. That is deliberate, and matches the treated unit's own pool
+  excluding itself.
+
+### What I expect to happen, recorded before measuring
+
+Placebo units will now get their own best-fitting pools, so their pre-fits
+improve, their denominators shrink and their ratios rise. **Placebo p-values
+should go up and verdicts should weaken.** If they do not move at all I should
+suspect the change is not wired in. If a site's p moves from below 0.05 to above
+it, that site was resting on the asymmetry, and the honest outcome is that it
+stops being REAL. The four current REALs (Grünheide, Rhodes, Table Mountain,
+Austin) are the ones at risk. The null sites should be unaffected or become more
+clearly not-REAL, which is a check in the other direction: if a null site becomes
+*more* significant, something is wrong with the implementation.
+
+Cost is roughly 7 extra estimator fits per placebo unit (6 for the lambda
+holdout, 1 for the fit) — about 420 NNLS solves per signal at 60 units, which the
+fast NNLS path makes affordable.
+
+### Deliberately NOT changed in the same step
+
+The **in-time** placebo (`time_placebos`) has the same class of leakage: it
+selects donors using the whole pre-period, including the window after its own
+fake event date. Fixing it means re-selecting donors using only data before the
+fake date. That is a real defect and it is logged here as the next thing to fix,
+but it is **not** part of this change, so that the re-run measures exactly one
+thing. Changing two placebo procedures at once would make it impossible to
+attribute any movement in the published numbers to either.
