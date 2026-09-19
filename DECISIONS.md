@@ -455,3 +455,210 @@ parked, and what the evidence says.
 - Landing: serif wordmark, showcase cards with thumbnails and effect sizes,
   hover labels with dot markers on the map. Branches `design` and `wip-design`
   are merged/superseded; `main` is the state to deploy.
+
+## 2026-09-19 — memory-bounded live runs, the hectare bug, mobile, and a CRITIQUE triage
+
+Five tracks ran in parallel this session (three as subagents, plus an
+independent read-only reviewer). What follows is what was decided and why, then
+the triage of `CRITIQUE.md`.
+
+### Why live runs died, measured rather than guessed
+
+The read window was set by the **control ring, not by the drawn area**. For the
+27 ha Grünheide polygon, `donor_grid` puts 400 same-size cells in a 1–12 km ring,
+so `Zones.build` snapped a 24.5 × 24.5 km window and every scene was read over
+**6.02 Mpx at 10 m** — while the treated polygon alone is **0.0028 Mpx**, about
+2000× smaller. Per scene that window costs roughly 420 MB of arrays (int32 label
+image 24 MB, four float32 bands 96 MB, three index rasters 72 MB, plus float64
+upcasts inside the zonal reduction), and `APP_FETCH_WORKERS` was 8 on Render.
+
+Two GDAL settings compounded it and are easy to miss: `VSI_CACHE_SIZE` was 50 MB
+**per open file handle** (8 threads × 5 band handles ≈ up to 2 GB of cache
+alone), and `GDAL_CACHEMAX` defaults to a share of *host* RAM, which a
+container's cgroup limit does not constrain.
+
+Scene counts for the same area, measured against Planetary Computer: 1594 found
+for the ring bbox, **389 covering the drawn area**, all distinct acquisition
+minutes; 231 at cloud < 60, 163 at cloud < 40.
+
+### Decision: a `profile` argument, not a rewrite
+
+`run_verdict(..., profile=...)` → `fetch_area(..., profile=...)`:
+
+- **`full`** (default, offline): unchanged. Showcase, validation and
+  track-record numbers must not move because of a deployment fix.
+- **`live`** (the server's default for user-drawn runs): the treated area is
+  read **alone at 10 m** in its own tight window; control cells are read
+  **separately at 40 m** from the COG overviews and joined on event-anchored
+  bins by `prep.binned_groups` — the same two-pass structure wide mode already
+  used, so this reuses a proven path rather than inventing one. Scenes are cut
+  *before any pixel is read*: `eo:cloud_cover < 60` at search time, one tile per
+  acquisition minute, and at most 2 scenes per 10-day analysis bin, least cloudy
+  first. 120 control cells (was 400), 40 donors (was 80), 3 reader threads
+  (was 8).
+
+One tile per acquisition minute is the cheapest of these and was pure waste
+before: adjacent MGRS tiles overlap by ~10 km, so a single acquisition appeared
+up to four times and **all copies were read at full cost and then averaged** by
+`merge_duplicates`. Capping per bin follows from the estimator already taking a
+median within each 10-day bin — a fifth cloudy scene in a bin costs a full read
+and changes almost nothing.
+
+`choose_donor_res` walks 40 / 60 / 80 m and raises `MemoryBudgetError` *before
+any read* if even the coarsest does not fit, so an impossible area fails fast
+with an explanation instead of being OOM-killed. The server surfaces that, and a
+real `MemoryError`, as explained job errors.
+
+Independent of profile: `VSI_CACHE_SIZE` 50 MB → 4 MB, `GDAL_CACHEMAX` pinned to
+48 MB, `GDAL_NUM_THREADS=1`; `s2.process_scene` reads, reduces and releases one
+band at a time, keeping only B08 across steps; `extract.zone_means` reduces in
+512-row blocks; new `extract.zone_counts` avoids allocating a full-size float32
+of zeros purely to count pixels.
+
+**Honest limitation of this fix, and it matters methodologically.** Live mode now
+measures the treated area at 10 m and its controls at 40 m, from separate STAC
+searches with their own dates. That is exactly the weakness `CRITIQUE.md` issue 6
+raises against wide mode: it gives up co-observation (treated and control read
+from the same pixels of the same scene, which cancels most atmosphere, sun-angle
+and BRDF effects) and mixes two supports with no intercept term. The live-vs-full
+comparison exists to measure what that costs. Until it has, **live verdicts must
+not be presented as equivalent to full-mode verdicts.**
+
+### Not deployed yet, deliberately
+
+`main` auto-deploys to Render, so the memory work is staged on
+`claude/elegant-franklin-en2noi` and **not merged to `main`** until a live run is
+shown to produce correct results under a real memory limit, not merely to fit.
+A run that fits because every read failed is not a fix.
+
+### Test-environment note, so the next session does not repeat it
+
+Docker is available here but the sandbox's egress proxy does not serve container
+traffic to Planetary Computer: GDAL's `/vsicurl` reads fail TLS verification
+(`self-signed certificate in certificate chain`) and, once the CA is added to
+certifi, the STAC search returns 403. Container runs therefore reported
+**0 observations** and a misleadingly low peak RSS — the memory looked fine only
+because nothing was read. `RLIMIT_AS` is also not a usable substitute: it counts
+reserved address space, which numpy/scipy/GDAL over-reserve, so a 512 MB cap
+fails at import or on thread creation rather than on the workload. What does
+work: a real **cgroup v1** memory limit
+(`/sys/fs/cgroup/memory/<name>/memory.limit_in_bytes`), verified to kill a
+deliberate 900 MB allocation at ~500 MB. Note this host is cgroup **v1**; a
+directory made under `/sys/fs/cgroup/` is not a cgroup and its `memory.max` is
+an inert file that enforces nothing.
+
+### Two pre-existing failures fixed so the suite runs at all
+
+- `requirements.txt` was missing `fastapi` and `httpx`, so `pytest` aborted at
+  collection on `tests/test_app_server.py` and `tests/test_app_batch.py`. This is
+  why CI cannot have been green (`CRITIQUE.md` issue 15).
+- `tests/test_known_answer.py` asserted Rhodes must not be REAL, but Rhodes was
+  deliberately re-run in **wide** mode, where REAL is the intended answer. The
+  test now asserts on the mode that produced the run, which is the distinction it
+  was actually trying to make: a *ring* run of an event larger than the ring must
+  not be REAL.
+
+### The hectare bug was not what I assumed
+
+My hypothesis was a leaflet-draw 1.0.4 / Leaflet 1.9.4 incompatibility. **That
+was wrong**, and was disproven in a real browser: Leaflet 1.9.4 still ships the
+deprecated `_flat` aliases leaflet-draw needs, `showArea: false` already avoids
+the one `readableArea` path that breaks, drawing completes and `draw:created`
+fires with zero console errors. Recorded because the wrong hypothesis was
+plausible and cost a detour.
+
+The actual bug was **two client/server disagreements**:
+
+1. The client measured area with a local equirectangular projection while the
+   server reprojects to the polygon's UTM zone. Over a 576-case grid the two
+   differ by −0.75% to +0.53%, so near the 0.5 / 500 ha limits the client
+   enabled "Check it" for polygons the server then rejected with a 400 — and the
+   landing page's hectare figure never matched the verdict page's, which shows
+   the server's value. Fixed by computing the area the way the server does
+   (WGS84 → UTM, planar ring centroid to pick the zone, shoelace in UTM),
+   validated against pyproj/shapely over 576 rings spanning lat −75…75 and
+   0.5–500 ha: worst relative difference **1.96e-07**.
+2. `layer.toGeoJSON()` was posted with **unwrapped longitudes**. Leaflet pans
+   across world copies, and at the landing page's own default view a
+   1400 px window already spans lng −246…+246, so a polygon drawn after panning
+   east carried lng ≈ 358.5 for a point really at −1.5. Area is
+   translation-invariant, so the hectare line looked perfectly normal and submit
+   was enabled; the server then rejected it — with a message naming *latitude*
+   when the problem was longitude (`geometry.py:69-70` tests both in one
+   branch). Fixed by wrapping every vertex by the same multiple of 360 (so a ring
+   straddling the antimeridian stays contiguous) and posting the same ring that
+   was measured.
+
+Also found: at 1366×768 the run form opened entirely below the fold of the
+scrolling side panel, so the user drew an area and saw no "Check it" at all.
+
+### Mobile: sheet in mobile-only CSS, desktop proven unchanged
+
+Google-Maps-style bottom sheet on the landing page: three snap points (peek
+≈120 px, half 55vh, full 92vh), velocity-aware release, and the Google Maps
+drag-vs-scroll rule (content scrolls unless the sheet is at full *and* already
+scrolled to the top *and* the drag is downward). It attaches to the existing DOM
+from a separate `web/mobile.js` and never touches `landing.js`; `web/mobile.css`
+is mechanically verified (brace-depth walk) to contain nothing outside a single
+`@media (max-width: 640px)` block.
+
+Desktop is **byte-identical** — 0 differing pixels on `/`, `/v/<id>`,
+`/track-record` and `/batch` at both 1280×800 and 1920×1080. That claim is only
+worth anything because the harness was first validated against itself: two
+independent captures of the *unmodified* base branch, also 0 px. An earlier
+~150–200 px verdict-page diff turned out to be `chart.js`'s ~1.1 s draw-in
+animation racing the screenshot; the harness now forces
+`prefers-reduced-motion: reduce`, which `chart.js` already respects. A
+"looks like jitter" explanation was not accepted without that control.
+
+One real cascade bug caught on the way: `mobile.css` linked *before* each page's
+unconditional inline `<style>` block lost cascade ties at equal specificity, so
+desktop rules clobbered mobile ones. The link now comes after.
+
+### CRITIQUE.md triage — judged, not obeyed
+
+An independent read-only reviewer produced `CRITIQUE.md` (23 issues) against
+commit `6d8776d`. I verified the claims I acted on rather than taking them on
+trust; where I disagree with the framing I say so. **No statistical method was
+changed on the strength of the critique** — the method items are logged below
+with the reasoning and left for a deliberate decision, because changing an
+estimator in response to a reviewer, without a held-out set, is the same mistake
+issue 1 is about.
+
+Verdict key: **valid** / **partly valid** (the finding is real but the framing or
+severity overstates it) / **wrong**.
+
+| # | Sev | Verdict | One-line reason | Action |
+|---|---|---|---|---|
+| 1 | BLOCKER | valid | Verified: `verdict.py:68` does bypass the pre-fit gate at `4×`, and the two commits that add the rescuing rules are titled for the behaviour they rescue; Rhodes/Sindh control radii are hand-set in `run_sites.py:23,31` and unreachable from the UI. | No method change. Blind validation (track D) is the only real answer; 34 event runs exist, 0 control runs. Open. |
+| 2 | BLOCKER | partly valid | The unapplied red-team fixes are a logged HANDOFF item, not a hidden flaw — but it is true that `docs/METHOD.md` §9 "Known limits" omits the two failures the repo's own red team calls "breaks", and `README.md` never links `docs/REDTEAM.md`. That gap is the credibility problem, not the backlog. | **Doing now:** publish both breaks in METHOD.md §9 and link REDTEAM.md from README. |
+| 3 | BLOCKER | valid | Independently measured before reading the critique; same root cause. | **Fixed** this session (live profile). Its second half — live runs are threads *inside* the web process, so an OOM kills the showcase too — is valid and **not** fixed. Open: run jobs in a subprocess. |
+| 4 | MAJOR | valid, and the sharpest finding here | Donors are ranked by pre-event fit **to the treated unit** and truncated to the best K (`donors.py:63-67`), then the in-space placebo is computed over that same treated-optimised pool. That breaks the exchangeability Abadie's placebo test rests on, in the treated unit's favour, so the reported p is anti-conservative on every published run. | No change yet, deliberately. Correct fix is to re-select donors for each placebo unit (each placebo unit gets its own best-K pool), or to drop truncation for the placebo distribution. Highest-priority method question. Open. |
+| 5 | MAJOR | partly valid | Spatial clustering inflating effective n is real and matters (Rhodes' 42 cells sit in 6 compact buckets by construction). But "p = 1/43 is exactly its own floor" describes *resolution*, not bias: with 42 donors 0.023 is the smallest attainable p, and reaching it means no donor beat the treated unit — the strongest available evidence. The defect is presenting it as 42 independent draws. | Open: report effective n / cluster-aware p, or state the resolution limit on the page. |
+| 6 | MAJOR | valid, and it now applies to my own live profile | Wide mode reads the treated area at 10 m and each donor group from its own STAC search at 40 m, giving up co-observation and mixing supports with no intercept. The live profile I added this session does the same thing by design. | Open, and this is precisely what the live-vs-full comparison must quantify. Logged above under the memory fix. |
+| 7 | MAJOR | valid | Verified: the sentence says "*k* of *n* untouched cells showed a divergence this large" (an effect-size count) but computes *k* from `placebo_p`, the RMSPE-**ratio** p. `placebo_p_effect` is computed and stored and never shown. | Quick, but it changes a reported statistic on the verdict page — **awaiting Mohib's go-ahead** on whether to fix the sentence or switch to `p_effect`. |
+| 8 | MAJOR | partly valid | The buckets are defensible (a REAL on a no-change site *does* count as a false alarm, a NOT REAL on a real event *does* count as a miss), so "unfalsifiable" overstates it. What is fair: every *failure to detect* lands in "can't tell", so "0 misses, 0 false alarms" beside "misses included" reads as stronger than it is, with 5 of 9 can't-tell unheadlined. | Open: headline the can't-tell rate next to the record. Blind validation is the substantive fix. |
+| 9 | MAJOR | valid | Verified: `power.py:55` gates on interval + min effect + placebo p only; it omits the pre-fit gate, the controls-shifted gate and the in-time placebo flags that `verdict.decide` applies. The published table therefore characterises a decision rule the product does not use. | Open: either drive `verdict.decide` from `power.py` and re-run, or relabel the table. Re-running changes a published number, so it is not a silent edit. |
+| 10 | MAJOR | valid | `docs/METHOD.md` §9-10, `showcase/track_record.json` and `showcase/validation.md` disagree on Rhodes and on Grünheide's interval. | Open: regenerate all three from the committed runs, or mark the stale ones stale. Cheap and worth doing next. |
+| 11 | MAJOR | valid | Verified: `select_donors` returns indices into the **coverage-filtered** columns, and `run.py:84` mapped them through an index over **all** cells, so the control-areas map drew the wrong cells whenever any cell was dropped for coverage — most runs. Display only; estimation uses the matrix columns directly and is unaffected. | **Fixed** this session: `DonorSelection.cell_index`, plus a regression test. |
+| 12 | MAJOR | valid | `pollJob` returns silently on every error, forever, so a dead job leaves the UI spinning. | Quick — but it is UI. **Awaiting go-ahead.** |
+| 13 | MAJOR | partly valid | "This area burned" is taken from the user's dropdown and stated as a finding, which is a real wording fault. But the method never claims to identify the mechanism and the page's frame is "you told us what happened, we test whether it moved more than expected", so this is a copy problem, not the causal over-claim the title implies. | UI copy. **Awaiting go-ahead.** |
+| 14 | MAJOR | valid | The largest number on the page is `point / mean(|counterfactual|)` as a percentage, with no interval and no definition anywhere in the UI. | UI. **Awaiting go-ahead.** |
+| 15 | MAJOR | valid | Reproduced: collection aborted on missing `httpx`; with those files skipped, `test_known_answer.py` failed on committed data. | **Fixed** this session. Suite is now 233 passed, 3 skipped, 8 xfailed, 0 failed. |
+| 16 | MINOR | valid | `donor_grid:109` measures `inner_m` centroid-to-polygon, so at ≥200 ha the nearest kept control can share an edge with the treated area — contradicting METHOD.md §3. Costs power rather than causing false alarms. | Open: switch to edge-to-edge distance. Changes donor eligibility and therefore published numbers, so not a silent edit. |
+| 17 | MINOR | valid | Both halves true. | **Fixed for live runs** (cloud < 60; controls at 40 m). SCL is still upsampled to 10 m on the treated pass, but that window is now ~3 kpx, so the cost is immaterial. Docs should stop claiming 20 m. |
+| 18 | MINOR | valid | No rate limit, no job timeout, in-memory job state on a tier that spins down. The job timeout is the dangerous one: `_worker` holds the semaphore of 1 for the life of a run, so one wedged job blocks every future live run until restart. | Open. The job timeout is cheap and I recommend doing it before any public link goes out. |
+| 19 | MINOR | valid | `conformal_interval:167` infers whether it is in index units or dB from the magnitude of the pre-RMSE (`1.0 if scale < 0.3 else 10.0`). Fragile by construction. | Open: pass the signal's units explicitly. Method-adjacent, so logged rather than done. |
+| 20 | MINOR | valid | Nothing pinned beyond `numpy<3`, and `validate_app.py` reads from a gitignored `data/cache/`, so `showcase/validation.md` cannot be reproduced by anyone else. | Partly addressed (added the missing test deps). Open: pin versions, and drive validation from committed inputs. |
+| 21 | MINOR | valid | Correct on all counts for the old inline sheet. | **Fixed** this session (track/mobile). The `100vh`-vs-`dvh` point stands: the new sheet uses `vh`, so the URL bar still shifts it. Open, small. |
+| 22 | MINOR | valid, and under-rated by its own severity | No `og:`/`twitter:` tags and one shared `<title>`, while `SPEC.md`'s entire distribution plan is "send them a permalink". The `*_after.png` thumbnails already exist to use. | **Awaiting go-ahead** (touches page metadata). Recommend doing it — highest value per minute on this list. |
+| 23 | NIT | valid | All three. | Dead `_box` import **fixed** incidentally by the `_fetch_group` rewrite. `prep.bin_days` patching and the `HF_TOKEN`-in-URL habit: open. |
+
+**Summary: 18 valid, 5 partly valid, 0 wrong.** Fixed this session: 3, 11, 15,
+17 (live path), 21, 23. Doing now: 2. Awaiting go-ahead because they change
+user-facing copy, numbers or metadata: 7, 12, 13, 14, 22. Left open with
+reasoning, not silently changed: 1, 4, 5, 6, 8, 9, 10, 16, 18, 19, 20.
+
+The reviewer's bottom line — that the published evidence does not describe the
+shipped product — is fair, and issue 4 is the one I would most want settled
+before showing this to anyone who does this professionally.

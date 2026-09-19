@@ -82,7 +82,10 @@ def _analyse(dates, values, event_np, donor_all_idx, cov, signal, sensor, expect
         "ci_grid": np.round(ci.grid, 4).tolist(), "ci_pvals": np.round(ci.pvals, 3).tolist(),
         "lambda": f.lam,
     }
-    donors = {"grid_index": (donor_all_idx[sel.index]).tolist(),
+    # sel.index counts coverage-filtered columns; sel.cell_index maps back to the
+    # grid. Using sel.index here drew the wrong cells on the control-areas map
+    # whenever any cell was dropped for coverage (i.e. on most runs).
+    donors = {"grid_index": (donor_all_idx[sel.cell_index]).tolist(),
               "weights": np.round(f.weights, 4).tolist(), "pre_rmse": np.round(sel.pre_rmse, 4).tolist(),
               "notes": sel.notes, "counts": sel.counts}
     return res, chart, donors
