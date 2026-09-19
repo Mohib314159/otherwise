@@ -1,0 +1,206 @@
+/* Otherwise — mobile layout (phones, <=640px).
+   Everything in this file lives inside this one media query on purpose:
+   it must be structurally impossible for a rule here to apply at
+   desktop widths. See scripts/desktop_screenshots.py for the mechanical
+   proof that desktop is unaffected.
+
+   Landing page: a full-screen map behind a Google-Maps-style draggable
+   bottom sheet (behaviour lives in mobile.js). Verdict/track/batch pages:
+   targeted readability, tap-target and no-horizontal-scroll fixes only —
+   no map, no sheet, no redesign. */
+@media (max-width: 640px) {
+
+  /* ---------------------------------------------------------------------
+     Shared: no iOS zoom-on-focus, comfortable tap targets everywhere.
+     --------------------------------------------------------------------- */
+  input[type="text"],
+  input[type="date"],
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  .btn,
+  .btn-quiet {
+    min-height: 44px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  /* =======================================================================
+     LANDING PAGE — full-screen map + bottom sheet
+     ======================================================================= */
+
+  html, body { height: 100%; overflow: hidden; } /* map stays edge-to-edge; only the sheet scrolls */
+
+  #map { position: fixed; inset: 0; }
+
+  #side-panel {
+    top: auto; left: 0; right: 0; bottom: 0;
+    width: 100%; max-width: 100%;
+    height: 92vh; max-height: 92vh;
+    border-radius: 16px 16px 0 0;
+    border-left: none; border-right: none; border-bottom: none;
+    box-shadow: 0 -6px 28px rgba(22, 22, 22, 0.16);
+    padding: 4px 20px 24px;
+    overflow-y: hidden; /* only the "full" snap point scrolls internally */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    transform: translateY(var(--sheet-d, 0px));
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  /* while dragging, mobile.js adds this to kill the transition so the
+     sheet tracks the finger 1:1 with no lag */
+  #side-panel.sheet-dragging { transition: none; }
+  #side-panel.sheet-full { overflow-y: auto; }
+
+  .sheet-handle {
+    width: 100%;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    cursor: grab;
+  }
+  .sheet-handle::before {
+    content: "";
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--rule);
+  }
+  #side-panel.sheet-dragging .sheet-handle { cursor: grabbing; }
+
+  /* the wordmark + tagline double as drag handles too ("the sheet header") */
+  #side-panel > h1,
+  #side-panel > .tagline {
+    touch-action: none;
+    cursor: grab;
+  }
+
+  /* peek: only the wordmark and the search row should show — everything
+     else is still in the DOM (just clipped/hidden) so it reappears the
+     moment the sheet rises to half or full. */
+  #side-panel.sheet-peek > .tagline,
+  #side-panel.sheet-peek > .intro-line,
+  #side-panel.sheet-peek > .panel-section:first-of-type,
+  #side-panel.sheet-peek > .panel-footer,
+  #side-panel.sheet-peek .panel-section > .label,
+  #side-panel.sheet-peek .showcase-note,
+  #side-panel.sheet-peek .place-search-note,
+  #side-panel.sheet-peek .place-search-error,
+  #side-panel.sheet-peek #draw-block {
+    display: none;
+  }
+  /* the "Your own area" section becomes the first visible one once the
+     showcase section above it is hidden — drop its own top spacing/rule
+     so the search row sits right under the wordmark within peek's ~120px */
+  #side-panel.sheet-peek .panel-section:not(:first-of-type) {
+    margin-top: 6px;
+    padding-top: 0;
+    border-top: none;
+  }
+  #side-panel.sheet-peek > h1 {
+    margin-bottom: 2px;
+  }
+
+  /* the satellite toggle and Leaflet's own bottom-anchored controls float
+     just above the sheet's current visible edge, wherever that is —
+     mobile.js keeps --sheet-visible in sync while dragging and snapping */
+  .map-toggle {
+    top: auto;
+    left: auto;
+    right: 16px;
+    bottom: calc(var(--sheet-visible, 120px) + 16px);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    transition: bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  body.sheet-dragging .map-toggle { transition: none; }
+
+  .leaflet-bottom {
+    bottom: calc(var(--sheet-visible, 120px) + 10px) !important;
+    transition: bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  body.sheet-dragging .leaflet-bottom { transition: none; }
+
+  /* tap targets */
+  #draw-btn, #place-search-btn, #submit-btn {
+    min-height: 44px;
+  }
+  .sc-card {
+    min-height: 44px;
+    padding: 12px 0;
+  }
+  .panel-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 16px;
+    align-items: center;
+  }
+  .panel-footer a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 10px 2px;
+    margin: -10px 0;
+  }
+  .panel-footer .attribution {
+    flex-basis: 100%;
+    margin: 6px 0 0;
+  }
+
+  /* =======================================================================
+     VERDICT PAGE — single column, legible, nothing overflows sideways.
+     No map-first layout is invented here: the page has no full-screen
+     navigational map (only a small inline "control cells" locator map
+     inside a collapsed details panel), so it gets no bottom sheet.
+     ======================================================================= */
+
+  .verdict-top { padding: 32px 0 28px; }
+  .verdict-top .verdict-word { font-size: 44px; }
+  .verdict-plain { font-size: 17px; }
+  .act1-aside .big-number { font-size: 56px; }
+  .verdict-pill { top: 10px !important; }
+
+  .compare, .compare-single { aspect-ratio: 4 / 5; }
+  .compare-handle { width: 36px; height: 36px; }
+
+  .numbers { table-layout: fixed; }
+  .numbers th {
+    width: 42%;
+    white-space: normal;
+    padding-right: 8px;
+  }
+
+  .dtl-body { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.receipts-table { min-width: 480px; }
+  #control-map { height: 220px; }
+
+  .fake-dates li, .fake-list li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  /* =======================================================================
+     TRACK RECORD + BATCH — minimum viable: readable, tappable, tables
+     scroll inside their own container instead of widening the page.
+     ======================================================================= */
+
+  .page-head { padding: 28px 0 4px; }
+  .page-head h1 { font-size: 24px; }
+
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .table-wrap table { min-width: 620px; }
+
+  .defaults-grid { grid-template-columns: 1fr; }
+  .batch-form { max-width: 100%; }
+
+  .topbar-right { gap: 12px; }
+}
