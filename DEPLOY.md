@@ -14,15 +14,33 @@ Sentinel data from Microsoft Planetary Computer at request time.
 There are no secrets: Planetary Computer, ESA WorldCover and the Copernicus DEM
 are all anonymous. Never commit a `.env`.
 
-## Route A (recommended): Hugging Face Spaces
+## Route A: Hugging Face Spaces — needs a PRO subscription ($9/month)
 
-Why: the free tier gives 2 vCPU and 16 GB RAM, enough for live runs. The Space
-sleeps after 48 hours without visitors and wakes on the next visit (about a
-minute).
+**Corrected 2026-09-19. This route is no longer free, and this guide used to say
+it was.** Hugging Face now requires a paid plan to create a Space that runs on
+compute. From their own documentation
+(https://huggingface.co/docs/hub/spaces-overview, read 2026-09-19):
 
-1. Create a free account at https://huggingface.co/join.
+> Static Spaces are free for everyone. Gradio and Docker Spaces run on compute
+> and require a paid plan to create: PRO for personal accounts, Team or
+> Enterprise for organizations.
+
+This app needs a **Docker** Space, so it needs PRO, listed at "$9 /month" on
+https://huggingface.co/pricing (read 2026-09-19). The hardware itself (CPU
+Basic: 2 vCPU, 16 GB RAM) still has no hourly cost — it is the account plan that
+costs money. The `hf-sync` workflow in this repo is still correct; only the price
+changed.
+
+Worth knowing before you decide: 16 GB of RAM is enough to run the **full**
+profile, which would remove the accuracy caveat that live runs on a 512 MB box
+currently carry (see `docs/LIVE_RUNS_DESIGN.md` and `DECISIONS.md`). That is the
+real argument for paying here, rather than convenience.
+
+Steps, if you choose this route:
+
+1. Create an account at https://huggingface.co/join and subscribe to PRO.
 2. Create a Space: https://huggingface.co/new-space. Name it `otherwise`,
-   SDK = **Docker**, hardware = **CPU basic (free)**, visibility = public.
+   SDK = **Docker**, hardware = **CPU basic**, visibility = public.
    Leave it empty.
 3. Make a write token: Settings → Access Tokens → New token (type **Write**).
    Copy it once; it is only shown once.
@@ -38,11 +56,23 @@ minute).
 The Space's disk is not persistent: live-run results survive until the Space
 restarts. Showcase results are in the image, so they always survive.
 
-## Route B: Render
+## Route B (free, and what is deployed today): Render
 
-Why: simplest "connect GitHub, click deploy". The free plan has 512 MB RAM and
-a small CPU share, so live runs take longer (10+ minutes) and the service
-spins down after 15 idle minutes (first visit afterwards takes ~1 minute).
+Why: simplest "connect GitHub, click deploy", and the only genuinely free route
+of the two. The free plan has 512 MB RAM and 0.1 CPU, and spins down after 15
+idle minutes.
+
+**What that means for live runs, measured rather than guessed.** A cold live run
+on a 27 ha area took **25 minutes** on a machine with about two usable cores; a
+wide-control run took **2.8 hours**. Render's free tier has 0.1 CPU, so expect
+substantially longer, and the instance sleeps after 15 idle minutes. Memory now
+fits (peak about 340 MB resident, 471 MB counted by the container limit), but
+CPU does not really. `docs/LIVE_RUNS_DESIGN.md` works through the options; the
+short version is that the showcase and permalinks are what the free tier is good
+at, and live runs on demand are the part that wants either a paid instance or a
+different home.
+
+The rest of the Render setup (first visit afterwards takes ~1 minute).
 
 1. Create a free account at https://render.com (sign in with GitHub).
 2. New → **Blueprint**, pick this repo. Render reads `render.yaml`.

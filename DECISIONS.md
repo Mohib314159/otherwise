@@ -957,3 +957,77 @@ go from 40 to 60, so a small resolution effect is expected on top.
 
 The tests in `tests/test_placebo_symmetry.py` assert the mechanism and the null
 rate rather than a p direction, for this reason, and say so.
+
+## 2026-09-19 — where live runs should run, and two corrections
+
+### The 2.8-hour figure, pinned down
+
+An independent review of the hosting question could not find the "2.8 hour worst
+case" I had been quoting, and was right to object: it was not written down
+anywhere, and the committed Rhodes run records `timing.total_s = 3226.0`, i.e.
+**53.8 minutes**. Both numbers are real and they measure different things:
+
+| Run | Profile | Mode | Wall | Where it is recorded |
+|---|---|---|---|---|
+| Rhodes, original | full | wide | 3226 s (53.8 min) | `showcase/0c2af4baa8c24486.json` |
+| Rhodes, this session | live | wide | 10123 s (2.81 h) | `showcase/profile_comparison.json` |
+| Grünheide, this session | live | ring | 1565 s (26 min) | same |
+| Table Mountain, this session | live | ring | 1867 s (31 min) | same |
+
+All of this session's figures are post-donor-window-fix, on this machine (about
+two usable cores).
+
+**The uncomfortable implication: live mode is not faster than full mode for wide
+runs — on this evidence it is about twice as slow** (10123 s against 3226 s),
+while using far less memory. Different machines and network conditions, n = 1
+each, so this is weak evidence. But it does mean the live profile's justification
+is *memory*, not speed, and nothing in the copy or docs should imply otherwise.
+The likely cause is that wide mode makes a separate catalogue search and read per
+control group, and the per-bin and cloud pre-filters save less when the groups
+are small.
+
+### Decision: do not run live jobs on GitHub Actions
+
+`docs/LIVE_RUNS_DESIGN.md` works the question through. The blocking objection is
+not technical — a 25-minute run fits comfortably inside the documented 6-hour
+per-job limit — it is GitHub's Additional Product Terms, which prohibit using
+Actions "as part of a serverless application" or for "any other activity
+unrelated to the production, testing, deployment, or publication of the software
+project", with account suspension as the stated penalty. A visitor-triggered
+analysis service is exactly the shape that clause exists to stop, and the thing
+at risk is the account the whole portfolio lives on, not a bill.
+
+So: **Actions stays for owner-triggered batch work**, which is squarely within
+the terms and would immediately unblock the parked Sindh wide rerun, the blind
+validation runs and the `compare_profiles` sweep. Live-on-demand runs come off
+the public critical path instead, and the permalink becomes the waiting room.
+If live runs later earn their place, the per-second options (Modal and similar)
+or a paid Render instance are the honest choices, with Render free kept as a thin
+request relay so no token ever reaches the browser. Not built, not decided beyond
+ruling Actions out — this needs Mohib, because it is the first thing here that
+costs money.
+
+Worth weighing against all of it, from SPEC.md: the primary audience clicks a
+link from a cold email and needs the verdict in about 15 seconds. Live runs may
+be a feature that sounds essential and is not.
+
+### Correction: DEPLOY.md Route A was not free
+
+`DEPLOY.md` recommended a Hugging Face Docker Space as the free route. Hugging
+Face's own documentation now says otherwise
+(https://huggingface.co/docs/hub/spaces-overview, read 2026-09-19):
+
+> Static Spaces are free for everyone. Gradio and Docker Spaces run on compute
+> and require a paid plan to create: PRO for personal accounts, Team or
+> Enterprise for organizations.
+
+PRO is listed at "$9 /month" (https://huggingface.co/pricing, read 2026-09-19).
+`DEPLOY.md` is corrected, Render is relabelled as the free route and the one
+actually deployed, and the measured live-run timings are stated there rather than
+left to be discovered. The `hf-sync` workflow itself is unchanged and still
+correct.
+
+One genuine argument for paying it: CPU Basic is 2 vCPU and **16 GB RAM**, which
+is enough to run the `full` profile, and that would dissolve the co-observation
+caveat live verdicts must currently carry. The same argument applies to any
+off-Render compute, so it is not specific to Hugging Face.
