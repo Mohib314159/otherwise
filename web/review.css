@@ -1,0 +1,62 @@
+/* Otherwise — blind review. A research instrument: plain, fast, no chrome. */
+
+.review-head { padding: 44px 0 8px; }
+.review-head h1 { font-size: 32px; font-weight: 600; letter-spacing: -0.02em; }
+.review-head p { max-width: 640px; margin-top: 12px; color: var(--muted); }
+.review-head ul { max-width: 640px; margin: 12px 0 0; padding-left: 18px; color: var(--muted); font-size: 14px; }
+.review-head li { margin: 4px 0; }
+
+.review-start { display: flex; gap: 10px; align-items: center; margin-top: 22px; flex-wrap: wrap; }
+.review-start input[type="text"] {
+  font: inherit; padding: 8px 10px; border: 1px solid var(--rule);
+  background: var(--panel); color: var(--ink); border-radius: 2px; min-width: 200px;
+}
+
+.review-bar {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+  border-bottom: 1px solid var(--rule); padding: 28px 0 10px; flex-wrap: wrap;
+}
+.review-bar .progress { font-size: 14px; }
+.review-bar .meta { font-size: 13px; color: var(--muted); }
+
+.case-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 20px; }
+@media (max-width: 760px) { .case-grid { grid-template-columns: 1fr; } }
+
+.pane { border: 1px solid var(--rule); background: var(--panel); padding: 12px; }
+.pane h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 500; }
+.pane img { display: block; width: 100%; height: auto; margin-top: 8px; background: var(--rule); }
+.pane figcaption { margin-top: 6px; font-size: 12px; color: var(--muted); }
+
+.frames { margin-top: 18px; border: 1px solid var(--rule); background: var(--panel); padding: 12px; }
+.frames-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.frames input[type="range"] { flex: 1; }
+.frames img { display: block; width: 100%; max-width: 420px; height: auto; margin: 8px auto 0; background: var(--rule); }
+.frames .day { font-size: 13px; min-width: 96px; }
+
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; }
+@media (max-width: 760px) { .charts { grid-template-columns: 1fr; } }
+.chartbox { border: 1px solid var(--rule); background: var(--panel); padding: 12px; }
+.chartbox svg { display: block; width: 100%; height: auto; margin-top: 8px; }
+.chartbox .legend { margin-top: 6px; font-size: 12px; color: var(--muted); }
+.chartbox .legend .swatch { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 5px; }
+
+.answer { margin-top: 24px; border-top: 1px solid var(--rule); padding-top: 18px; padding-bottom: 60px; }
+.answer-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.answer .btn-answer {
+  font: inherit; font-weight: 500; padding: 10px 16px; border: 1px solid var(--ink);
+  background: var(--panel); color: var(--ink); cursor: pointer; border-radius: 2px;
+}
+.answer .btn-answer[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.answer .btn-answer kbd {
+  font: inherit; font-size: 11px; opacity: 0.6; margin-left: 8px;
+}
+.answer .conf { margin-top: 14px; font-size: 14px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.answer textarea {
+  font: inherit; width: 100%; max-width: 640px; margin-top: 12px; padding: 8px 10px;
+  border: 1px solid var(--rule); background: var(--panel); color: var(--ink); border-radius: 2px;
+}
+.answer .submit-row { margin-top: 14px; display: flex; gap: 12px; align-items: center; }
+.answer .hint { font-size: 13px; color: var(--muted); }
+
+.review-done { padding: 60px 0; }
+.review-done h2 { font-family: "Instrument Serif", Georgia, serif; font-size: 34px; font-weight: 400; }
