@@ -35,7 +35,7 @@
     "peak_note": "peak RSS is measured by scripts/memtest.py, not here"
    },
    "error": null,
-   "live_seconds": 1564.5
+   "live_seconds": 0.8
   },
   {
    "key": "rhodes",
@@ -227,5 +227,5 @@
    "live_seconds": null
   }
  ],
- "generated": 1789804585.124726
+ "generated": 1789805099.4955485
 }
