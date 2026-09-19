@@ -78,6 +78,40 @@ BLOCKED_HOST_FRAGMENTS = (
     "nominatim.openstreetmap.org",
 )
 
+# Some sandboxes let this process reach the CDN but not the browser, and the
+# landing page's module throws on a missing Leaflet, so the shot comes back as
+# an empty map and no showcase cards. --cdn-replay fetches the same files here
+# and serves them to the page from memory, exactly as tests/test_area_input.py
+# does, so a landing shot shows the real page instead of the failure mode.
+CDN_ASSETS = {
+    "leaflet/1.9.4/leaflet.min.js": (
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js",
+        "application/javascript"),
+    "leaflet.draw/1.0.4/leaflet.draw.js": (
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js",
+        "application/javascript"),
+    "leaflet/1.9.4/leaflet.min.css": (
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",
+        "text/css"),
+    "leaflet.draw/1.0.4/leaflet.draw.css": (
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css",
+        "text/css"),
+}
+
+
+def fetch_cdn() -> dict[str, tuple[bytes, str]]:
+    """CDN bytes fetched by this process, or {} if they cannot be reached."""
+    import urllib.request
+    out = {}
+    for key, (url, ctype) in CDN_ASSETS.items():
+        try:
+            with urllib.request.urlopen(url, timeout=30) as r:
+                out[key] = (r.read(), ctype)
+        except Exception as e:
+            print(f"cdn replay unavailable ({url}): {e}", file=sys.stderr)
+            return {}
+    return out
+
 
 def default_showcase_id() -> str | None:
     idx_path = os.path.join(ROOT, "showcase", "index.json")
@@ -203,14 +237,104 @@ def compare(outdir: str, before_dir: str, showcase_id: str) -> bool:
     return all_identical
 
 
+# ---------------------------------------------------------------------------
+# Review mode: the named pages a human looks at before merging a copy change.
+#
+# Unlike before/after mode, this is not a pixel proof -- it is a set of
+# self-describing shots at one desktop and one phone viewport. Run it twice
+# (two servers, --prefix before / after) to get pairs for the same page.
+# ---------------------------------------------------------------------------
+
+DESKTOP_VP = (1280, 800)
+MOBILE_VP = (390, 844)
+
+
+def review_shots(ids: dict[str, str]) -> list[tuple[str, str, tuple[int, int]]]:
+    """(slug, path, viewport) for each review shot; ids maps role -> run id."""
+    out: list[tuple[str, str, tuple[int, int]]] = []
+    for role in ("real", "cant_tell", "quick_check"):
+        rid = ids.get(role)
+        if not rid:
+            continue
+        for vp in (DESKTOP_VP, MOBILE_VP):
+            out.append((f"verdict_{role}", f"/v/{rid}", vp))
+    out.append(("landing", "/", DESKTOP_VP))
+    out.append(("landing", "/", MOBILE_VP))
+    out.append(("track_record", "/track-record", DESKTOP_VP))
+    return out
+
+
+def capture_review(base_url: str, outdir: str, ids: dict[str, str], prefix: str,
+                   cdn: dict | None = None) -> list[str]:
+    from playwright.sync_api import sync_playwright
+
+    cdn = cdn or {}
+
+    def route(r, request):
+        url = request.url
+        if any(frag in url for frag in BLOCKED_HOST_FRAGMENTS):
+            r.abort()
+            return
+        for key, (body, ctype) in cdn.items():
+            if key in url:
+                r.fulfill(status=200, content_type=ctype, body=body)
+                return
+        r.continue_()
+
+    os.makedirs(outdir, exist_ok=True)
+    shots = []
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(executable_path=_chromium_executable())
+        try:
+            for slug, path, (w, h) in review_shots(ids):
+                kind = "desktop" if (w, h) == DESKTOP_VP else "mobile"
+                ctx = browser.new_context(viewport={"width": w, "height": h},
+                                          reduced_motion="reduce",
+                                          is_mobile=kind == "mobile",
+                                          has_touch=kind == "mobile",
+                                          device_scale_factor=2 if kind == "mobile" else 1)
+                page = ctx.new_page()
+                page.emulate_media(reduced_motion="reduce")
+                page.route("**/*", route)
+                resp = page.goto(f"{base_url}{path}", wait_until="networkidle", timeout=30_000)
+                name = "_".join(p for p in (prefix, slug, kind, f"{w}x{h}") if p) + ".png"
+                out_path = os.path.join(outdir, name)
+                settle_and_shoot(page, out_path)
+                shots.append(out_path)
+                print(f"captured {name} (HTTP {resp.status if resp else '?'})")
+                ctx.close()
+        finally:
+            browser.close()
+    return shots
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("mode", choices=["before", "after"])
+    ap.add_argument("mode", choices=["before", "after", "review"])
     ap.add_argument("outdir", help="directory to write this run's screenshots into")
     ap.add_argument("--base-url", default="http://127.0.0.1:8012")
     ap.add_argument("--showcase-id", default=None, help="defaults to the first entry in showcase/index.json")
     ap.add_argument("--before-dir", default=None, help="required for 'after' mode: directory holding the 'before' shots")
+    # review mode
+    ap.add_argument("--prefix", default="", help="review mode: filename prefix, e.g. before / after")
+    ap.add_argument("--real-id", default=None, help="review mode: a run whose verdict is REAL")
+    ap.add_argument("--cant-tell-id", default=None, help="review mode: a run whose verdict is CAN'T TELL")
+    ap.add_argument("--quick-check-id", default=None, help="review mode: a live-profile run")
+    ap.add_argument("--cdn-replay", action="store_true",
+                    help="review mode: fetch Leaflet here and serve it to the page from memory")
     args = ap.parse_args()
+
+    if args.mode == "review":
+        ids = {"real": args.real_id, "cant_tell": args.cant_tell_id, "quick_check": args.quick_check_id}
+        if not any(ids.values()):
+            print("review mode needs at least one of --real-id / --cant-tell-id / --quick-check-id",
+                  file=sys.stderr)
+            return 2
+        t0 = time.time()
+        shots = capture_review(args.base_url, args.outdir, ids, args.prefix,
+                               cdn=fetch_cdn() if args.cdn_replay else None)
+        print(f"captured {len(shots)} review shots in {time.time() - t0:.1f}s")
+        return 0
 
     showcase_id = args.showcase_id or default_showcase_id()
     if not showcase_id:

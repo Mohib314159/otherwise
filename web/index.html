@@ -46,6 +46,7 @@
   .progress-bar-fill { height: 100%; background: var(--ink); width: 6%; transition: width 0.3s ease; }
   .progress-stage { font-size: 13px; margin-top: 10px; }
   .progress-note { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .progress-link { font-size: 12px; margin-top: 8px; word-break: break-all; }
 
   .map-toggle {
     position: fixed; top: 16px; right: 16px; z-index: 500;
@@ -64,7 +65,7 @@
      against those unconditional rules (e.g. .map-toggle's desktop top/right) -->
 <link rel="stylesheet" href="/static/mobile.css">
 </head>
-<body>
+<body class="page-landing">
 <div id="map" role="application" aria-label="Map"></div>
 <button class="map-toggle" id="sat-toggle" type="button">Satellite</button>
 
@@ -140,7 +141,11 @@
         <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-fill"></div></div>
       </div>
       <div class="progress-stage" id="progress-stage">Starting&hellip;</div>
-      <div class="progress-note">Live runs read every Sentinel scene over the area for the last three years and usually take three to eight minutes.</div>
+      <!-- No time estimate: the only runs timed so far were on other hardware, and
+           this deployment has a fraction of a CPU. Tens of minutes to hours is what
+           can honestly be said. -->
+      <div class="progress-note">A live run reads every Sentinel scene over the area for three years before the event, so it takes tens of minutes and can take hours. It is also a quick check: the control areas are read more coarsely than in the published examples. You can close the tab &mdash; the run carries on, and its page is ready at the link below once it finishes.</div>
+      <div class="progress-link" id="progress-link"></div>
     </div>
   </div>
 

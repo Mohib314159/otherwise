@@ -31,9 +31,16 @@
      LANDING PAGE — full-screen map + bottom sheet
      ======================================================================= */
 
-  html, body { height: 100%; overflow: hidden; } /* map stays edge-to-edge; only the sheet scrolls */
+  /* Map stays edge-to-edge and only the sheet scrolls -- but ONLY on the
+     landing page. Unscoped, this locked every page at phone width: the verdict,
+     track-record and batch pages could not be scrolled at all below the first
+     screen (scrollHeight == clientHeight, measured in Chromium at 390 and
+     360 px). The landing page carries the class; every other page scrolls
+     normally, and a browser without :has() support simply never applies the
+     lock, which is the safe direction to fail. */
+  html:has(body.page-landing), body.page-landing { height: 100%; overflow: hidden; }
 
-  #map { position: fixed; inset: 0; }
+  body.page-landing #map { position: fixed; inset: 0; }
 
   #side-panel {
     top: auto; left: 0; right: 0; bottom: 0;
@@ -162,8 +169,16 @@
   .verdict-top { padding: 32px 0 28px; }
   .verdict-top .verdict-word { font-size: 44px; }
   .verdict-plain { font-size: 17px; }
+  .verdict-kicker { font-size: 13px; }
+  .quick-note { font-size: 13px; }
   .act1-aside .big-number { font-size: 56px; }
   .verdict-pill { top: 10px !important; }
+
+  /* hero sub-lines and the number's definition use the full column on a phone */
+  .act1-aside .big-sub,
+  .what-num { max-width: none; }
+  .sure-line { font-size: 16px; }
+  .sure-line.second { font-size: 14px; }
 
   .compare, .compare-single { aspect-ratio: 4 / 5; }
   .compare-handle { width: 36px; height: 36px; }
