@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
 <link rel="stylesheet" href="/static/app.css">
 <link rel="stylesheet" href="/static/landing.css">
+<link rel="stylesheet" href="/static/mobile.css">
 <style>
   html, body { height: 100%; overflow: hidden; }
   #map { position: fixed; inset: 0; z-index: 0; }
@@ -59,18 +60,6 @@
   .panel-footer a { color: var(--muted); margin-right: 10px; }
   .panel-footer a:hover { color: var(--ink); }
   .panel-footer .attribution { display: block; margin-top: 8px; line-height: 1.4; }
-
-  @media (max-width: 640px) {
-    html, body { overflow: auto; height: auto; }
-    #map { position: fixed; inset: 0; height: 100vh; }
-    .side-panel {
-      top: auto; left: 0; right: 0; bottom: 0;
-      width: 100%; max-width: 100%;
-      max-height: 65vh;
-      border-radius: 6px 6px 0 0;
-      border-left: none; border-right: none; border-bottom: none;
-    }
-  }
 </style>
 </head>
 <body>
@@ -78,6 +67,7 @@
 <button class="map-toggle" id="sat-toggle" type="button">Satellite</button>
 
 <aside class="side-panel" id="side-panel">
+  <div class="sheet-handle" id="sheet-handle" aria-hidden="true"></div>
   <h1>Otherwise</h1>
   <div class="tagline muted">Did it change more than it would have anyway?</div>
   <p class="intro-line">Draw an area, name the event and its date. Sentinel-1 and Sentinel-2 are compared against matched control areas that did not get the event.</p>
@@ -164,5 +154,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 <script type="module" src="/static/landing.js"></script>
+<script type="module" src="/static/mobile.js"></script>
 </body>
 </html>
