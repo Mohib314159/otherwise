@@ -662,3 +662,156 @@ reasoning, not silently changed: 1, 4, 5, 6, 8, 9, 10, 16, 18, 19, 20.
 The reviewer's bottom line — that the published evidence does not describe the
 shipped product — is fair, and issue 4 is the one I would most want settled
 before showing this to anyone who does this professionally.
+
+## HANDOFF (2026-09-19)
+
+Branch to work from: **`claude/elegant-franklin-en2noi`**. `main` is untouched
+this session and still auto-deploys to Render, so nothing here is live yet.
+
+`python -m pytest -q`: **254 passed, 3 skipped, 8 xfailed, 0 failed.** The 8
+xfails are deliberate (`tests/test_redteam.py` encodes 7 known weaknesses so a
+fix flips them; `tests/test_app_breakdate.py` has one).
+
+### Track A — memory fix for live runs: DONE, verified, not deployed
+
+Live runs fit. A cold Grünheide live run produced **REAL** (agreeing with full
+mode) from **113 S2 and 208 S1 observations**, at **339 MB peak RSS** against a
+400 MB target. A second cold run under an **enforced 512 MiB cgroup** peaked at
+**467 MB of cgroup-accounted memory with no OOM kill**.
+
+Read those two numbers as different things: 339 MB is resident set; 467 MB is
+cgroup accounting, which includes reclaimable page cache from the COG reads. The
+RSS figure is the one to compare against the 400 MB target; the cgroup figure is
+what a container limit actually counts, and 467/512 is tighter than I would like.
+**Recommended margin, not yet applied:** `APP_LIVE_FETCH_WORKERS=2` (from 3) and
+`APP_GDAL_CACHEMAX_MB=32` (from 48). Not applied mid-comparison because it would
+invalidate the timings in flight.
+
+**The real remaining constraint is CPU, not memory.** That 25-minute wall clock
+was on a box with about two usable cores (43 min CPU). Render's free tier is
+0.1 CPU. A live run there could take hours, and the tier spins down after 15
+idle minutes. Deciding what to do about that — a longer `APP_JOB_TIMEOUT_S`, a
+paid instance, precomputed-only public runs, or a queue with email-on-done — is
+the next real decision, and it is a product decision, not a code one.
+
+Where it lives: `src/app/fetch.py` (`PROFILES`, `_fetch_live_ring`,
+`best_tile_per_minute`, `cap_per_bin`, `choose_donor_res`, `MemoryBudgetError`),
+`src/app/s2.py` (one band at a time), `src/app/extract.py` (GDAL caps,
+`zone_counts`, chunked `zone_means`), `src/app/run.py` (`profile`, `LIVE_DONOR_K`),
+`src/app/server.py` (`LIVE_PROFILE`, `JOB_TIMEOUT_S`), `scripts/memtest.py`,
+`tests/test_app_live_profile.py`.
+
+**Next step:** apply the margin settings above, re-run `scripts/memtest.py` on a
+second, larger area (a 300–500 ha polygon, not just 27 ha) to confirm the budget
+holds at the size limit, then decide the CPU question before merging to `main`.
+
+### Track A2 — live vs full comparison: RUNNING, incomplete
+
+`scripts/compare_profiles.py`, resumable, checkpointing to
+`showcase/profile_comparison.json` after every site. The full arm is read from
+the committed `showcase/*.json` (they are full-mode runs); the live arm is run
+now. It holds the control geometry constant and varies only the profile — an
+earlier version used `mode="auto"` for the live arm, which would have measured
+mode and profile together.
+
+At handoff: **0 of 10 live runs recorded.** Each cold run is ~25 minutes, so the
+full sweep is about four hours. Nothing is inferred from an unfinished sweep, and
+the table prints "not run" rather than an estimate.
+
+**Next step:** let it finish, or resume with
+`python -m scripts.compare_profiles`; rebuild the table any time with
+`--table`. Then decide the "quick check" labelling: live mode reads controls at
+40 m from a separate catalogue search, giving up the co-observation full mode
+relies on (this is `CRITIQUE.md` issue 6 applied to the live path), so unless the
+comparison shows it costs nothing, live verdicts should be labelled and should
+not be presented as equivalent to the published runs.
+
+### Track B — hectare input: DONE, merged
+
+Merged from `track/hectare` (`e85d787`). Root cause was **not** the
+leaflet-draw/Leaflet version mismatch I assumed — that was disproven in a real
+browser. It was two client/server disagreements: the client measured area
+equirectangularly while the server uses UTM (−0.75%/+0.53%, so the client
+enabled "Check it" on polygons the server rejected with a 400), and
+`toGeoJSON()` posted unwrapped longitudes after the map panned across a world
+copy. Client area now matches the server to 1.96e-07 over 576 validation rings.
+`tests/test_area_input.py` (8 tests, Playwright-driven, skips cleanly without a
+browser).
+
+**Not applied, and needs a decision** (reported by the track, deliberately left
+alone because it is a layout change): give the showcase list its own scroll
+region in `web/index.html` so the run form is not pushed below the fold on short
+laptop screens, and extend the draw hint to say how to close a polygon
+("Click to add corners, then click the first one to close") — a user who clicks
+two points and then the first one currently hits a dead end with no feedback.
+
+### Track C — mobile redesign: DONE, merged
+
+Merged from `track/mobile` (`f860e88`). Google-Maps-style bottom sheet, three
+snap points, velocity-aware release, correct drag-vs-scroll. All mobile rules
+live in `web/mobile.css` inside one `@media (max-width: 640px)` block, verified
+mechanically. Desktop is **byte-identical**: 0 differing pixels on `/`,
+`/v/<id>`, `/track-record` and `/batch` at 1280×800 and 1920×1080 — and the
+harness (`scripts/desktop_screenshots.py`) was validated against itself first,
+which is what makes the claim worth anything.
+
+**Open, small:** the sheet uses `vh`, so a mobile URL bar still shifts it;
+`dvh`/`svh` is the fix. Mobile screenshots in `docs/screenshots/mobile/` show a
+blank map because this sandbox's proxy blocks the Leaflet CDN for the browser —
+the sheet itself is faithfully captured, but nobody has seen it over real tiles.
+
+### Track D — blind validation: HALF DONE, merged
+
+Merged from `track/blind` (`ac3c5ca`), plus the `include_router` line in
+`server.py` that the track could not add itself.
+
+**Done:** seeded sampler (Hansen GFC-2023 v1.11 + MTBS), resumable parallel
+runner, `/review` blind review page, three-way rate reporting, analyst
+annotation layer, `docs/BLIND_VALIDATION.md`, 16 tests including two that assert
+the blind payload leaks no ground truth.
+
+**The numbers, exactly:** 247 items drawn (130 events, 117 controls) at seed
+20260918; **34 verdict runs completed, all of them events, zero controls.** So
+there is a detection rate (18/34 REAL, 1/34 NOT REAL, 15/34 can't tell) and
+**no false-alarm rate at all**. The detection figure must not be quoted on its
+own, and the page and docs say so instead of rendering a placeholder. **No human
+has reviewed anything**: 0 reviews, and `scripts/blind_review_prep.py` has never
+been run, so the review pool is empty.
+
+Runs were produced at commit `6d8776d`, i.e. **before** this session's live
+profile. They are full-mode numbers.
+
+**Next step:** `APP_CACHE_DIR=data/cache/blind python -m scripts.blind_validation
+--sample showcase/blind/sample.json --parallel 3 --shuffle-seed 20260918 --out
+showcase/blind/`. The shuffle makes the finished subset a random subsample, so
+control runs — and therefore the false-alarm rate — start appearing immediately.
+Then `python -m scripts.blind_review_prep --frames` to fill the review pool.
+Paused during Track A2 so the two do not contend for CPU.
+
+**Also missing:** no floods or water change in the sample (Copernicus EMS has no
+programmatic index to sample mechanically; EFFIS timed out; JRC Global Surface
+Water carries no event year in the change layer, though its yearly
+classification product would). So nothing here speaks to the flood path, which
+is also where the red team's E7 "break" lives.
+
+### Track E — critique: TRIAGED
+
+`CRITIQUE.md` is on the branch; the 23-item triage table is in the section above
+(18 valid, 5 partly valid, 0 wrong). Fixed this session: 3, 10, 11, 15, 17
+(live path), 18, 21, 23, and 2 (published the red team's two "breaks" in
+METHOD.md §9 and linked REDTEAM.md from the README).
+
+**Awaiting Mohib**, all user-facing: 7 (the "how sure" sentence reports the
+RMSPE-ratio p while describing the effect-size count), 22 (no `og:` tags, one
+shared `<title>`, though the whole distribution plan is permalinks), 12 (a dead
+job spins the UI forever), 13 and 14 (the verdict copy states the user's
+dropdown as a finding; the hero percentage has no interval or definition).
+
+**Left open deliberately, method not changed on a reviewer's say-so:** 1, 4, 5,
+6, 8, 9, 16, 19, 20. Of these, **4 is the one to settle first**: donors are
+ranked by pre-event fit to the treated unit and truncated to the best K, then
+that same treated-optimised pool is used as the placebo distribution, which
+breaks the exchangeability the placebo test rests on and makes every published
+p anti-conservative. The fix is to re-select donors for each placebo unit, or to
+drop the truncation for the placebo distribution. It will move published
+numbers, so it belongs with a re-run of `scripts/power.py` and the showcase.
