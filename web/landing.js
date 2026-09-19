@@ -416,6 +416,7 @@ runForm.addEventListener("submit", async (e) => {
     }
     runForm.style.display = "none";
     progressBlock.style.display = "block";
+    showProgressLink(resp.run_id);
     pollJob(resp.job_id, resp.run_id);
   } catch (err) {
     submitBtn.disabled = false;
@@ -460,13 +461,32 @@ function pollJob(jobId, fallbackRunId) {
   pollTimer = setInterval(poll, 1500);
 }
 
+// Kept identical to the block in web/index.html. No minute count: the only live
+// runs timed so far ran on other hardware, and this deployment has a fraction of
+// a CPU, so a range would be invented rather than measured.
+const PROGRESS_NOTE =
+  "A live run reads every Sentinel scene over the area for three years before the "
+  + "event, so it takes tens of minutes and can take hours. It is also a quick check: "
+  + "the control areas are read more coarsely than in the published examples. You can "
+  + "close the tab — the run carries on, and its page is ready at the link below once "
+  + "it finishes.";
+
 function rebuildProgressBlock() {
   progressBlock.innerHTML = `
     <div class="progress-wrap">
       <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-fill"></div></div>
     </div>
     <div class="progress-stage" id="progress-stage">Starting&hellip;</div>
-    <div class="progress-note">Live runs read every Sentinel scene over the area for the last three years and usually take three to eight minutes.</div>`;
+    <div class="progress-note">${escapeHtml(PROGRESS_NOTE)}</div>
+    <div class="progress-link" id="progress-link"></div>`;
   progressFill = document.getElementById("progress-fill");
   progressStage = document.getElementById("progress-stage");
+}
+
+/** The run's permalink, shown while it runs so closing the tab loses nothing. */
+function showProgressLink(runId) {
+  const el = document.getElementById("progress-link");
+  if (!el || !runId) return;
+  const href = `/v/${encodeURIComponent(runId)}`;
+  el.innerHTML = `<a href="${escapeHtml(href)}">${escapeHtml(location.origin + href)}</a>`;
 }
