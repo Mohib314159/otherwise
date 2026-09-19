@@ -506,8 +506,23 @@ section.block { padding: 32px 0; border-top: 1px solid var(--rule); }
 /* ---- cut-down verdict page ---- */
 .verdict-top { padding: 72px 0 56px; text-align: center; }
 .verdict-top .verdict-word { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; font-size: 88px; letter-spacing: -0.01em; line-height: 1; }
+/* the claim the user made, above the verdict word; never a finding */
+.verdict-kicker { margin: 0 auto 10px; font-size: 14px; letter-spacing: 0.01em; max-width: 680px; }
 .verdict-plain { margin: 18px auto 0; font-size: 22px; line-height: 1.4; max-width: 680px; letter-spacing: -0.005em; }
 .verdict-claim { margin: 14px auto 0; font-size: 14px; max-width: 680px; }
+/* live ("quick check") runs: a plain marker, not a badge with chrome */
+.quick-mark {
+  display: inline-block;
+  margin: 14px auto 0;
+  padding: 3px 9px;
+  border: 1px solid var(--rule);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--muted);
+}
+.quick-note { margin: 12px auto 0; font-size: 13px; line-height: 1.55; max-width: 620px; }
 .act { padding: 56px 0 60px; }
 .act1-aside { padding-top: 12px; }
 .act1-aside .big-number { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; font-size: 104px; letter-spacing: -0.02em; line-height: 0.95; font-feature-settings: "tnum" 1; }
@@ -517,6 +532,23 @@ section.block { padding: 32px 0; border-top: 1px solid var(--rule); }
 .gap-block { margin-top: 22px; }
 .sure-row { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 40px; align-items: center; }
 .sure-line { margin: 0; font-size: 18px; line-height: 1.45; }
+/* two placebo figures, never merged into one sentence */
+.sure-row .sure-lines { margin-top: 0; gap: 14px; }
+.sure-line.second { font-size: 15px; color: var(--muted); padding-top: 14px; border-top: 1px solid var(--rule); }
+.sure-tag {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+/* the hero number's definition, one tap away */
+.what-num { margin-top: 12px; max-width: 340px; }
+.what-num > summary { cursor: pointer; list-style: none; font-size: 13px; color: var(--muted); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.what-num > summary::-webkit-details-marker { display: none; }
+.what-num p { margin-top: 8px; font-size: 13px; line-height: 1.55; color: var(--muted); }
 .details-stack { border-top: 1px solid var(--rule); margin-top: 8px; }
 .dtl { border-bottom: 1px solid var(--rule); }
 .dtl > summary { cursor: pointer; list-style: none; padding: 18px 0; font-size: 15px; font-weight: 500; display: flex; justify-content: space-between; align-items: center; }

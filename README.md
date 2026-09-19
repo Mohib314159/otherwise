@@ -28,6 +28,7 @@ areas and fake dates to show how often the method finds effects that are not the
 - **Verdict rules are explicit** (`src/app/verdict.py`) and every verdict page
   is a permalink.
 - **Full method write-up:** [`docs/METHOD.md`](docs/METHOD.md) — data
+- **What we could not defend:** [`docs/REDTEAM.md`](docs/REDTEAM.md) — an adversarial review of our own method, with numbers. Two of its attacks defeat the method as it stands (pre-trends are still called REAL; floods shorter than about a month are deleted by the haze filter). Both are listed in [`docs/METHOD.md`](docs/METHOD.md) §9 and neither fix is applied yet.
   cleaning, control selection, the estimator and its uncertainty, the placebo
   checks, the verdict thresholds, known limits and validation to date, for
   anyone who wants to check the reasoning rather than take the verdict on
@@ -66,6 +67,7 @@ Deployment (Hugging Face Spaces or Render, free tiers) is in `DEPLOY.md`.
 | `showcase/` | precomputed verdicts for the showcase and the track-record page |
 | `SPEC.md`, `PLAN.md`, `DECISIONS.md`, `SITES.md` | what we are building, how, why, and the known-answer sites |
 | `docs/METHOD.md` | the full method write-up: data, estimator, uncertainty, placebo checks, verdict rules, limits |
+| `docs/REDTEAM.md` | adversarial review of the method by us, including the two attacks that break it |
 | `src/scm.py`, `src/inference.py`, … | the original CarbonTwin engine (below) |
 
 ## Honesty notes

@@ -52,6 +52,10 @@ class SignalResult:
     placebo_n: int
     time_placebo_flags: list[bool] = field(default_factory=list)
     placebo_effect_median: float = 0.0     # median post-event gap across placebo cells
+    # True when every placebo unit re-ran the treated unit's donor selection on
+    # itself. False means the p-value came from the old asymmetric procedure and
+    # is anti-conservative -- see DECISIONS.md, CRITIQUE #4.
+    placebo_symmetric: bool = False
 
     @property
     def min_effect(self) -> float:
@@ -115,9 +119,18 @@ def decide(r: SignalResult, change_type: str, post_label: str) -> Verdict:
     direction = "fell" if r.point < 0 else "rose"
     core = (f"{word[0].upper() + word[1:]} {direction} by {_fmt(r.point, r.signal)} relative to the "
             f"control trajectory {post_label} (90% interval {_signed(r.lo, r.signal)} to {_signed(r.hi, r.signal)}).")
+    # placebo_p ranks the treated unit's post/pre RMSPE RATIO, not its effect size.
+    # The old wording here said "showed a divergence this large", which describes
+    # placebo_p_effect, and printed placebo_p next to it -- visibly incoherent
+    # wherever the two disagree (CRITIQUE #7). p = (k + 1) / (n + 1) by
+    # construction, so k inverts each exactly.
     k = max(int(round(r.placebo_p * (r.placebo_n + 1))) - 1, 0)
-    placebo = (f"Of {r.placebo_n} untouched cells given the same test, "
-               f"{k} showed a divergence this large (placebo p = {r.placebo_p:.2f}).")
+    k_eff = max(int(round(r.placebo_p_effect * (r.placebo_n + 1))) - 1, 0)
+    placebo = (f"The same test was run on {r.placebo_n} untouched control cells. In {k} of them the "
+               f"no-event prediction missed by as much after the event date, relative to how closely it "
+               f"matched before, as it did here (placebo p = {r.placebo_p:.2f}). "
+               f"Counted by gap size instead, {k_eff} of the {r.placebo_n} moved at least as far as this "
+               f"area did in the same direction (p = {r.placebo_p_effect:.2f}).")
 
     # --- can we say anything at all? ---
     if r.n_donors < MIN_DONORS:

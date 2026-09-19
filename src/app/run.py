@@ -24,6 +24,7 @@ PRE_YEARS = 3
 MAX_POST_MONTHS = 18
 BIN_DAYS = 10
 DONOR_K = 80
+LIVE_DONOR_K = 40          # live runs read fewer, coarser control cells; see DECISIONS.md
 
 
 def run_id(area_geojson, event_date, change_type, post_months) -> str:
@@ -39,7 +40,7 @@ def _window(event: date, post_months: int) -> tuple[str, str]:
 
 
 def _analyse(dates, values, event_np, donor_all_idx, cov, signal, sensor, expected_sign, progress,
-             groups=None):
+             groups=None, donor_k=DONOR_K):
     """values: (T, 1+n) per-observation. Returns (SignalResult, chart dict, donors dict) or None.
     In wide mode `groups` is a list of (dates, values) donor blocks with their own date axes."""
     if groups is not None:
@@ -48,7 +49,7 @@ def _analyse(dates, values, event_np, donor_all_idx, cov, signal, sensor, expect
         b = binned(dates, values, event_np, bin_days=BIN_DAYS)
     if b.matrix.shape[1] < 2 or b.pre.sum() < 5 or (~b.pre).sum() < 1:
         return None
-    sel = select_donors(b.matrix, b.pre, b.donor_cov, cov, k=DONOR_K)
+    sel = select_donors(b.matrix, b.pre, b.donor_cov, cov, k=donor_k)
     y = b.matrix[:, 0]
     D = b.matrix[:, 1:][:, sel.index].T                  # (m, B)
     if D.shape[0] < 3:
@@ -81,7 +82,10 @@ def _analyse(dates, values, event_np, donor_all_idx, cov, signal, sensor, expect
         "ci_grid": np.round(ci.grid, 4).tolist(), "ci_pvals": np.round(ci.pvals, 3).tolist(),
         "lambda": f.lam,
     }
-    donors = {"grid_index": (donor_all_idx[sel.index]).tolist(),
+    # sel.index counts coverage-filtered columns; sel.cell_index maps back to the
+    # grid. Using sel.index here drew the wrong cells on the control-areas map
+    # whenever any cell was dropped for coverage (i.e. on most runs).
+    donors = {"grid_index": (donor_all_idx[sel.cell_index]).tolist(),
               "weights": np.round(f.weights, 4).tolist(), "pre_rmse": np.round(sel.pre_rmse, 4).tolist(),
               "notes": sel.notes, "counts": sel.counts}
     return res, chart, donors
@@ -106,17 +110,21 @@ def _wide_cov(data) -> Covariates:
                       np.full(n, np.nan), 2021)
 
 
-def _analyse_all(data, event_np, primary_sig, sign, radar, cov, progress):
-    """Run the per-signal analysis for a fetched AreaData (ring or wide)."""
+def _analyse_all(data, event_np, primary_sig, sign, radar, cov, progress, donor_k=DONOR_K):
+    """Run the per-signal analysis for a fetched AreaData (ring or wide).
+
+    A fetch that split the treated and control reads into separate passes (wide
+    mode, and the live profile's ring) returns `groups`, each with its own date
+    axis; those are joined on event-anchored bins by `prep.binned_groups`."""
     results, charts, donors = {}, {}, {}
-    wide = data.mode == "wide"
+    wide = bool(data.groups)
     n_cells = len(data.cells_geojson)
     idx = np.arange(n_cells)
     if data.s2 is not None:
         groups = ([(g["s2"].dates, g["s2"].values[primary_sig]) for g in data.groups if g.get("s2") is not None]
                   if wide else None)
         r = _analyse(data.s2.dates, data.s2.values[primary_sig], event_np, idx, cov, primary_sig, "S2", sign,
-                     progress, groups=groups)
+                     progress, groups=groups, donor_k=donor_k)
         if r:
             results[primary_sig], charts[primary_sig], donors[primary_sig] = r
     if data.s1 is not None:
@@ -124,7 +132,7 @@ def _analyse_all(data, event_np, primary_sig, sign, radar, cov, progress):
             groups = ([(g["s1"].dates, g["s1"].values[rsig]) for g in data.groups if g.get("s1") is not None]
                       if wide else None)
             r = _analyse(data.s1.dates, data.s1.values[rsig], event_np, idx, cov, rsig, "S1", rsign,
-                         progress, groups=groups)
+                         progress, groups=groups, donor_k=donor_k)
             if r:
                 results[rsig], charts[rsig], donors[rsig] = r
     return results, charts, donors
@@ -133,10 +141,18 @@ def _analyse_all(data, event_np, primary_sig, sign, radar, cov, progress):
 def run_verdict(area_geojson: dict, event_date: str, change_type: str = "other",
                 post_months: int = 12, label: str = "", progress=lambda s, d, t: None,
                 save: bool = True, runs_dir: str = RUNS_DIR, mode: str = "auto",
-                inner_m: float | None = None, outer_m: float | None = None) -> dict:
+                inner_m: float | None = None, outer_m: float | None = None,
+                profile: str = "full") -> dict:
     """mode: "ring" (controls 1-12 km away), "wide" (similarity-matched controls
     inner_m..outer_m away, for events larger than the ring) or "auto" (ring first,
-    escalate to wide when the ring's controls moved with the area)."""
+    escalate to wide when the ring's controls moved with the area).
+
+    profile: "full" reads every control cell at 10 m from one window (offline,
+    showcase and validation runs). "live" reads the treated area alone at 10 m
+    and the controls coarsely in a second pass, with the scene list pre-filtered,
+    so a user-drawn run fits the deployment's memory. `scripts/compare_profiles.py`
+    measures what the difference costs.
+    """
     t0 = time.time()
     change_type = change_type if change_type in SIGNALS else "other"
     post_months = int(min(max(post_months, 1), MAX_POST_MONTHS))
@@ -151,18 +167,25 @@ def run_verdict(area_geojson: dict, event_date: str, change_type: str = "other",
     primary_sig, sign, radar = SIGNALS[change_type]
     used_mode = "ring"
     escalation = None
+    donor_k = LIVE_DONOR_K if profile == "live" else DONOR_K
 
     cov = None
     if mode in ("ring", "auto"):
         progress("fetch", 0, 1)
-        data = fetch_area(area_geojson, start, end, progress=progress)
-        grid = donor_grid(area)
-        progress("covariates", 0, 1)
-        try:
-            cov = fetch_covariates([area.utm] + grid.cells, area.epsg, cov_year)
-        except Exception:
-            cov = None
-        results, charts, donors = _analyse_all(data, event_np, primary_sig, sign, radar, cov, progress)
+        data = fetch_area(area_geojson, start, end, progress=progress, profile=profile,
+                          event_date=event_date)
+        if data.groups:
+            # the live profile already read covariates for its control cells
+            cov = _wide_cov(data)
+        else:
+            grid = donor_grid(area)
+            progress("covariates", 0, 1)
+            try:
+                cov = fetch_covariates([area.utm] + grid.cells, area.epsg, cov_year)
+            except Exception:
+                cov = None
+        results, charts, donors = _analyse_all(data, event_np, primary_sig, sign, radar, cov, progress,
+                                               donor_k=donor_k)
         lead0 = results.get(primary_sig) or next((results[r] for r, _ in radar if r in results), None)
         if mode == "auto" and _controls_shifted(lead0):
             escalation = {"reason": "ring controls shifted with the area",
@@ -173,9 +196,13 @@ def run_verdict(area_geojson: dict, event_date: str, change_type: str = "other",
         used_mode = "wide"
         progress("fetch wide", 0, 1)
         data = fetch_area(area_geojson, start, end, progress=progress, mode="wide", cov_year=cov_year,
-                          inner_m=inner_m or WIDE_INNER_M, outer_m=outer_m or WIDE_OUTER_M, max_cells=150)
+                          inner_m=inner_m or WIDE_INNER_M, outer_m=outer_m or WIDE_OUTER_M,
+                          max_cells=90 if profile == "live" else 150,
+                          n_groups=4 if profile == "live" else 6,
+                          profile=profile, event_date=event_date)
         cov = _wide_cov(data)
-        results, charts, donors = _analyse_all(data, event_np, primary_sig, sign, radar, cov, progress)
+        results, charts, donors = _analyse_all(data, event_np, primary_sig, sign, radar, cov, progress,
+                                               donor_k=donor_k)
 
     # lead signal: optical unless it has too few post-event observations and radar has enough
     lead = primary_sig if primary_sig in results else None
@@ -205,7 +232,7 @@ def run_verdict(area_geojson: dict, event_date: str, change_type: str = "other",
                     "statement": verdict.statement, "reasons": verdict.reasons, "lead_signal": verdict.lead_signal},
         "evidence": {"agreement": ev.agreement, "optical": ev.optical_status, "radar": ev.radar_status,
                      "p_combined": ev.p_combined, "sentence": ev.sentence},
-        "mode": used_mode, "escalation": escalation,
+        "mode": used_mode, "profile": profile, "escalation": escalation,
         "controls": {"mode": used_mode, "inner_m": data.summary.get("inner_m", 1000.0),
                      "outer_m": data.summary.get("outer_m", 12000.0), "n_groups": data.summary.get("n_groups", 1)},
         "signals": {k: {**v.__dict__, "min_effect": v.min_effect, "pre_fit_ok": v.pre_fit_ok} for k, v in results.items()},
@@ -220,7 +247,10 @@ def run_verdict(area_geojson: dict, event_date: str, change_type: str = "other",
         "timing": {**data.timing, "run_s": round(time.time() - t0, 1)},
         "method": {"estimator": "augmented synthetic control (ridge-corrected convex weights)",
                    "interval": f"conformal, moving-block permutation, {int((1 - ALPHA) * 100)}%",
-                   "bin_days": BIN_DAYS, "pre_years": PRE_YEARS, "donor_k": DONOR_K},
+                   "bin_days": BIN_DAYS, "pre_years": PRE_YEARS, "donor_k": donor_k,
+                   "profile": profile,
+                   "donor_res_m": data.summary.get("donor_res_m"),
+                   "scenes_read": data.summary.get("s2_scenes_read")},
     }
     if save:
         os.makedirs(runs_dir, exist_ok=True)

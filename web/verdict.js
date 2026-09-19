@@ -14,7 +14,7 @@
 //   evidence: { agreement, optical, radar, p_combined, sentence }  (optional, later)
 //   pixels:   { fraction_changed, placebo_p, map: url }            (optional, later)
 import {
-  apiGet, fmtDate, fmtSignalValue, VERDICT_LABEL, VERDICT_VAR, CHANGE_TYPE_LABEL,
+  apiGet, apiPost, fmtDate, fmtSignalValue, VERDICT_LABEL, VERDICT_VAR,
   SIGNAL_LABEL, REASON_LABEL, wireCopyLink, initHowItWorksDrawer, renderFooter,
 } from "./common.js";
 import { drawTrajectoryChart, drawGapChart, stripPlotSVG } from "./chart.js";
@@ -109,8 +109,9 @@ function renderCompare(d) {
     </div>`;
 }
 
+/** Facts about the drawn area only. What was claimed lives in claimSentence. */
 function claimLine(d) {
-  const parts = [CHANGE_TYPE_LABEL[d.change_type] || d.change_type, fmtDate(d.event_date), `${d.area.ha} ha`];
+  const parts = [`${d.area.ha} ha`];
   if (d.area.landcover) parts.push(d.area.landcover);
   return parts.map(escapeHtml).join(" · ");
 }
@@ -325,69 +326,173 @@ function plainReason(reasons) {
   return "The data do not support a confident answer.";
 }
 
-function plainWhat(d) {
-  const lead = d.verdict.lead_signal;
-  const sig = d.signals[lead] || {};
-  const down = (sig.point || 0) < 0;
-  switch (d.change_type) {
-    case "clearing": return "This area lost its vegetation";
-    case "burn": return "This area burned";
-    case "flood": return "This area flooded";
-    case "construction": return "This area was built over";
-    case "regrowth": return "This area grew back";
-    default: return down ? "This area lost greenness" : "This area gained greenness";
-  }
+// The claim and the finding are kept apart on purpose. The change type is
+// whatever the user picked in the dropdown; the method tests whether an index
+// moved further than matched control areas did, and cannot tell a burn from a
+// harvest or a flood from irrigation. So the dropdown word only ever appears in
+// the reported-claim line, never in the sentence about what the data show.
+
+const CLAIM_PHRASE = {
+  clearing: "clearing",
+  regrowth: "regrowth",
+  flood: "a flood",
+  burn: "a burn",
+  construction: "construction",
+  other: "a change",
+};
+
+/** What the user told us, stated as a claim and nothing more. */
+function claimSentence(d) {
+  const what = CLAIM_PHRASE[d.change_type] || "a change";
+  return `You reported ${what} here on ${fmtDate(d.event_date)}`;
 }
 
-function plainVerdict(d) {
-  const when = fmtDate(d.event_date);
+/** Magnitude only, unsigned, with the unit: "0.47", "0.9 dB". */
+function fmtMagnitude(signal, value) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "—";
+  return fmtSignalValue(signal, Math.abs(value));
+}
+
+function indexName(signal) {
+  const n = SIGNAL_LABEL[signal] || signal;
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+
+/**
+ * What the data show: a gap between this area and the trajectory the matched
+ * control areas imply. No mechanism, because the method cannot see one.
+ */
+function findingSentence(d) {
+  const lead = d.verdict.lead_signal;
+  const sig = (d.signals && d.signals[lead]) || {};
   const st = d.verdict.status;
-  if (st === "REAL") return `${plainWhat(d)} after ${when}. Similar areas nearby did not.`;
+  const when = fmtDate(d.event_date);
+  const months = d.post_months;
+  const name = indexName(lead);
+  const size = fmtMagnitude(lead, sig.point);
+  const dir = (sig.point || 0) < 0 ? "fell" : "rose";
+  if (st === "REAL") {
+    return `${name} ${dir} ${size} further here than the matched control areas did, over the ${months} months after ${when}.`;
+  }
   if (st === "NOT_REAL") {
-    if (/opposite/i.test((d.verdict.reasons || []).join(" "))) return `This area moved the opposite way to a ${CHANGE_TYPE_LABEL[d.change_type] || d.change_type} after ${when}.`;
-    return `Nothing here changed more than similar areas nearby did after ${when}.`;
+    if (/opposite/i.test((d.verdict.reasons || []).join(" "))) {
+      return `${name} moved the opposite way to the reported change over the ${months} months after ${when}.`;
+    }
+    return `${name} moved ${size} against the matched control areas over the ${months} months after ${when} — smaller than the smallest change this test calls meaningful.`;
   }
   return plainReason(d.verdict.reasons);
 }
 
+// ---- quick-check (live) runs --------------------------------------------------
+//
+// A live run reads the drawn area at 10 m but its control cells at 40 m from a
+// separate catalogue search, so treated and control pixels no longer come from
+// the same scenes. Runs made before the profile field existed were all full
+// mode, so a missing profile means full.
+
+function isQuickCheck(d) {
+  const p = d.profile || (d.method && d.method.profile);
+  return p === "live";
+}
+
+const QUICK_CHECK_NOTE =
+  "This ran as a quick check: the drawn area was read at 10 m but its control " +
+  "areas at 40 m, from a separate catalogue search, so the area and its controls " +
+  "are not read from the same scenes — weaker evidence than a full run, which " +
+  "reads everything at 10 m from one search and is done offline.";
+
 function renderVerdictTop(d) {
   const st = d.verdict.status;
+  const quick = isQuickCheck(d);
   return `
     <section class="verdict-top reveal in" id="verdict-top">
+      <p class="verdict-kicker muted">${escapeHtml(claimSentence(d))}</p>
       <div class="verdict-word v-${st}">${escapeHtml(headlineFor(d))}</div>
-      <p class="verdict-plain">${escapeHtml(plainVerdict(d))}</p>
+      ${quick ? `<p class="quick-mark" id="quick-mark">Quick check</p>` : ""}
+      <p class="verdict-plain">${escapeHtml(findingSentence(d))}</p>
+      ${quick ? `<p class="quick-note muted" id="quick-note">${escapeHtml(QUICK_CHECK_NOTE)}</p>` : ""}
       <p class="verdict-claim tnum muted">${escapeHtml(d.label || "Drawn area")} · ${claimLine(d)}</p>
     </section>`;
 }
 
-// ---- the big number: relative change in plain words ----------------------------
+// ---- the big number ------------------------------------------------------------
+//
+// The hero figure is the estimated gap. For an index (NDVI / NDWI / NBR) it is
+// also shown as a percentage of the level the control trajectory predicted over
+// the post-event window -- the definition is printed under it, and its interval
+// is the 90% interval put through the same divisor, so the two cannot drift
+// apart. When that divisor is near zero the percentage means nothing, so the
+// absolute figure is shown instead of a huge or infinite percent.
 
-const PLAIN_SIGNAL = { NDVI: "greenness", NDWI: "surface-water signal", NBR: "burn signal", VV: "radar brightness", VH: "radar brightness", RATIO: "radar ratio" };
+const DIVISOR_FLOOR = 0.05;   // index levels below this make a percentage meaningless
+
+/** Mean absolute counterfactual level over the post-event bins, or null. */
+function counterfactualLevel(chart) {
+  if (!chart || !Array.isArray(chart.counterfactual) || !Array.isArray(chart.pre)) return null;
+  const post = chart.counterfactual.filter((_, i) => !chart.pre[i]).filter(Number.isFinite).map(Math.abs);
+  if (!post.length) return null;
+  const mean = post.reduce((a, b) => a + b, 0) / post.length;
+  return Number.isFinite(mean) ? mean : null;
+}
+
+function fmtPct(v) {
+  if (!Number.isFinite(v)) return "—";
+  const n = Math.round(v);
+  if (n === 0) return "0%";
+  return `${n > 0 ? "+" : "−"}${Math.abs(n)}%`;
+}
 
 function relativeChange(d) {
   const lead = d.verdict.lead_signal;
   const sig = d.signals[lead];
   const chart = d.charts[lead];
   const isDb = /^(VV|VH|RATIO)$/.test(lead);
-  if (isDb) return { text: fmtSigned(lead, sig.point), sub: `${PLAIN_SIGNAL[lead]} compared with what was expected` };
-  let base = null;
-  if (chart && chart.counterfactual && chart.pre) {
-    const post = chart.counterfactual.filter((_, i) => !chart.pre[i]).map(Math.abs);
-    if (post.length) base = post.reduce((a, b) => a + b, 0) / post.length;
+  const months = d.post_months;
+  const name = SIGNAL_LABEL[lead] || lead;
+  const hasInterval = Number.isFinite(sig.lo) && Number.isFinite(sig.hi);
+  // Always available: the effect in the units the method estimates in.
+  const absolute = {
+    text: fmtBare(lead, sig.point),
+    unit: unitFor(lead),
+    sub: `${name} relative to the control trajectory, ${months} months after the event`,
+    interval: hasInterval ? `90% interval ${fmtSigned(lead, sig.lo)} to ${fmtSigned(lead, sig.hi)}` : "",
+    index: "",
+    detail: "",
+  };
+  if (isDb || !Number.isFinite(sig.point)) return absolute;
+  const base = counterfactualLevel(chart);
+  if (!(base > DIVISOR_FLOOR)) {
+    // near-zero divisor: no percentage, and say why the absolute number is here
+    return {
+      ...absolute,
+      detail: base === null
+        ? ""
+        : `Shown in ${lead} units, not as a percentage: the control trajectory averaged ${fmtSignalValue(lead, base)} over this window, too close to zero for a percentage of it to mean anything.`,
+    };
   }
-  if (base && base > 0.05) {
-    const pct = Math.round((sig.point / base) * 100);
-    return { text: `${pct > 0 ? "+" : "−"}${Math.abs(pct)}%`, sub: `${PLAIN_SIGNAL[lead]} compared with what was expected` };
-  }
-  return { text: fmtSigned(lead, sig.point), sub: `${PLAIN_SIGNAL[lead]} (${lead} units) compared with what was expected` };
+  const pct = (sig.point / base) * 100;
+  return {
+    text: fmtPct(pct),
+    unit: "",
+    sub: `change in ${name} against the average level the control trajectory predicted for the ${months} months after the event`,
+    interval: hasInterval ? `90% interval ${fmtPct((sig.lo / base) * 100)} to ${fmtPct((sig.hi / base) * 100)}` : "",
+    index: `In ${lead} units: ${fmtSigned(lead, sig.point)}${hasInterval ? ` (90% ${fmtSigned(lead, sig.lo)} to ${fmtSigned(lead, sig.hi)})` : ""}`,
+    detail: `The gap between this area and the control trajectory is ${fmtSigned(lead, sig.point)} ${lead}. `
+      + `That is divided by ${fmtSignalValue(lead, base)} — the average level the control trajectory predicted over the ${months} months after the event — and shown as a percentage; `
+      + `the interval is the same division applied to both ends of the 90% interval. `
+      + `${lead} is an index, not a physical quantity, so read this as a comparison with the control level rather than as a percentage of anything measurable.`,
+  };
 }
 
 function renderNumber(d) {
   const st = d.verdict.status;
   const rc = relativeChange(d);
   return `
-    <div class="big-number v-${st}" id="big-number"><span class="value">${escapeHtml(rc.text)}</span></div>
-    <div class="big-sub">${escapeHtml(rc.sub)}</div>`;
+    <div class="big-number v-${st}" id="big-number"><span class="value">${escapeHtml(rc.text)}</span>${rc.unit ? `<span class="unit">${escapeHtml(rc.unit)}</span>` : ""}</div>
+    <div class="big-sub">${escapeHtml(rc.sub)}</div>
+    ${rc.interval ? `<div class="big-sub tnum muted" id="big-interval">${escapeHtml(rc.interval)}</div>` : ""}
+    ${rc.index ? `<div class="big-sub tnum muted" id="big-index">${escapeHtml(rc.index)}</div>` : ""}
+    ${rc.detail ? `<details class="what-num" id="what-num"><summary>What this number means</summary><p>${escapeHtml(rc.detail)}</p></details>` : ""}`;
 }
 
 // ---- act 1 (imagery + number) is renderAct1 above; charts below -------------
@@ -411,18 +516,46 @@ function renderCharts(d) {
     </section>`;
 }
 
+// ---- act 3: how sure ---------------------------------------------------------
+//
+// Two placebo figures come out of the run, and they are not the same thing:
+//
+//   placebo_p        the rank of this area's post/pre fit-error ratio among the
+//                    control cells' own ratios -- how unusual it is that the
+//                    no-event prediction broke down here after the event date,
+//                    judged against how well it fitted before. This is the
+//                    formal test.
+//   placebo_p_effect the share of control cells whose signed post-event gap was
+//                    at least as large in the same direction -- a count by
+//                    effect size, ignoring pre-event fit.
+//
+// Both are (k + 1) / (n + 1) by construction (Abadie's "+1"), so the underlying
+// count k comes back exactly. The page used to describe the second and compute
+// the first; each now says what it is, on its own line.
+
+function placeboCount(p, n) {
+  if (!Number.isFinite(p) || !Number.isFinite(n)) return null;
+  return Math.max(0, Math.round(p * (n + 1)) - 1);
+}
+
 function renderSure(d) {
   const lead = d.verdict.lead_signal;
   const sig = d.signals[lead];
-  const k = Math.max(0, Math.round(sig.placebo_p * (sig.placebo_n + 1)) - 1);
-  const st = d.verdict.status;
-  const tail = st === "REAL" ? " That is why we call it real." : (st === "NOT_REAL" ? " That is why we call it not real." : "");
+  const n = sig.placebo_n;
+  const kFit = placeboCount(sig.placebo_p, n);
+  const kGap = placeboCount(sig.placebo_p_effect, n);
+  const fitLine = kFit === null
+    ? `<p class="sure-line">No in-space placebo test ran for this signal.</p>`
+    : `<p class="sure-line"><span class="sure-tag">Placebo test</span>The same test was run on ${n} untouched control cells nearby. In ${kFit} of them, the no-event prediction missed by as much after the event date — relative to how closely it matched before — as it did here (placebo p ${sig.placebo_p.toFixed(2)}).</p>`;
+  const gapLine = kGap === null
+    ? ""
+    : `<p class="sure-line second"><span class="sure-tag">Counted by gap size instead</span>${kGap} of those ${n} cells moved at least as far as this area did, in the same direction (${sig.placebo_p_effect.toFixed(2)}).</p>`;
   return `
     <section class="act reveal" id="act-3">
       <div class="label">How sure</div>
       <div class="sure-row">
         <div class="strip-wrap" id="placebo-strip"></div>
-        <p class="sure-line">${k} of ${sig.placebo_n} similar areas nearby showed a change this big.${tail}</p>
+        <div class="sure-lines">${fitLine}${gapLine}</div>
       </div>
     </section>`;
 }
@@ -438,7 +571,10 @@ function renderNumbers(d) {
     ["Effect", `${fmtSigned(lead, sig.point)}${unitFor(lead)} relative to the no-event trajectory, ${d.post_months} months after the event`],
     ["90% interval", `${fmtSigned(lead, sig.lo)} to ${fmtSigned(lead, sig.hi)}`],
     ["Smallest meaningful change", fmtSignalValue(lead, sig.min_effect)],
-    ["Placebo (space)", `${sig.placebo_p.toFixed(3)} over ${sig.placebo_n} control cells`],
+    ["Placebo p (fit ratio)", `${sig.placebo_p.toFixed(3)} — share of ${sig.placebo_n} control cells whose post-event fit error grew, against their own pre-event fit, at least as much as this area's did`],
+    ["Placebo p (gap size)", Number.isFinite(sig.placebo_p_effect)
+      ? `${sig.placebo_p_effect.toFixed(3)} — share of the same cells whose post-event gap was at least as large in the same direction`
+      : "n/a"],
     ["p for no effect", Number.isFinite(sig.p_zero) ? sig.p_zero.toFixed(3) : "n/a"],
     ["Pre-event fit error", `${fmtSignalValue(lead, sig.pre_rmse)} (typical for controls ${fmtSignalValue(lead, sig.placebo_pre_rmse_median)})`],
     ["Observation periods", `${sig.n_pre} before, ${sig.n_post} after; bins of ${d.method.bin_days} days`],
@@ -678,9 +814,134 @@ function render(d) {
   const dc = document.getElementById("dtl-controls");
   if (dc) dc.addEventListener("toggle", () => { if (dc.open && !mapDone) { mapDone = true; setTimeout(() => initControlMap(d), 120); } });
   initPill(d);
+  initAnalystLayer(d);
   wireCopyLink(document.getElementById("copy-link-btn"));
   initHowItWorksDrawer();
   renderFooter(document.getElementById("site-footer"), { withHowItWorks: false });
+}
+
+// ---- analyst layer -----------------------------------------------------------
+//
+// A human annotation attached to this run: the reviewer's call, a status, a
+// note and evidence links. It sits below the verdict and below everything the
+// tool computed, in a box labelled "Human annotation", and it never changes
+// the verdict: nothing in here is read by the pipeline, and the API that
+// stores it is separate from the one that serves the run. Persisted through
+// the review router (src/app/review.py); if that router is not mounted, the
+// section is simply not shown.
+
+const ANALYST_STYLE = `
+.analyst { margin: 40px 0 72px; border-top: 1px solid var(--rule); padding-top: 18px; }
+.analyst .analyst-kicker { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 500; }
+.analyst h2 { font-size: 19px; font-weight: 600; margin-top: 6px; }
+.analyst .analyst-sub { color: var(--muted); font-size: 13px; max-width: 620px; margin-top: 6px; }
+.analyst .ann { border: 1px solid var(--rule); background: var(--panel); padding: 12px; margin-top: 12px; }
+.analyst .ann-head { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; font-size: 13px; }
+.analyst .ann-call { font-weight: 600; }
+.analyst .ann-status { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; border: 1px solid var(--rule); padding: 1px 6px; }
+.analyst .ann-note { margin-top: 8px; white-space: pre-wrap; }
+.analyst .ann-links { margin-top: 8px; font-size: 13px; word-break: break-all; }
+.analyst form { margin-top: 14px; display: grid; gap: 10px; max-width: 620px; }
+.analyst select, .analyst input, .analyst textarea { font: inherit; padding: 7px 9px; border: 1px solid var(--rule); background: var(--panel); color: var(--ink); border-radius: 2px; }
+.analyst .analyst-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.analyst .analyst-msg { font-size: 13px; color: var(--muted); }
+`;
+
+const CALL_WORDS = { changed: "Analyst: changed", not_changed: "Analyst: not changed", unsure: "Analyst: unsure" };
+
+function annotationHtml(a) {
+  const links = (a.links || [])
+    .map((u) => `<a href="${escapeHtml(u)}" target="_blank" rel="noopener">${escapeHtml(u)}</a>`)
+    .join(" · ");
+  return `
+    <div class="ann">
+      <div class="ann-head">
+        ${a.call ? `<span class="ann-call">${escapeHtml(CALL_WORDS[a.call] || a.call)}</span>` : ""}
+        ${a.status ? `<span class="ann-status">${escapeHtml(String(a.status).replace("_", " "))}</span>` : ""}
+        <span class="muted">${escapeHtml(a.author || "anonymous")} · ${escapeHtml((a.created || "").slice(0, 10))}</span>
+      </div>
+      ${a.note ? `<div class="ann-note">${escapeHtml(a.note)}</div>` : ""}
+      ${links ? `<div class="ann-links">${links}</div>` : ""}
+    </div>`;
+}
+
+async function initAnalystLayer(d) {
+  let data;
+  try {
+    data = await apiGet(`/api/review/annotations/${encodeURIComponent(d.id)}`);
+  } catch (err) {
+    return;                       // review router not mounted: no analyst layer
+  }
+  if (!document.getElementById("analyst-style")) {
+    const st = document.createElement("style");
+    st.id = "analyst-style";
+    st.textContent = ANALYST_STYLE;
+    document.head.appendChild(st);
+  }
+  const section = document.createElement("section");
+  section.className = "analyst";
+  section.id = "analyst-layer";
+  contentEl.appendChild(section);
+
+  let annotations = data.annotations || [];
+
+  function draw() {
+    section.innerHTML = `
+      <div class="analyst-kicker">Human annotation</div>
+      <h2>Analyst review</h2>
+      <p class="analyst-sub">The verdict above is the tool's output: a statistical test of this area against matched control areas. Everything in this box was typed by a person, is kept beside that verdict as evidence, and does not change it.</p>
+      ${annotations.length
+        ? annotations.map(annotationHtml).join("")
+        : `<p class="analyst-sub" style="margin-top:12px">No analyst has annotated this run yet.</p>`}
+      <form id="ann-form">
+        <div class="analyst-row">
+          <label>Call
+            <select name="call">
+              <option value="">no call</option>
+              <option value="changed">changed</option>
+              <option value="not_changed">not changed</option>
+              <option value="unsure">unsure</option>
+            </select>
+          </label>
+          <label>Status
+            <select name="status">
+              <option value="in_review">in review</option>
+              <option value="confirmed">confirmed</option>
+              <option value="disputed">disputed</option>
+            </select>
+          </label>
+          <input name="author" type="text" placeholder="Your name (optional)" aria-label="Author">
+        </div>
+        <textarea name="note" rows="3" placeholder="What did you check, and what did you see?" aria-label="Note"></textarea>
+        <input name="links" type="text" placeholder="Evidence links, space separated (https://…)" aria-label="Evidence links">
+        <div class="analyst-row">
+          <button class="btn" type="submit">Attach annotation</button>
+          <span class="analyst-msg" id="ann-msg"></span>
+        </div>
+      </form>`;
+    const form = section.querySelector("#ann-form");
+    const msg = section.querySelector("#ann-msg");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = new FormData(form);
+      msg.textContent = "Saving…";
+      try {
+        const res = await apiPost("/api/review/annotations", {
+          run_id: d.id,
+          call: (f.get("call") || "").toString(),
+          status: (f.get("status") || "").toString(),
+          note: (f.get("note") || "").toString().slice(0, 4000),
+          links: (f.get("links") || "").toString().split(/\s+/).filter(Boolean),
+          author: (f.get("author") || "").toString().slice(0, 80),
+        });
+        annotations = [res.annotation].concat(annotations);
+        draw();
+      } catch (err) {
+        msg.textContent = `Could not save: ${err.message}`;
+      }
+    });
+  }
+  draw();
 }
 
 // ---- boot --------------------------------------------------------------------
