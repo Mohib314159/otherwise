@@ -19,7 +19,7 @@ from .series import AreaData, SensorSeries, cache_key
 
 CACHE_DIR = os.environ.get("APP_CACHE_DIR", "data/cache")
 WORKERS = int(os.environ.get("APP_FETCH_WORKERS", "16"))
-LIVE_WORKERS = int(os.environ.get("APP_LIVE_FETCH_WORKERS", "3"))
+LIVE_WORKERS = int(os.environ.get("APP_LIVE_FETCH_WORKERS", "2"))
 USER_RECEIPTS = ("cloud", "haze", "duplicate", "orbit", "edge", "read-error")   # shown on the verdict page
 Progress = Callable[[str, int, int], None]
 
@@ -255,7 +255,12 @@ def _fetch_group(polys_utm, src_epsg, group_wgs84, start, end, prov, s1_prov, se
 
 
 def _strip_treated(ss: SensorSeries | None) -> SensorSeries | None:
-    """Donor-only groups have no treated column; drop the dummy zone 0 column."""
+    """Drop a leading treated column from a donor group series.
+
+    Unused since donor groups stopped being read with the treated polygon in
+    their window (that inflated the wide-mode read window 4-11x). Kept because
+    a cached AreaData written by the old path still has the extra column.
+    """
     if ss is None:
         return None
     return SensorSeries(ss.sensor, ss.dates, {k: v[:, 1:] for k, v in ss.values.items()}, ss.scene_ids, ss.meta)
@@ -473,11 +478,16 @@ def _fetch_wide(area_geojson, start, end, *, providers, inner_m, outer_m, max_ce
         minx = min(c.bounds[0] for c in cells); miny = min(c.bounds[1] for c in cells)
         maxx = max(c.bounds[2] for c in cells); maxy = max(c.bounds[3] for c in cells)
         g_wgs = reproject(_box(minx, miny, maxx, maxy), area.epsg, 4326)
-        s2_g, s1_g, counts_g = _fetch_group([area.utm] + cells, area.epsg, g_wgs, start, end, prov, s1_prov,
+        # Read the donor cells ONLY. Passing the treated polygon as well put it in
+        # the same Zones bounding box, and in wide mode the cells sit 20-150 km
+        # away, so the window stretched across that whole separation: measured on
+        # Rhodes, 4.47 Mpx with the treated polygon against 0.41 Mpx without --
+        # 4-11x per group. It was only there so column 0 could be stripped again
+        # afterwards. This is what pushed a wide run to the 512 MiB ceiling.
+        s2_g, s1_g, counts_g = _fetch_group(cells, area.epsg, g_wgs, start, end, prov, s1_prov,
                                             sensors, progress, receipts, donor_res, False,
                                             f" group {gi + 1}/{len(buckets)}",
                                             cfg=cfg, bin_anchor=event_date)
-        s2_g, s1_g = _strip_treated(s2_g), _strip_treated(s1_g)
         _despike_donors(s2_g, 0)
         groups.append({"cells_geojson": [mapping(reproject(c, area.epsg, 4326)) for c in cells],
                        "distance_m": [float(cands.distances_m[i]) for i in idxs],
@@ -608,10 +618,12 @@ def _fetch_live_ring(area_geojson, start, end, *, providers, inner_m, outer_m, m
         maxx = max(c.bounds[2] for c in cells); maxy = max(c.bounds[3] for c in cells)
         g_wgs = reproject(_box(minx, miny, maxx, maxy), area.epsg, 4326)
         tag = "" if len(buckets) == 1 else f" group {gi + 1}/{len(buckets)}"
-        s2_g, s1_g, counts_g = _fetch_group([area.utm] + cells, area.epsg, g_wgs, start, end, prov,
+        # Cells only, as in wide mode above. Here the ring surrounds the area so the
+        # window barely changes, but keeping one convention means the donor series
+        # has the same shape on both paths.
+        s2_g, s1_g, counts_g = _fetch_group(cells, area.epsg, g_wgs, start, end, prov,
                                             s1_prov, sensors, progress, receipts, donor_res, False,
                                             " controls" + tag, cfg=cfg, bin_anchor=event_date)
-        s2_g, s1_g = _strip_treated(s2_g), _strip_treated(s1_g)
         _despike_donors(s2_g, 0)
         groups.append({"cells_geojson": [mapping(reproject(c, area.epsg, 4326)) for c in cells],
                        "distance_m": [float(grid.distances_m[i]) for i in idxs],

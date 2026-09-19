@@ -28,7 +28,7 @@ GDAL_ENV = dict(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",
                 GDAL_HTTP_MERGE_CONSECUTIVE_RANGES="YES",
                 GDAL_HTTP_MULTIPLEX="YES", VSI_CACHE="TRUE",
                 VSI_CACHE_SIZE=int(os.environ.get("APP_VSI_CACHE_BYTES", 4_000_000)),
-                GDAL_CACHEMAX=int(os.environ.get("APP_GDAL_CACHEMAX_MB", 48)),
+                GDAL_CACHEMAX=int(os.environ.get("APP_GDAL_CACHEMAX_MB", 32)),
                 GDAL_NUM_THREADS="1")
 
 SNAP_M = 60.0     # Sentinel-2 tile origins are multiples of 60 m, so a 60 m snap
