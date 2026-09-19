@@ -1,0 +1,291 @@
+{
+ "seed": 20260918,
+ "sample_generated": "2026-09-18T21:07:58+00:00",
+ "sample_n": 80,
+ "sample_git_commit": "40a4aa4",
+ "git_commit": "6d8776d",
+ "generated": "2026-09-18T23:36:08+00:00",
+ "completed": 40,
+ "pending": 40,
+ "median_seconds": 1501.0,
+ "overall": {
+  "n": 40,
+  "n_events": 40,
+  "n_nulls": 0,
+  "errors": 35,
+  "events": {
+   "n": 5,
+   "hit": 4,
+   "miss": 0,
+   "cant_tell": 1,
+   "error": 35,
+   "detection_rate": 0.8,
+   "miss_rate": 0.0,
+   "cant_tell_rate": 0.2
+  },
+  "nulls": {
+   "n": 0,
+   "false_alarm": 0,
+   "correct": 0,
+   "cant_tell": 0,
+   "error": 0,
+   "false_alarm_rate": null,
+   "correct_rate": null,
+   "cant_tell_rate": null
+  }
+ },
+ "by": {
+  "type": {
+   "clearing": {
+    "n": 40,
+    "n_events": 40,
+    "n_nulls": 0,
+    "errors": 35,
+    "events": {
+     "n": 5,
+     "hit": 4,
+     "miss": 0,
+     "cant_tell": 1,
+     "error": 35,
+     "detection_rate": 0.8,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 0.2
+    },
+    "nulls": {
+     "n": 0,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 0,
+     "error": 0,
+     "false_alarm_rate": null,
+     "correct_rate": null,
+     "cant_tell_rate": null
+    }
+   }
+  },
+  "source": {
+   "hansen": {
+    "n": 40,
+    "n_events": 40,
+    "n_nulls": 0,
+    "errors": 35,
+    "events": {
+     "n": 5,
+     "hit": 4,
+     "miss": 0,
+     "cant_tell": 1,
+     "error": 35,
+     "detection_rate": 0.8,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 0.2
+    },
+    "nulls": {
+     "n": 0,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 0,
+     "error": 0,
+     "false_alarm_rate": null,
+     "correct_rate": null,
+     "cant_tell_rate": null
+    }
+   }
+  },
+  "size_bucket": {
+   "<50 ha": {
+    "n": 30,
+    "n_events": 30,
+    "n_nulls": 0,
+    "errors": 27,
+    "events": {
+     "n": 3,
+     "hit": 3,
+     "miss": 0,
+     "cant_tell": 0,
+     "error": 27,
+     "detection_rate": 1.0,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 0.0
+    },
+    "nulls": {
+     "n": 0,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 0,
+     "error": 0,
+     "false_alarm_rate": null,
+     "correct_rate": null,
+     "cant_tell_rate": null
+    }
+   },
+   "50-150 ha": {
+    "n": 9,
+    "n_events": 9,
+    "n_nulls": 0,
+    "errors": 8,
+    "events": {
+     "n": 1,
+     "hit": 1,
+     "miss": 0,
+     "cant_tell": 0,
+     "error": 8,
+     "detection_rate": 1.0,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 0.0
+    },
+    "nulls": {
+     "n": 0,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 0,
+     "error": 0,
+     "false_alarm_rate": null,
+     "correct_rate": null,
+     "cant_tell_rate": null
+    }
+   },
+   ">150 ha": {
+    "n": 1,
+    "n_events": 1,
+    "n_nulls": 0,
+    "errors": 0,
+    "events": {
+     "n": 1,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 1,
+     "error": 0,
+     "detection_rate": 0.0,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 1.0
+    },
+    "nulls": {
+     "n": 0,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 0,
+     "error": 0,
+     "false_alarm_rate": null,
+     "correct_rate": null,
+     "cant_tell_rate": null
+    }
+   }
+  },
+  "climate": {
+   "tropical": {
+    "n": 7,
+    "n_events": 7,
+    "n_nulls": 0,
+    "errors": 4,
+    "events": {
+     "n": 3,
+     "hit": 2,
+     "miss": 0,
+     "cant_tell": 1,
+     "error": 4,
+     "detection_rate": 0.667,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 0.333
+    },
+    "nulls": {
+     "n": 0,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 0,
+     "error": 0,
+     "false_alarm_rate": null,
+     "correct_rate": null,
+     "cant_tell_rate": null
+    }
+   },
+   "temperate": {
+    "n": 16,
+    "n_events": 16,
+    "n_nulls": 0,
+    "errors": 16,
+    "events": {
+     "n": 0,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 0,
+     "error": 16,
+     "detection_rate": null,
+     "miss_rate": null,
+     "cant_tell_rate": null
+    },
+    "nulls": {
+     "n": 0,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 0,
+     "error": 0,
+     "false_alarm_rate": null,
+     "correct_rate": null,
+     "cant_tell_rate": null
+    }
+   },
+   "boreal": {
+    "n": 17,
+    "n_events": 17,
+    "n_nulls": 0,
+    "errors": 15,
+    "events": {
+     "n": 2,
+     "hit": 2,
+     "miss": 0,
+     "cant_tell": 0,
+     "error": 15,
+     "detection_rate": 1.0,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 0.0
+    },
+    "nulls": {
+     "n": 0,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 0,
+     "error": 0,
+     "false_alarm_rate": null,
+     "correct_rate": null,
+     "cant_tell_rate": null
+    }
+   }
+  },
+  "date_precision": {
+   "year": {
+    "n": 40,
+    "n_events": 40,
+    "n_nulls": 0,
+    "errors": 35,
+    "events": {
+     "n": 5,
+     "hit": 4,
+     "miss": 0,
+     "cant_tell": 1,
+     "error": 35,
+     "detection_rate": 0.8,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 0.2
+    },
+    "nulls": {
+     "n": 0,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 0,
+     "error": 0,
+     "false_alarm_rate": null,
+     "correct_rate": null,
+     "cant_tell_rate": null
+    }
+   }
+  }
+ },
+ "definitions": {
+  "detection_rate": "REAL verdicts / finished event runs",
+  "miss_rate": "NOT_REAL verdicts / finished event runs",
+  "false_alarm_rate": "REAL verdicts / finished null runs",
+  "correct_rate": "NOT_REAL verdicts / finished null runs",
+  "cant_tell_rate": "CAN'T TELL verdicts / finished runs of that kind",
+  "error": "the run raised or timed out; excluded from the rates"
+ }
+}

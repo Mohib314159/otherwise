@@ -28,6 +28,7 @@ ROW_FIELDS = ["id", "label", "source", "type", "expected", "status", "lead", "po
 SIZE_BUCKETS = ["<50 ha", "50-150 ha", ">150 ha"]
 CLIMATES = ["tropical", "temperate", "boreal", "dry"]
 TIMEOUT_S = 25 * 60
+RUN_ORDER_SEED = [None]          # set from --shuffle-seed, recorded in summary.json
 
 
 # ----------------------------------------------------------------------------
@@ -154,6 +155,7 @@ def build_summary(sample: dict, rows: list[dict]) -> dict:
         "completed": len(rows), "pending": sample.get("n_items", 0) - len(rows),
         "median_seconds": (sorted(r["seconds"] for r in done)[len(done) // 2] if done else None),
         "overall": _counts(rows), "by": by,
+        "run_order_seed": RUN_ORDER_SEED[0],
         "definitions": {"detection_rate": "REAL verdicts / finished event runs",
                         "miss_rate": "NOT_REAL verdicts / finished event runs",
                         "false_alarm_rate": "REAL verdicts / finished null runs",
@@ -325,7 +327,11 @@ def load_rows(path: str) -> dict[str, dict]:
 
 
 def refresh(sample: dict, rows: dict[str, dict], out_dir: str, sample_path: str, parallel: int, doc_path: str):
-    lst = list(rows.values())
+    """Rebuild summary.json and the doc. Rows on disk are merged in first, so a
+    second runner working on other items does not erase them from the tables."""
+    merged = load_rows(os.path.join(out_dir, "results.jsonl"))
+    merged.update(rows)
+    lst = list(merged.values())
     summary = build_summary(sample, lst)
     with open(os.path.join(out_dir, "summary.json"), "w") as f:
         json.dump(summary, f, indent=1)
@@ -340,11 +346,17 @@ def main(argv=None):
     ap.add_argument("--parallel", type=int, default=3)
     ap.add_argument("--ids", nargs="*", default=None, help="only these item ids")
     ap.add_argument("--limit", type=int, default=None, help="stop after this many new items")
+    ap.add_argument("--shuffle-seed", type=int, default=None,
+                    help="run the outstanding items in this seeded random order. Runs take minutes "
+                         "each, so a run is normally stopped before the sample is exhausted; a "
+                         "seeded shuffle makes the finished subset a random subsample of the draw "
+                         "(rather than all events, or all of one tile) so the rates stay unbiased.")
     ap.add_argument("--summary-only", action="store_true")
     ap.add_argument("--timeout", type=int, default=TIMEOUT_S)
     ap.add_argument("--doc", default="docs/BLIND_VALIDATION.md")
     a = ap.parse_args(argv)
 
+    RUN_ORDER_SEED[0] = a.shuffle_seed
     out_dir = a.out if a.out.endswith("/") else a.out + "/"
     runs_dir = os.path.join(out_dir, "runs")
     os.makedirs(runs_dir, exist_ok=True)
@@ -373,6 +385,9 @@ def main(argv=None):
         return
 
     todo = [it for it in items if it["id"] not in rows or rows[it["id"]].get("status") in (None, "error")]
+    if a.shuffle_seed is not None:
+        import random as _random
+        _random.Random(a.shuffle_seed).shuffle(todo)
     if a.limit:
         todo = todo[:a.limit]
     log(f"{len(items)} items in scope, {len(rows)} rows already, {len(todo)} to run, parallel={a.parallel}")
