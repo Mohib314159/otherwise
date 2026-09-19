@@ -39,7 +39,9 @@ import pytest
 from src.app.geometry import MAX_AREA_HA, MIN_AREA_HA, PolygonError, validate_polygon
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-WEB_DIR = os.path.join(ROOT, "web")
+# OTHERWISE_WEB_DIR points the browser tests at another copy of web/ — useful for
+# replaying them against an older landing.js to show what they would have caught.
+WEB_DIR = os.environ.get("OTHERWISE_WEB_DIR") or os.path.join(ROOT, "web")
 
 # Exactly what web/index.html loads. Fetched by the test process (not the
 # browser) and replayed from memory, so the run is offline and deterministic.
