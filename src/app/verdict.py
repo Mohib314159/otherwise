@@ -52,6 +52,10 @@ class SignalResult:
     placebo_n: int
     time_placebo_flags: list[bool] = field(default_factory=list)
     placebo_effect_median: float = 0.0     # median post-event gap across placebo cells
+    # True when every placebo unit re-ran the treated unit's donor selection on
+    # itself. False means the p-value came from the old asymmetric procedure and
+    # is anti-conservative -- see DECISIONS.md, CRITIQUE #4.
+    placebo_symmetric: bool = False
 
     @property
     def min_effect(self) -> float:

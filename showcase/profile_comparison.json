@@ -54,9 +54,25 @@
     "n_pre": 84,
     "n_post": 15
    },
-   "live": null,
+   "live": {
+    "verdict": "REAL",
+    "mode": "wide",
+    "lead": "NBR",
+    "point": -0.45150172383629716,
+    "lo": -0.4729486427836487,
+    "hi": -0.30137329120483647,
+    "width": 0.1716,
+    "placebo_p": 0.03571428571428571,
+    "n_donors": 27,
+    "n_pre": 83,
+    "n_post": 14,
+    "donor_res_m": null,
+    "scenes_read": null,
+    "scenes_covering": 406,
+    "peak_note": "peak RSS is measured by scripts/memtest.py, not here"
+   },
    "error": null,
-   "live_seconds": null
+   "live_seconds": 10122.6
   },
   {
    "key": "tablemountain",
@@ -75,9 +91,25 @@
     "n_pre": 86,
     "n_post": 12
    },
-   "live": null,
+   "live": {
+    "verdict": "REAL",
+    "mode": "ring",
+    "lead": "NBR",
+    "point": -0.46512784626661424,
+    "lo": -0.5405880128338145,
+    "hi": -0.3701940883272333,
+    "width": 0.1704,
+    "placebo_p": 0.024390243902439025,
+    "n_donors": 40,
+    "n_pre": 84,
+    "n_post": 12,
+    "donor_res_m": 40.0,
+    "scenes_read": 192,
+    "scenes_covering": 192,
+    "peak_note": "peak RSS is measured by scripts/memtest.py, not here"
+   },
    "error": null,
-   "live_seconds": null
+   "live_seconds": 1866.8
   },
   {
    "key": "austin",
@@ -227,5 +259,5 @@
    "live_seconds": null
   }
  ],
- "generated": 1789805099.4955485
+ "generated": 1789817088.9144504
 }

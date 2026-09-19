@@ -51,7 +51,8 @@ def _analyse(dates, values, event_np, donor_all_idx, cov, signal, sensor, expect
         return None
     sel = select_donors(b.matrix, b.pre, b.donor_cov, cov, k=donor_k)
     y = b.matrix[:, 0]
-    D = b.matrix[:, 1:][:, sel.index].T                  # (m, B)
+    pool = b.matrix[:, 1:].T                             # (n, B) every covered candidate
+    D = pool[sel.index]                                  # (m, B) the treated unit's donors
     if D.shape[0] < 3:
         return None
     progress(f"{signal}: fitting", 0, 1)
@@ -59,7 +60,11 @@ def _analyse(dates, values, event_np, donor_all_idx, cov, signal, sensor, expect
     point = float(np.mean(f.effect[~b.pre]))
     ci = conformal_interval(y, D, b.pre, f.lam, point, max(f.pre_rmse, 1e-3), alpha=ALPHA)
     progress(f"{signal}: placebo", 0, 1)
-    sp = space_placebo(y, D, b.pre, f.lam, point, max_units=60)
+    # Placebo units are drawn from the whole candidate pool, and each one re-runs
+    # the treated unit's donor selection on itself. See DECISIONS.md, CRITIQUE #4.
+    cell_of_col = np.where(b.donor_cov >= 0.70)[0]
+    sp = space_placebo(y, D, b.pre, f.lam, point, max_units=60, pool=pool,
+                       select_for=_placebo_selector(pool, b.pre, cell_of_col, cov, donor_k))
     tp = time_placebos(y, D, b.pre, f.lam, n=3, min_effect=MIN_EFFECT[signal], alpha=ALPHA)
     res = SignalResult(signal=signal, sensor=sensor, expected_sign=expected_sign,
                        point=point, lo=ci.lo, hi=ci.hi, p_zero=ci.p_zero, pre_rmse=f.pre_rmse,
@@ -67,7 +72,8 @@ def _analyse(dates, values, event_np, donor_all_idx, cov, signal, sensor, expect
                        n_pre=int(b.pre.sum()), n_post=int((~b.pre).sum()), n_donors=int(D.shape[0]),
                        placebo_p=sp.p_value, placebo_p_effect=sp.p_effect, placebo_n=int(len(sp.ratios)),
                        time_placebo_flags=[t.flagged for t in tp],
-                       placebo_effect_median=float(np.median(sp.effects)))
+                       placebo_effect_median=float(np.median(sp.effects)),
+                       placebo_symmetric=bool(sp.symmetric))
     band_lo = np.percentile(sp.effect_series, 5, axis=0)
     band_hi = np.percentile(sp.effect_series, 95, axis=0)
     chart = {
@@ -89,6 +95,46 @@ def _analyse(dates, values, event_np, donor_all_idx, cov, signal, sensor, expect
               "weights": np.round(f.weights, 4).tolist(), "pre_rmse": np.round(sel.pre_rmse, 4).tolist(),
               "notes": sel.notes, "counts": sel.counts}
     return res, chart, donors
+
+
+def _placebo_selector(pool: np.ndarray, pre: np.ndarray, cell_of_col: np.ndarray,
+                      cov: Covariates | None, k: int):
+    """Give every placebo unit the same donor selection the treated unit got.
+
+    `pool` is (n, T): every covered candidate cell. `cell_of_col[i]` is the grid
+    cell behind pool row i, which is how a unit's own covariates are found
+    (Covariates arrays are indexed 0 = treated area, c + 1 = cell c).
+
+    Returns select_for(j) -> row indices into `pool`, being the donors unit j
+    gets when `select_donors` is applied with j in the treated slot: ranked by
+    j's own pre-event similarity, filtered by j's own land cover and elevation,
+    same k, same relaxation rules. See DECISIONS.md, CRITIQUE #4.
+    """
+    n = pool.shape[0]
+    all_rows = np.arange(n)
+
+    def select_for(j: int):
+        others = all_rows[all_rows != j]
+        if len(others) < 3:
+            return None
+        # unit j in the treated slot, every other candidate as a donor
+        matrix_j = np.column_stack([pool[j], pool[others].T])
+        cov_j = None
+        if cov is not None:
+            cj, co = cell_of_col[j], cell_of_col[others]
+
+            def take(arr):
+                return np.concatenate([[arr[cj + 1]], arr[co + 1]])
+
+            cov_j = Covariates(take(cov.landcover).astype(int), take(cov.landcover_frac),
+                               take(cov.elevation), take(cov.slope), cov.year)
+        # every column of matrix_j is a real candidate, so coverage is all ones and
+        # select_donors' internal good_idx becomes the identity -- its assertion
+        # that the two line up is what keeps this honest
+        sel_j = select_donors(matrix_j, pre, np.ones(len(others)), cov_j, k=k)
+        return others[sel_j.index]
+
+    return select_for
 
 
 WIDE_INNER_M = 20_000.0

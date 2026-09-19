@@ -197,32 +197,71 @@ class SpacePlacebo:
     effects: np.ndarray                # mean post effect of each donor treated as if it were the area
     pre_rmses: np.ndarray
     effect_series: np.ndarray          # (units, T) effect path of each placebo unit
+    symmetric: bool = False            # True when every placebo unit re-ran donor selection
 
 
 def _ratio(effect, pre):
     return float(np.sqrt(np.mean(effect[~pre] ** 2)) / (np.sqrt(np.mean(effect[pre] ** 2)) + 1e-9))
 
 
-def space_placebo(y, D, pre, lam: float, treated_effect: float, max_units: int = 60) -> SpacePlacebo:
-    """Each donor becomes the 'treated' unit, fitted on the other donors.
-    Uses the same estimator as the real fit so the comparison is like for like."""
+def space_placebo(y, D, pre, lam: float, treated_effect: float, max_units: int = 60,
+                  pool: np.ndarray | None = None, select_for=None,
+                  retune_lambda: bool = True) -> SpacePlacebo:
+    """Each candidate cell becomes the 'treated' unit, under the IDENTICAL procedure.
+
+    y: (T,) treated; D: (m, T) the treated unit's selected donors; pre: (T,) bool.
+
+    `pool` is the full candidate set (n, T) the treated unit's donors were chosen
+    from, and `select_for(j)` returns the donors that unit j gets when the same
+    selection procedure is applied to it -- its own pre-event ranking, its own
+    land cover and elevation, the same k. Both must be supplied together.
+
+    Why this matters (CRITIQUE.md issue 4, pre-registered in DECISIONS.md): the
+    treated unit's pool is an argmax over n candidates, chosen by minimising
+    pre-period fit error on the very pre-period the RMSPE ratio's denominator is
+    computed from. Fitting placebo units on *that* pool, with the treated unit's
+    tuned ridge penalty, left the treated denominator optimistically small and
+    every placebo's honest, which inflated the treated ratio and shrank p. The
+    placebo test was anti-conservative on every run.
+
+    Without `pool`/`select_for` the old, asymmetric behaviour is used. That path
+    exists only for the offline diagnostic scripts that have no candidate set to
+    hand; it reports `symmetric=False` so a result computed that way is never
+    mistaken for a symmetric one.
+    """
     f = fit_ascm(y, D, pre, lam=lam)
     t_ratio = _ratio(f.effect, pre)
-    m = D.shape[0]
-    units = np.arange(m) if m <= max_units else np.linspace(0, m - 1, max_units).round().astype(int)
+    symmetric = pool is not None and select_for is not None
+    units_src = pool if symmetric else D
+    n = units_src.shape[0]
+    units = np.arange(n) if n <= max_units else np.linspace(0, n - 1, max_units).round().astype(int)
     ratios, effects, pres, paths = [], [], [], []
     for j in units:
-        keep = np.ones(m, dtype=bool); keep[j] = False
-        g = fit_ascm(D[j], D[keep], pre, lam=lam)
+        if symmetric:
+            idx = select_for(int(j))
+            if idx is None or len(idx) < 3:
+                continue                      # too few valid controls for this unit
+            Dj = pool[idx]
+            lam_j = None if retune_lambda else lam
+        else:
+            keep = np.ones(n, dtype=bool); keep[j] = False
+            Dj = D[keep]
+            lam_j = lam
+        g = fit_ascm(units_src[j], Dj, pre, lam=lam_j)
         ratios.append(_ratio(g.effect, pre))
         effects.append(float(np.mean(g.effect[~pre])))
         pres.append(g.pre_rmse)
         paths.append(g.effect)
+    if not ratios:                            # no placebo unit could be fitted
+        empty = np.zeros(0)
+        return SpacePlacebo(1.0, 1.0, t_ratio, empty, empty, empty,
+                            np.zeros((0, len(y))), symmetric)
     ratios, effects, pres = map(np.asarray, (ratios, effects, pres))
     p = (np.sum(ratios >= t_ratio) + 1) / (len(ratios) + 1)
     sign = np.sign(treated_effect) if treated_effect != 0 else 1.0
     p_eff = (np.sum(sign * effects >= sign * treated_effect) + 1) / (len(effects) + 1)
-    return SpacePlacebo(float(p), float(p_eff), t_ratio, ratios, effects, pres, np.vstack(paths))
+    return SpacePlacebo(float(p), float(p_eff), t_ratio, ratios, effects, pres,
+                        np.vstack(paths), symmetric)
 
 
 @dataclass

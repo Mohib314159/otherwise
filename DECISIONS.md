@@ -915,3 +915,45 @@ fake date. That is a real defect and it is logged here as the next thing to fix,
 but it is **not** part of this change, so that the re-run measures exactly one
 thing. Changing two placebo procedures at once would make it impossible to
 attribute any movement in the published numbers to either.
+
+### What the implementation showed, against the prediction above
+
+**My pre-registered prediction was too simple, and I am recording that before
+the re-runs rather than quietly adjusting it.** I predicted "placebo p-values
+should go up". On synthetic panels p went *down* — 0.0909 to 0.0244 on all eight
+seeds. That looked like the opposite of the intended effect. It is not:
+
+- 0.0909 is exactly 1/11 and 0.0244 is exactly 1/41. **Both are the floor**,
+  `1/(units + 1)`. In each case the treated unit beat every placebo, so p was
+  pinned at the smallest value the rank statistic can express. What changed was
+  not the evidence but the **resolution**, because the fix also draws placebo
+  units from the whole candidate pool instead of the treated unit's selected k,
+  taking the unit count from 10 to 40 on that panel.
+- That is the same distinction I drew against `CRITIQUE.md` issue 5, where the
+  reviewer called Rhodes' p "exactly its own floor" a defect. A floor is a
+  resolution limit, not a bias, and it cuts both ways: more placebo units mean a
+  finer p and the *ability* to express stronger evidence.
+
+Isolating the bias with the **unit set held fixed**, which is the only way to
+compare procedures rather than resolutions:
+
+- A unit fitted on its own selected donors fits better than the same unit fitted
+  on the treated unit's pool: **8 of 9 units**, median pre-event RMSE lower.
+  This is the asymmetry, measured directly.
+- With the unit set fixed, the **median placebo RMSPE ratio rises from 1.259 to
+  1.373**. Placebos become harder to beat, so the test gets stricter. That is the
+  conservative direction predicted, and it is what the fix was for.
+- On null panels (no real effect) the symmetric procedure reached p <= 0.05 in
+  **0 of 12** seeds, mean p 0.514. The sanity check in the other direction
+  passes: nothing became spuriously significant.
+
+So the mechanism is confirmed and the direction of the *procedural* change is
+conservative, while the *resolution* change is a separate, benign effect that
+moves p down. **On the real sites the two will combine**, and which dominates is
+exactly what the re-runs will show. In full mode the unit count is unchanged
+(`max_units=60`, and k was already 80), so the resolution effect should be
+absent there and only the conservative effect should appear. In live mode units
+go from 40 to 60, so a small resolution effect is expected on top.
+
+The tests in `tests/test_placebo_symmetry.py` assert the mechanism and the null
+rate rather than a p direction, for this reason, and say so.
