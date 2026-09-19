@@ -1138,3 +1138,50 @@ Fixed: 2, 3, 7, 10, 11, 12, 13, 14, 15, 17, 18, 21, 22, 23. Left open with
 reasoning in the triage table above: 1, 4 (fixed on the branch, unpublished), 5,
 6, 8, 9, 16, 19, 20. Issue 6 — wide mode giving up co-observation — now applies to
 the live profile too, which is what the "quick check" label exists to admit.
+
+### Live vs full: the completed sweep (10 of 10)
+
+The sweep finished after the HANDOFF above was written. Correcting it: this is no
+longer unfinished.
+
+| Site | Expected | Full | Live | Agree | Full effect | Live effect | Full width | Live width | Full p | Live p |
+|---|---|---|---|---|---|---|---|---|---|---|
+| grunheide | REAL | REAL | REAL | yes | -0.606 | -0.601 | 0.156 | 0.172 | 0.029 | 0.024 |
+| rhodes | REAL | REAL | REAL | yes | -0.468 | -0.452 | 0.178 | 0.172 | 0.023 | 0.036 |
+| tablemountain | REAL | REAL | REAL | yes | -0.463 | -0.465 | 0.285 | 0.170 | 0.032 | 0.024 |
+| austin | REAL | REAL | REAL | yes | -0.188 | -0.188 | 0.069 | 0.050 | 0.016 | 0.024 |
+| saddleworth | REAL | CANT_TELL | **REAL** | **no** | -0.909 | -1.019 | 0.880 | 1.358 | 0.016 | 0.024 |
+| lutzerath | REAL | CANT_TELL | CANT_TELL | yes | -0.074 | -0.083 | 0.109 | 0.116 | 0.623 | 0.854 |
+| hasankeyf | REAL | CANT_TELL | CANT_TELL | yes | 0.101 | 0.759 | 2.050 | 1.600 | 0.951 | 0.268 |
+| sindh | REAL | CANT_TELL | CANT_TELL | yes | -0.129 | -0.247 | 0.000 | 2.050 | 0.508 | 0.317 |
+| richmond | NOT_REAL | CANT_TELL | CANT_TELL | yes | -0.013 | 0.004 | 0.091 | 0.075 | 0.933 | 0.854 |
+| jau | NOT_REAL | CANT_TELL | CANT_TELL | yes | -0.011 | 0.020 | 0.054 | 0.119 | 0.639 | 0.854 |
+
+**9 of 10 agree. Mean live/full interval width ratio 1.09, wider on 4 of 9.**
+
+**The one disagreement matters and is not in live mode's favour.** Saddleworth
+goes CAN'T TELL → REAL, and on the numbers that is live mode being *less*
+cautious about a case the full run refused to call: its interval is wider
+(1.358 against 0.880) on a radar signal that full mode already flagged as having
+too few post-event bins, and its effect grew from -0.909 to -1.019 dB. A verdict
+that flips toward REAL because the evidence got noisier is the wrong direction.
+It does not become a hit for the track record; it is a reason not to present live
+verdicts as equivalent, which is what the "quick check" label now does.
+
+Two further things worth not glossing:
+
+- **Hasankeyf's effect changes sign and magnitude wildly** (+0.101 → +0.759 NDWI)
+  while staying CAN'T TELL. Both runs are uninformative there, so the verdict is
+  right for the wrong-looking reason, but it shows how unstable that site is.
+- **Sindh's degenerate interval (0.000) becomes 2.050.** The full run's
+  zero-width interval was never precision — it was the conformal search failing
+  to find an accepted set, which the generated METHOD.md table now labels as
+  degenerate. Live mode's honest 2.050 is an improvement in presentation even
+  though neither is a usable estimate.
+
+On effect sizes the two profiles agree closely wherever the data support a verdict
+at all: within 0.016 on all four REALs. The disagreements are concentrated exactly
+where the full run already said it could not tell.
+
+**These numbers describe the pre-#4 placebo procedure on both arms** and must be
+re-run once the symmetric placebo is published.
