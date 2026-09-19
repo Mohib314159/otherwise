@@ -128,9 +128,25 @@
     "n_pre": 91,
     "n_post": 22
    },
-   "live": null,
+   "live": {
+    "verdict": "REAL",
+    "mode": "ring",
+    "lead": "NDVI",
+    "point": -0.18751366389733068,
+    "lo": -0.2145195210275014,
+    "hi": -0.16466255401795546,
+    "width": 0.0499,
+    "placebo_p": 0.024390243902439025,
+    "n_donors": 40,
+    "n_pre": 88,
+    "n_post": 22,
+    "donor_res_m": 40.0,
+    "scenes_read": 240,
+    "scenes_covering": 326,
+    "peak_note": "peak RSS is measured by scripts/memtest.py, not here"
+   },
    "error": null,
-   "live_seconds": null
+   "live_seconds": 2004.2
   },
   {
    "key": "saddleworth",
@@ -259,5 +275,5 @@
    "live_seconds": null
   }
  ],
- "generated": 1789817088.9144504
+ "generated": 1789819093.069487
 }
