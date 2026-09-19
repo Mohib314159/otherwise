@@ -33,6 +33,11 @@ MAX_LIVE_JOBS = int(os.environ.get("APP_MAX_LIVE_JOBS", "1"))
 # are produced offline in "full". See DECISIONS.md for the measured difference.
 LIVE_PROFILE = os.environ.get("APP_LIVE_PROFILE", "live")
 LIVE_RUNS_ENABLED = os.environ.get("APP_LIVE_RUNS", "1") == "1"
+# A wedged run used to hold the one live-run slot for the life of the process,
+# so a single bad job blocked every later run until a restart. Threads cannot be
+# killed safely, so cancellation is cooperative: run_verdict calls back on
+# progress often (once per scene), and the callback raises past the deadline.
+JOB_TIMEOUT_S = float(os.environ.get("APP_JOB_TIMEOUT_S", "2400"))
 
 app = FastAPI(title="Otherwise", docs_url=None, redoc_url=None)
 # blind review + analyst annotations; self-contained router, own storage
@@ -41,6 +46,10 @@ app.include_router(review_router)
 _jobs: "OrderedDict[str, dict]" = OrderedDict()
 _lock = threading.Lock()
 _sem = threading.Semaphore(MAX_LIVE_JOBS)
+
+
+class JobTimeout(RuntimeError):
+    """A live run exceeded APP_JOB_TIMEOUT_S and was cancelled at a checkpoint."""
 
 
 class RunRequest(BaseModel):
@@ -92,7 +101,13 @@ def _worker(job_id: str, req: RunRequest):
     with _sem:
         job.update(status="running", stage="starting", done=0, total=1, started=time.time())
 
+        deadline = time.time() + JOB_TIMEOUT_S
+
         def progress(stage, done, total):
+            if time.time() > deadline:
+                raise JobTimeout(
+                    f"This run passed the {JOB_TIMEOUT_S / 60:.0f}-minute limit and was stopped so "
+                    f"other runs can start. Try a smaller area or a shorter window.")
             job.update(stage=stage, done=done, total=total)
 
         try:
@@ -108,6 +123,8 @@ def _worker(job_id: str, req: RunRequest):
             except Exception:
                 traceback.print_exc()
             job.update(status="done", run_id=out["id"], stage="done", done=1, total=1)
+        except JobTimeout as e:
+            job.update(status="error", error=str(e)[:300], stage="error")
         except MemoryBudgetError as e:
             # deliberate, explained refusal rather than an out-of-memory kill
             job.update(status="error", error=str(e)[:300], stage="error")
@@ -216,8 +233,11 @@ def track_record():
 
 @app.get("/api/health")
 def health():
+    running = sum(1 for j in _jobs.values() if j["status"] == "running")
+    queued = sum(1 for j in _jobs.values() if j["status"] == "queued")
     return {"ok": True, "live_runs": LIVE_RUNS_ENABLED, "live_profile": LIVE_PROFILE,
-            "max_live_jobs": MAX_LIVE_JOBS}
+            "max_live_jobs": MAX_LIVE_JOBS, "job_timeout_s": JOB_TIMEOUT_S,
+            "running": running, "queued": queued}
 
 
 # ---- pages -----------------------------------------------------------------
