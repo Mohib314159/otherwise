@@ -173,6 +173,30 @@ def _pct(x):
     return "-" if x is None else f"{100 * x:.0f}%"
 
 
+def _ci(k, n) -> str:
+    """"k of n (rate, 95% CI lo-hi)", or "not measured" when n is 0.
+
+    Wilson score interval (`src.app.review.wilson`): these denominators are
+    small and the rates sit near 0 and 1, where the normal approximation
+    leaves the unit interval."""
+    from src.app.review import wilson
+    if not n:
+        return "not measured (no finished runs of this kind)"
+    ci = wilson(k, n)
+    return f"{k} of {n} = {100 * k / n:.1f}% (95% CI {100 * ci[0]:.1f}-{100 * ci[1]:.1f}%)"
+
+
+def _gap_note(o: dict) -> str:
+    """Say plainly, in the doc, when a rate has no runs behind it yet."""
+    if o["nulls"]["n"] == 0 and o["events"]["n"] > 0:
+        return (" No control (no-change) item has finished yet, so the false-alarm rate "
+                "below is not measured. Until it is, the detection rate on its own says "
+                "nothing about how often the tool cries wolf, and should not be quoted alone.")
+    if o["events"]["n"] == 0:
+        return " No event item has finished yet, so the detection rate is not measured."
+    return ""
+
+
 def _table(title: str, groups: dict) -> str:
     lines = [f"**{title}**", "",
              "| Group | Events (done) | Detected (REAL) | Missed (NOT REAL) | Can't tell | Nulls (done) | False alarms (REAL) | Correct (NOT REAL) | Can't tell |",
@@ -218,7 +242,10 @@ fact; every drawn item is listed, misses and errors included.
 ## Ground truth and sampling
 
 Seed **{sample.get('seed')}**, sample drawn {sample.get('generated')} at commit
-`{sample.get('sample_git_commit')}`: {kinds_txt} ({n_items} items).
+`{summary.get('sample_git_commit')}`: {kinds_txt} ({n_items} items). The draw is
+scripted and seeded end to end; no item was hand-picked, kept or dropped after
+being seen. Re-running `scripts/blind_sample.py` with the same seed against the
+same fixed dataset releases reproduces it.
 
 **Hansen Global Forest Change {h.get('version', '')}** (Hansen et al. 2013, updated; 30 m
 `lossyear` and `treecover2000` tiles read as windows from Google Cloud Storage).
@@ -253,7 +280,27 @@ Climate class is a fixed per-tile mapping: {', '.join(f'{t} = {c}' for t, c in h
 `mtbs_perimeter_data.zip`): {'used' if mt.get('used') else 'not used'}{(' (' + str(mt.get('error')) + ')') if mt.get('error') else ''}.
 {'Events are wildfires (Incid_Type = Wildfire) with ignition date between ' + ' and '.join(crit.get('mtbs', {}).get('dates', ['?', '?'])) + ' and ' + '-'.join(str(x) for x in crit.get('mtbs', {}).get('acres', ['?', '?'])) + ' acres, drawn uniformly (' + str(mt.get('eligible')) + ' eligible). The polygon is a box centred on the largest part of the perimeter shrunk by ' + str(crit.get('mtbs', {}).get('shrink_m')) + ' m, capped at ' + str(crit.get('max_box_ha')) + ' ha and shrunk further until at least ' + str(int(100 * crit.get('mtbs', {}).get('min_inside', 0))) + '% of it lies inside the perimeter; the event date is the MTBS ignition date (day precision) with post_months = ' + str(crit.get('mtbs', {}).get('post_months_burn')) + '. Nulls are boxes of the same sizes placed 10-120 km from a sampled fire, at least ' + str(crit.get('mtbs', {}).get('null_min_dist_m')) + ' m from every MTBS perimeter of any year, with at least 80% of pixels tree-covered (Hansen treecover2000 >= 30) and no Hansen loss in the box or its 300 m buffer. Climate: latitude >= 55 N is boreal (Alaska), longitude 118 W-100 W is dry (interior West), else temperate.' if mt.get('used') else ''}
 
-EFFIS burnt areas were not used.
+**Sources considered and not used**, so a reader knows what is missing rather
+than assuming it was tried:
+
+- *Copernicus EMS rapid mapping* (floods). Not used: the delineation products
+  are per-activation archives meant for manual download, with no stable
+  programmatic index that a seeded sampler could draw from mechanically. One
+  EMS flood (Sindh 2022) is in the hand-picked known-answer set instead.
+- *EFFIS / GWIS burnt areas* (Europe). Not used: the download endpoint
+  redirected to an interactive request form and the WFS endpoint timed out from
+  this environment on 2026-09-18, so nothing could be scripted against it.
+  MTBS covers burns instead, for the USA only.
+- *JRC Global Surface Water* (water change and stable-water/stable-land
+  controls). Reachable -- the public bucket lists
+  `downloads2021/change/change_<lon>_<lat>v1_4_2021.tif` -- but not used: the
+  change and transitions layers describe 1984-2021 as a whole and carry no
+  event year, so they cannot give a dated event the tool can be asked about.
+  The yearly-classification product could, and is the obvious next source to
+  add; it was not implemented here.
+
+Water and flood events are therefore **absent from this blind sample**, and the
+numbers below say nothing about how the tool behaves on them.
 
 ## Commands
 
@@ -261,6 +308,13 @@ EFFIS burnt areas were not used.
 python -m scripts.blind_sample --seed {sample.get('seed')} --n-events 60 --n-null 60 --out {sample_path}{' --mtbs <path>/mtbs_perimeter_data.zip' if mt.get('used') else ''}
 python -m scripts.blind_validation --sample {sample_path} --parallel {parallel} --out {out_dir}
 ```
+
+The outstanding items are run in a seeded random order (`--shuffle-seed`,
+recorded as `run_order_seed` in `summary.json`), so a run stopped part-way
+leaves a random subsample of the draw rather than, say, every event and no
+control. **The verdicts are tied to the commit above**: another track was
+changing the fetch and estimator path in parallel, so re-running at a later
+commit can legitimately give different numbers.
 
 Each item calls `run_verdict(geojson, event_date, change_type, post_months, mode="auto")`
 unchanged, in its own process with `APP_FETCH_WORKERS=8` and `APP_CACHE_DIR=data/cache_blind`,
@@ -281,11 +335,23 @@ to answer, and the reason is stored with every run.
 
 ## Results so far ({summary['completed']} of {n_items} items; median run {summary['median_seconds']} s)
 
-Overall: **{o['events']['hit']} of {o['events']['n']} events detected ({_pct(o['events']['detection_rate'])})**,
-{o['events']['miss']} missed ({_pct(o['events']['miss_rate'])}), {o['events']['cant_tell']} can't tell ({_pct(o['events']['cant_tell_rate'])});
-**{o['nulls']['false_alarm']} of {o['nulls']['n']} nulls raised a false alarm ({_pct(o['nulls']['false_alarm_rate'])})**,
-{o['nulls']['correct']} correctly NOT REAL ({_pct(o['nulls']['correct_rate'])}), {o['nulls']['cant_tell']} can't tell ({_pct(o['nulls']['cant_tell_rate'])});
-{o['errors']} errors.
+Tool alone, over finished runs only, with 95% Wilson intervals:
+
+| Rate | Value |
+|---|---|
+| Detection (REAL on an event) | {_ci(o['events']['hit'], o['events']['n'])} |
+| Miss (NOT REAL on an event) | {_ci(o['events']['miss'], o['events']['n'])} |
+| Can't tell on an event | {_ci(o['events']['cant_tell'], o['events']['n'])} |
+| False alarm (REAL on a control) | {_ci(o['nulls']['false_alarm'], o['nulls']['n'])} |
+| Correct on a control | {_ci(o['nulls']['correct'], o['nulls']['n'])} |
+| Can't tell on a control | {_ci(o['nulls']['cant_tell'], o['nulls']['n'])} |
+
+{o['errors']} of the items attempted so far produced no verdict (raised or timed
+out); they are excluded from every rate above and listed below. A rate shown as
+"not measured" has no finished runs behind it and no number is invented for it.
+
+So far {o['n_events']} event items and {o['n_nulls']} control items have been
+attempted, of which {o['events']['n']} and {o['nulls']['n']} finished.{_gap_note(o)}
 
 {_table('By change type', summary['by']['type'])}
 {_table('By source and date precision', {**{f'{k} (source)': v for k, v in summary['by']['source'].items()}, **{f'{k} (date precision)': v for k, v in summary['by']['date_precision'].items()}})}
