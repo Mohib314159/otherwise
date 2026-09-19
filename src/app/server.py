@@ -18,6 +18,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 
+from .fetch import MemoryBudgetError
 from .geometry import PolygonError, validate_polygon
 from .report import render_report, fmt_p, fmt_signal, interval_str as report_interval
 from .run import RUNS_DIR, run_id, run_verdict
@@ -27,6 +28,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 WEB_DIR = os.path.join(ROOT, "web")
 SHOWCASE_DIR = os.path.join(ROOT, "showcase")
 MAX_LIVE_JOBS = int(os.environ.get("APP_MAX_LIVE_JOBS", "1"))
+# User-drawn runs use the memory-bounded profile; showcase and validation runs
+# are produced offline in "full". See DECISIONS.md for the measured difference.
+LIVE_PROFILE = os.environ.get("APP_LIVE_PROFILE", "live")
 LIVE_RUNS_ENABLED = os.environ.get("APP_LIVE_RUNS", "1") == "1"
 
 app = FastAPI(title="Otherwise", docs_url=None, redoc_url=None)
@@ -90,7 +94,7 @@ def _worker(job_id: str, req: RunRequest):
 
         try:
             out = run_verdict(req.geojson, req.event_date, req.change_type, req.post_months,
-                              label=req.label[:120], progress=progress)
+                              label=req.label[:120], progress=progress, profile=LIVE_PROFILE)
             try:
                 from .imagery import make_thumbnails
                 progress("imagery", 0, 1)
@@ -101,6 +105,13 @@ def _worker(job_id: str, req: RunRequest):
             except Exception:
                 traceback.print_exc()
             job.update(status="done", run_id=out["id"], stage="done", done=1, total=1)
+        except MemoryBudgetError as e:
+            # deliberate, explained refusal rather than an out-of-memory kill
+            job.update(status="error", error=str(e)[:300], stage="error")
+        except MemoryError:
+            job.update(status="error", stage="error",
+                       error="This run ran out of memory on the server. Try a smaller area "
+                             "or a shorter window; the showcase examples still work.")
         except Exception as e:
             traceback.print_exc()
             job.update(status="error", error=str(e)[:300], stage="error")
@@ -202,7 +213,8 @@ def track_record():
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "live_runs": LIVE_RUNS_ENABLED}
+    return {"ok": True, "live_runs": LIVE_RUNS_ENABLED, "live_profile": LIVE_PROFILE,
+            "max_live_jobs": MAX_LIVE_JOBS}
 
 
 # ---- pages -----------------------------------------------------------------
