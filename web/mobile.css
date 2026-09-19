@@ -93,6 +93,17 @@
   #side-panel.sheet-peek #draw-block {
     display: none;
   }
+  /* the "Your own area" section becomes the first visible one once the
+     showcase section above it is hidden — drop its own top spacing/rule
+     so the search row sits right under the wordmark within peek's ~120px */
+  #side-panel.sheet-peek .panel-section:not(:first-of-type) {
+    margin-top: 6px;
+    padding-top: 0;
+    border-top: none;
+  }
+  #side-panel.sheet-peek > h1 {
+    margin-bottom: 2px;
+  }
 
   /* the satellite toggle and Leaflet's own bottom-anchored controls float
      just above the sheet's current visible edge, wherever that is —

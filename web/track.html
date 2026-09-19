@@ -9,7 +9,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/app.css">
-<link rel="stylesheet" href="/static/mobile.css">
 <style>
   .page-head { padding: 44px 0 8px; }
   .page-head h1 { font-size: 32px; font-weight: 600; letter-spacing: -0.02em; }
@@ -19,6 +18,8 @@
   td.verdict-cell { font-weight: 500; }
   .v-REAL.verdict-cell, .v-NOT_REAL.verdict-cell, .v-CANT_TELL.verdict-cell { font-weight: 500; }
 </style>
+<!-- after the block above so it wins the cascade at equal specificity -->
+<link rel="stylesheet" href="/static/mobile.css">
 </head>
 <body>
 <div class="container">

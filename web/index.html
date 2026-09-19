@@ -12,7 +12,6 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
 <link rel="stylesheet" href="/static/app.css">
 <link rel="stylesheet" href="/static/landing.css">
-<link rel="stylesheet" href="/static/mobile.css">
 <style>
   html, body { height: 100%; overflow: hidden; }
   #map { position: fixed; inset: 0; z-index: 0; }
@@ -61,6 +60,9 @@
   .panel-footer a:hover { color: var(--ink); }
   .panel-footer .attribution { display: block; margin-top: 8px; line-height: 1.4; }
 </style>
+<!-- placed after the block above so it wins the cascade at equal specificity
+     against those unconditional rules (e.g. .map-toggle's desktop top/right) -->
+<link rel="stylesheet" href="/static/mobile.css">
 </head>
 <body>
 <div id="map" role="application" aria-label="Map"></div>

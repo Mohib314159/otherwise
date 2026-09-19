@@ -44,6 +44,18 @@ Determinism
   section. Scrolling once, fully, settles every section at its resting
   state (and returns the sticky verdict pill to its own resting state)
   before the shot is taken.
+- The browser context is forced to `prefers-reduced-motion: reduce`
+  (`reduced_motion="reduce"` + `page.emulate_media`). verdict.js reads that
+  media feature once at load (`REDUCED`) and, when set, skips chart.js's
+  ~1.1s stroke-dashoffset draw-in animation for the trajectory chart
+  entirely (drawing it fully revealed on the first frame) instead of
+  racing the screenshot against an in-flight animation; app.css's own
+  `@media (prefers-reduced-motion: reduce)` block does the same for the
+  `.reveal` fade/slide-in transitions. This was the actual source of the
+  small (tens-to-low-hundreds-pixel) verdict-page diffs seen before this
+  flag was added — confirmed by diffing two screenshots of the *same*
+  unmodified checkout, taken moments apart, which showed the same kind of
+  diff in the same chart region purely from run-to-run animation timing.
 """
 from __future__ import annotations
 
@@ -137,8 +149,9 @@ def capture(base_url: str, showcase_id: str, outdir: str) -> list[str]:
         try:
             for slug, path in pages_for(showcase_id):
                 for w, h in VIEWPORTS:
-                    ctx = browser.new_context(viewport={"width": w, "height": h})
+                    ctx = browser.new_context(viewport={"width": w, "height": h}, reduced_motion="reduce")
                     page = ctx.new_page()
+                    page.emulate_media(reduced_motion="reduce")
                     page.route("**/*", block_tiles)
                     page.goto(f"{base_url}{path}", wait_until="networkidle", timeout=30_000)
                     out_path = os.path.join(outdir, f"{slug}_{w}x{h}.png")
