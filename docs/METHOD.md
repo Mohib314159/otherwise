@@ -166,6 +166,45 @@ reach, never easier.
   interval (-0.57 to -0.45), since the clearing's effect is not a flat step
   across the window (`DECISIONS.md`, milestone 3).
 
+### Two failures our own red team grades as "breaks"
+
+`docs/REDTEAM.md` is an adversarial self-review with numbers. Two of its
+attacks defeat the method as it currently stands. **Neither fix is applied
+yet**, so both are limits of the shipped tool, not hypotheticals:
+
+- **A decline that began before the claimed date is still called REAL**
+  (REDTEAM E5). On synthetic pre-trends the verdict came back REAL in 9/15
+  fits at -0.10/yr and 14/15 at -0.20/yr on the Midlands test area (6/15 and
+  9/15 at Austin). The in-time placebo *detects* most of them, but
+  `src/app/verdict.py` appends a caveat sentence and returns REAL anyway. The
+  fix — a flagged in-time placebo forcing CAN'T TELL and disabling the 4x
+  pre-fit bypass — is specified and not yet implemented. Until it is, treat a
+  REAL verdict on a gradually declining area as unproven.
+- **Short floods are deleted by the haze filter** (REDTEAM E7). The NDVI
+  despike is one-sided and NDVI-blind to standing water, so it removes 100% of
+  the observations of a flood lasting under 20 days, 88% at 30 days and 41% at
+  45 days. On the real Sindh 2022 series it deleted the three peak-flood
+  observations (10, 15 and 23 September 2022) as "haze". End to end on a
+  25-day synthetic flood: REAL 5/15 with the despike, 14/15 without. The fix
+  is to make the despike NDWI-aware. Until then, floods shorter than about a
+  month — which is most river and flash flooding — are under-detected.
+
+Two further limits from the same review, not graded "breaks" but real:
+the 4x pre-fit bypass is reachable on null cells (E6), and the spillover
+buffer is measured centroid-to-polygon, so at 200 ha and above the nearest
+kept control can share an edge with the treated area (E2).
+
+### Limits of the live (in-browser) path specifically
+
+A run you trigger by drawing an area uses the memory-bounded "live" profile:
+the drawn area is read at 10 m but its controls are read at 40 m, from a
+separate catalogue search with its own dates. Full mode — used for the
+showcase, the track record and the validation runs — reads the area and all of
+its controls from the same window at 10 m, which cancels most atmosphere,
+sun-angle and view-geometry effects between them. The live path gives that up,
+and what it costs has not yet been measured across sites. Live verdicts should
+be read as a quick check, not as equivalent to the published runs.
+
 ## 10. Validation to date
 
 Reproduced verbatim from `DECISIONS.md`, dated 2026-09-18.
