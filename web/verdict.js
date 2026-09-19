@@ -14,7 +14,7 @@
 //   evidence: { agreement, optical, radar, p_combined, sentence }  (optional, later)
 //   pixels:   { fraction_changed, placebo_p, map: url }            (optional, later)
 import {
-  apiGet, fmtDate, fmtSignalValue, VERDICT_LABEL, VERDICT_VAR, CHANGE_TYPE_LABEL,
+  apiGet, apiPost, fmtDate, fmtSignalValue, VERDICT_LABEL, VERDICT_VAR, CHANGE_TYPE_LABEL,
   SIGNAL_LABEL, REASON_LABEL, wireCopyLink, initHowItWorksDrawer, renderFooter,
 } from "./common.js";
 import { drawTrajectoryChart, drawGapChart, stripPlotSVG } from "./chart.js";
@@ -678,9 +678,134 @@ function render(d) {
   const dc = document.getElementById("dtl-controls");
   if (dc) dc.addEventListener("toggle", () => { if (dc.open && !mapDone) { mapDone = true; setTimeout(() => initControlMap(d), 120); } });
   initPill(d);
+  initAnalystLayer(d);
   wireCopyLink(document.getElementById("copy-link-btn"));
   initHowItWorksDrawer();
   renderFooter(document.getElementById("site-footer"), { withHowItWorks: false });
+}
+
+// ---- analyst layer -----------------------------------------------------------
+//
+// A human annotation attached to this run: the reviewer's call, a status, a
+// note and evidence links. It sits below the verdict and below everything the
+// tool computed, in a box labelled "Human annotation", and it never changes
+// the verdict: nothing in here is read by the pipeline, and the API that
+// stores it is separate from the one that serves the run. Persisted through
+// the review router (src/app/review.py); if that router is not mounted, the
+// section is simply not shown.
+
+const ANALYST_STYLE = `
+.analyst { margin: 40px 0 72px; border-top: 1px solid var(--rule); padding-top: 18px; }
+.analyst .analyst-kicker { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 500; }
+.analyst h2 { font-size: 19px; font-weight: 600; margin-top: 6px; }
+.analyst .analyst-sub { color: var(--muted); font-size: 13px; max-width: 620px; margin-top: 6px; }
+.analyst .ann { border: 1px solid var(--rule); background: var(--panel); padding: 12px; margin-top: 12px; }
+.analyst .ann-head { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; font-size: 13px; }
+.analyst .ann-call { font-weight: 600; }
+.analyst .ann-status { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; border: 1px solid var(--rule); padding: 1px 6px; }
+.analyst .ann-note { margin-top: 8px; white-space: pre-wrap; }
+.analyst .ann-links { margin-top: 8px; font-size: 13px; word-break: break-all; }
+.analyst form { margin-top: 14px; display: grid; gap: 10px; max-width: 620px; }
+.analyst select, .analyst input, .analyst textarea { font: inherit; padding: 7px 9px; border: 1px solid var(--rule); background: var(--panel); color: var(--ink); border-radius: 2px; }
+.analyst .analyst-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.analyst .analyst-msg { font-size: 13px; color: var(--muted); }
+`;
+
+const CALL_WORDS = { changed: "Analyst: changed", not_changed: "Analyst: not changed", unsure: "Analyst: unsure" };
+
+function annotationHtml(a) {
+  const links = (a.links || [])
+    .map((u) => `<a href="${escapeHtml(u)}" target="_blank" rel="noopener">${escapeHtml(u)}</a>`)
+    .join(" · ");
+  return `
+    <div class="ann">
+      <div class="ann-head">
+        ${a.call ? `<span class="ann-call">${escapeHtml(CALL_WORDS[a.call] || a.call)}</span>` : ""}
+        ${a.status ? `<span class="ann-status">${escapeHtml(String(a.status).replace("_", " "))}</span>` : ""}
+        <span class="muted">${escapeHtml(a.author || "anonymous")} · ${escapeHtml((a.created || "").slice(0, 10))}</span>
+      </div>
+      ${a.note ? `<div class="ann-note">${escapeHtml(a.note)}</div>` : ""}
+      ${links ? `<div class="ann-links">${links}</div>` : ""}
+    </div>`;
+}
+
+async function initAnalystLayer(d) {
+  let data;
+  try {
+    data = await apiGet(`/api/review/annotations/${encodeURIComponent(d.id)}`);
+  } catch (err) {
+    return;                       // review router not mounted: no analyst layer
+  }
+  if (!document.getElementById("analyst-style")) {
+    const st = document.createElement("style");
+    st.id = "analyst-style";
+    st.textContent = ANALYST_STYLE;
+    document.head.appendChild(st);
+  }
+  const section = document.createElement("section");
+  section.className = "analyst";
+  section.id = "analyst-layer";
+  contentEl.appendChild(section);
+
+  let annotations = data.annotations || [];
+
+  function draw() {
+    section.innerHTML = `
+      <div class="analyst-kicker">Human annotation</div>
+      <h2>Analyst review</h2>
+      <p class="analyst-sub">The verdict above is the tool's output: a statistical test of this area against matched control areas. Everything in this box was typed by a person, is kept beside that verdict as evidence, and does not change it.</p>
+      ${annotations.length
+        ? annotations.map(annotationHtml).join("")
+        : `<p class="analyst-sub" style="margin-top:12px">No analyst has annotated this run yet.</p>`}
+      <form id="ann-form">
+        <div class="analyst-row">
+          <label>Call
+            <select name="call">
+              <option value="">no call</option>
+              <option value="changed">changed</option>
+              <option value="not_changed">not changed</option>
+              <option value="unsure">unsure</option>
+            </select>
+          </label>
+          <label>Status
+            <select name="status">
+              <option value="in_review">in review</option>
+              <option value="confirmed">confirmed</option>
+              <option value="disputed">disputed</option>
+            </select>
+          </label>
+          <input name="author" type="text" placeholder="Your name (optional)" aria-label="Author">
+        </div>
+        <textarea name="note" rows="3" placeholder="What did you check, and what did you see?" aria-label="Note"></textarea>
+        <input name="links" type="text" placeholder="Evidence links, space separated (https://…)" aria-label="Evidence links">
+        <div class="analyst-row">
+          <button class="btn" type="submit">Attach annotation</button>
+          <span class="analyst-msg" id="ann-msg"></span>
+        </div>
+      </form>`;
+    const form = section.querySelector("#ann-form");
+    const msg = section.querySelector("#ann-msg");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = new FormData(form);
+      msg.textContent = "Saving…";
+      try {
+        const res = await apiPost("/api/review/annotations", {
+          run_id: d.id,
+          call: (f.get("call") || "").toString(),
+          status: (f.get("status") || "").toString(),
+          note: (f.get("note") || "").toString().slice(0, 4000),
+          links: (f.get("links") || "").toString().split(/\s+/).filter(Boolean),
+          author: (f.get("author") || "").toString().slice(0, 80),
+        });
+        annotations = [res.annotation].concat(annotations);
+        draw();
+      } catch (err) {
+        msg.textContent = `Could not save: ${err.message}`;
+      }
+    });
+  }
+  draw();
 }
 
 // ---- boot --------------------------------------------------------------------
