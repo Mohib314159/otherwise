@@ -340,8 +340,17 @@ function stageSentence(job) {
   if (stage === "search" || stage === "fetch" || stage === "cache" || stage === "starting") {
     return "Searching the catalogues";
   }
-  if (stage === "sentinel-2") return `Reading Sentinel-2 scene ${job.done} of ${job.total}`;
-  if (stage === "sentinel-1") return `Reading Sentinel-1 scene ${job.done} of ${job.total}`;
+  // Stage names carry a suffix in the two-pass fetch: "sentinel-2" for the drawn
+  // area, "sentinel-2 controls" for the control cells, plus " group i/n" when the
+  // controls are read in several windows. Match on the prefix so every pass gets
+  // a real sentence instead of falling through to "Working...".
+  const sat = stage.startsWith("sentinel-2") ? "Sentinel-2" : stage.startsWith("sentinel-1") ? "Sentinel-1" : null;
+  if (sat) {
+    const what = stage.includes("controls") || stage.includes("group") ? "control areas" : "your area";
+    const m = stage.match(/group (\d+)\/(\d+)/);
+    const grp = m ? ` (window ${m[1]} of ${m[2]})` : "";
+    return `Reading ${sat} over ${what}${grp}: scene ${job.done} of ${job.total}`;
+  }
   if (stage === "covariates") return "Reading land cover and terrain";
   if (stage.endsWith(": fitting")) return `Fitting the control trajectory (${stage.split(":")[0]})`;
   if (stage.endsWith(": placebo")) return `Running placebo checks (${stage.split(":")[0]})`;
@@ -353,6 +362,15 @@ function stageSentence(job) {
 function stageProgressFraction(job) {
   const order = ["queued", "starting", "fetch", "search", "cache", "sentinel-2", "sentinel-1", "covariates"];
   if (job.status === "queued") return 0.03;
+  const stage = job.stage || "";
+  // Within a read stage, advance by scenes done rather than sitting still: the
+  // control pass is the longest part of a run and used to look frozen.
+  if (stage.startsWith("sentinel-")) {
+    const base = stage.includes("controls") || stage.includes("group") ? 0.35 : 0.12;
+    const span = stage.includes("controls") || stage.includes("group") ? 0.35 : 0.23;
+    const frac = job.total > 0 ? Math.min(job.done / job.total, 1) : 0;
+    return base + span * frac;
+  }
   const idx = order.indexOf(job.stage);
   if (job.stage && (job.stage.endsWith(": fitting") || job.stage.endsWith(": placebo"))) return 0.75;
   if (job.stage === "imagery") return 0.92;
@@ -398,6 +416,7 @@ runForm.addEventListener("submit", async (e) => {
     }
     runForm.style.display = "none";
     progressBlock.style.display = "block";
+    showProgressLink(resp.run_id);
     pollJob(resp.job_id, resp.run_id);
   } catch (err) {
     submitBtn.disabled = false;
@@ -442,13 +461,32 @@ function pollJob(jobId, fallbackRunId) {
   pollTimer = setInterval(poll, 1500);
 }
 
+// Kept identical to the block in web/index.html. No minute count: the only live
+// runs timed so far ran on other hardware, and this deployment has a fraction of
+// a CPU, so a range would be invented rather than measured.
+const PROGRESS_NOTE =
+  "A live run reads every Sentinel scene over the area for three years before the "
+  + "event, so it takes tens of minutes and can take hours. It is also a quick check: "
+  + "the control areas are read more coarsely than in the published examples. You can "
+  + "close the tab — the run carries on, and its page is ready at the link below once "
+  + "it finishes.";
+
 function rebuildProgressBlock() {
   progressBlock.innerHTML = `
     <div class="progress-wrap">
       <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-fill"></div></div>
     </div>
     <div class="progress-stage" id="progress-stage">Starting&hellip;</div>
-    <div class="progress-note">Live runs read every Sentinel scene over the area for the last three years and usually take three to eight minutes.</div>`;
+    <div class="progress-note">${escapeHtml(PROGRESS_NOTE)}</div>
+    <div class="progress-link" id="progress-link"></div>`;
   progressFill = document.getElementById("progress-fill");
   progressStage = document.getElementById("progress-stage");
+}
+
+/** The run's permalink, shown while it runs so closing the tab loses nothing. */
+function showProgressLink(runId) {
+  const el = document.getElementById("progress-link");
+  if (!el || !runId) return;
+  const href = `/v/${encodeURIComponent(runId)}`;
+  el.innerHTML = `<a href="${escapeHtml(href)}">${escapeHtml(location.origin + href)}</a>`;
 }

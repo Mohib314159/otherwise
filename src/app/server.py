@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import glob
+import html as _html
 import json
 import os
 import threading
@@ -14,12 +15,14 @@ import uuid
 from collections import OrderedDict
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 
+from .fetch import MemoryBudgetError
 from .geometry import PolygonError, validate_polygon
-from .report import render_report, fmt_p, fmt_signal, interval_str as report_interval
+from .report import (SIGNAL_LABEL, render_report, fmt_p, fmt_signal,
+                     interval_str as report_interval)
 from .run import RUNS_DIR, run_id, run_verdict
 from .verdict import SIGNALS
 
@@ -27,13 +30,25 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 WEB_DIR = os.path.join(ROOT, "web")
 SHOWCASE_DIR = os.path.join(ROOT, "showcase")
 MAX_LIVE_JOBS = int(os.environ.get("APP_MAX_LIVE_JOBS", "1"))
+# User-drawn runs use the memory-bounded profile; showcase and validation runs
+# are produced offline in "full". See DECISIONS.md for the measured difference.
+LIVE_PROFILE = os.environ.get("APP_LIVE_PROFILE", "live")
 LIVE_RUNS_ENABLED = os.environ.get("APP_LIVE_RUNS", "1") == "1"
+# A wedged run used to hold the one live-run slot for the life of the process,
+# so a single bad job blocked every later run until a restart. Threads cannot be
+# killed safely, so cancellation is cooperative: run_verdict calls back on
+# progress often (once per scene), and the callback raises past the deadline.
+JOB_TIMEOUT_S = float(os.environ.get("APP_JOB_TIMEOUT_S", "2400"))
 
 app = FastAPI(title="Otherwise", docs_url=None, redoc_url=None)
 
 _jobs: "OrderedDict[str, dict]" = OrderedDict()
 _lock = threading.Lock()
 _sem = threading.Semaphore(MAX_LIVE_JOBS)
+
+
+class JobTimeout(RuntimeError):
+    """A live run exceeded APP_JOB_TIMEOUT_S and was cancelled at a checkpoint."""
 
 
 class RunRequest(BaseModel):
@@ -85,12 +100,18 @@ def _worker(job_id: str, req: RunRequest):
     with _sem:
         job.update(status="running", stage="starting", done=0, total=1, started=time.time())
 
+        deadline = time.time() + JOB_TIMEOUT_S
+
         def progress(stage, done, total):
+            if time.time() > deadline:
+                raise JobTimeout(
+                    f"This run passed the {JOB_TIMEOUT_S / 60:.0f}-minute limit and was stopped so "
+                    f"other runs can start. Try a smaller area or a shorter window.")
             job.update(stage=stage, done=done, total=total)
 
         try:
             out = run_verdict(req.geojson, req.event_date, req.change_type, req.post_months,
-                              label=req.label[:120], progress=progress)
+                              label=req.label[:120], progress=progress, profile=LIVE_PROFILE)
             try:
                 from .imagery import make_thumbnails
                 progress("imagery", 0, 1)
@@ -101,6 +122,15 @@ def _worker(job_id: str, req: RunRequest):
             except Exception:
                 traceback.print_exc()
             job.update(status="done", run_id=out["id"], stage="done", done=1, total=1)
+        except JobTimeout as e:
+            job.update(status="error", error=str(e)[:300], stage="error")
+        except MemoryBudgetError as e:
+            # deliberate, explained refusal rather than an out-of-memory kill
+            job.update(status="error", error=str(e)[:300], stage="error")
+        except MemoryError:
+            job.update(status="error", stage="error",
+                       error="This run ran out of memory on the server. Try a smaller area "
+                             "or a shorter window; the showcase examples still work.")
         except Exception as e:
             traceback.print_exc()
             job.update(status="error", error=str(e)[:300], stage="error")
@@ -202,7 +232,103 @@ def track_record():
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "live_runs": LIVE_RUNS_ENABLED}
+    running = sum(1 for j in _jobs.values() if j["status"] == "running")
+    queued = sum(1 for j in _jobs.values() if j["status"] == "queued")
+    return {"ok": True, "live_runs": LIVE_RUNS_ENABLED, "live_profile": LIVE_PROFILE,
+            "max_live_jobs": MAX_LIVE_JOBS, "job_timeout_s": JOB_TIMEOUT_S,
+            "running": running, "queued": queued}
+
+
+# ---- share preview ----------------------------------------------------------
+#
+# The verdict page is static HTML filled in by JavaScript, so a crawler that
+# does not run JS sees nothing: a pasted permalink used to render as a bare URL.
+# The tags below are therefore rendered server-side, from the run JSON, into the
+# marked block in web/verdict.html. Every value comes out of the run file --
+# label, verdict headline, the lead signal's stored effect and interval -- and
+# nothing here computes a number. The label is user-supplied text, so it is
+# escaped for the context it lands in before it goes anywhere near the markup.
+
+SHARE_START = "<!--share-preview-->"
+SHARE_END = "<!--/share-preview-->"
+SHARE_DEFAULT_TITLE = "Otherwise"
+SHARE_DEFAULT_DESC = "A verdict: did this area change more than it would have anyway?"
+
+
+def _esc_text(v) -> str:
+    """Element text: &, < and > neutralised."""
+    return _html.escape(str(v), quote=False)
+
+
+def _esc_attr(v) -> str:
+    """Attribute value: &, <, > and both quote characters neutralised."""
+    return _html.escape(str(v), quote=True).replace("'", "&#x27;")
+
+
+def _has_after_thumb(rid: str) -> bool:
+    return any(os.path.exists(os.path.join(d, f"{rid}_after.png"))
+               for d in (RUNS_DIR, SHOWCASE_DIR))
+
+
+def _base_url(request: Request) -> str:
+    """Absolute origin for og:url / og:image, honouring a proxy's scheme."""
+    base = str(request.base_url).rstrip("/")
+    proto = (request.headers.get("x-forwarded-proto") or "").split(",")[0].strip()
+    if proto in ("http", "https") and "://" in base:
+        base = proto + base[base.index("://"):]
+    return base
+
+
+def _share_text(run: dict) -> tuple[str, str]:
+    """(title, description) for one run, read straight out of the run JSON."""
+    label = str(run.get("label") or "").strip() or "Drawn area"
+    verdict = run.get("verdict") or {}
+    headline = str(verdict.get("headline") or verdict.get("status") or "").strip()
+    lead = verdict.get("lead_signal")
+    sig = (run.get("signals") or {}).get(lead) or {}
+    title = f"{label} — {headline} · Otherwise" if headline else f"{label} · Otherwise"
+    parts = []
+    if headline:
+        parts.append(f"{headline}.")
+    if lead:
+        months = run.get("post_months")
+        when = run.get("event_date") or "the event date"
+        name = SIGNAL_LABEL.get(lead, lead)
+        name = name[:1].upper() + name[1:]          # it opens a sentence
+        parts.append(
+            f"{name} {fmt_signal(lead, sig.get('point'))} relative to the "
+            f"control trajectory, {months} months after {when} "
+            f"(90% interval {report_interval(lead, sig.get('lo'), sig.get('hi'))}; "
+            f"in-space placebo p {fmt_p(sig.get('placebo_p'))}).")
+    desc = " ".join(parts) or SHARE_DEFAULT_DESC
+    return title[:200], desc[:300]
+
+
+def _share_block(rid: str, run: dict | None, base: str) -> str:
+    title, desc = _share_text(run) if run else (SHARE_DEFAULT_TITLE, SHARE_DEFAULT_DESC)
+    url = f"{base}/v/{rid}"
+    img = f"{base}/api/runs/{rid}/after.png" if run and _has_after_thumb(rid) else None
+    tags = [
+        f"<title>{_esc_text(title)}</title>",
+        f'<meta name="description" content="{_esc_attr(desc)}">',
+        '<meta property="og:site_name" content="Otherwise">',
+        '<meta property="og:type" content="article">',
+        f'<meta property="og:title" content="{_esc_attr(title)}">',
+        f'<meta property="og:description" content="{_esc_attr(desc)}">',
+        f'<meta property="og:url" content="{_esc_attr(url)}">',
+        f'<meta name="twitter:title" content="{_esc_attr(title)}">',
+        f'<meta name="twitter:description" content="{_esc_attr(desc)}">',
+    ]
+    if img:
+        tags += [
+            f'<meta property="og:image" content="{_esc_attr(img)}">',
+            '<meta property="og:image:alt" content="Sentinel-2 view of the area after the event date">',
+            f'<meta name="twitter:image" content="{_esc_attr(img)}">',
+            '<meta name="twitter:card" content="summary_large_image">',
+        ]
+    else:
+        tags.append('<meta name="twitter:card" content="summary">')
+    return "\n".join(tags)
 
 
 # ---- pages -----------------------------------------------------------------
@@ -212,8 +338,28 @@ def index():
 
 
 @app.get("/v/{rid}")
-def verdict_page(rid: str):
-    return FileResponse(os.path.join(WEB_DIR, "verdict.html"))
+def verdict_page(rid: str, request: Request):
+    """verdict.html with this run's share-preview tags rendered in.
+
+    An unknown id, an unreadable run file or a missing thumbnail each fall back
+    a step rather than failing: the page is always served, and the client shows
+    "No verdict with that id." for an id that does not exist.
+    """
+    path = os.path.join(WEB_DIR, "verdict.html")
+    try:
+        with open(path, encoding="utf-8") as f:
+            doc = f.read()
+    except OSError:
+        raise HTTPException(404)
+    start, end = doc.find(SHARE_START), doc.find(SHARE_END)
+    if start == -1 or end < start:
+        return FileResponse(path)                 # markers gone: serve as-is
+    try:
+        run = _run_json(rid)
+    except Exception:
+        run = None                                # malformed run file: generic tags
+    block = _share_block(rid, run, _base_url(request))
+    return HTMLResponse(doc[:start] + block + doc[end + len(SHARE_END):])
 
 
 @app.get("/track-record")

@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from .extract import Zones, labels_for, read_window, zone_means
+from .extract import Zones, labels_for, read_window, zone_counts, zone_means
 from .providers import Scene
 
 # SCL classes kept as "clear ground": vegetation, bare soil, water. Everything
@@ -89,7 +89,12 @@ def process_scene(scene: Scene, zones: Zones, sign, res: float = 10.0,
     """Extract one S2 scene for all zones. zone 0 is the treated area unless
     `require_zone0` is False (a donor-only group), in which case the scene is
     kept whenever any zone is usable. `res` is the read resolution in metres;
-    donor-only groups are read at 40 m from the COG overviews."""
+    donor-only groups are read coarser, from the COG overviews.
+
+    Bands are read, reduced and released one at a time. Holding B03/B04/B08/B12
+    and three whole index rasters at once was the single largest allocation in
+    a run; only B08 (needed by all three indices) is kept across steps.
+    """
     n = len(zones.polygons)
     r = read_window(sign(scene.hrefs["SCL"]), zones, out_res=res)
     if r is None:
@@ -98,7 +103,7 @@ def process_scene(scene: Scene, zones: Zones, sign, res: float = 10.0,
     scl, tr, _ = r
     labels = labels_for(zones, tr, scl.shape)
     clear = np.isin(scl, SCL_CLEAR)
-    _, n_clear, n_total = zone_means(np.zeros_like(scl, dtype="float32"), clear, labels, n)
+    n_clear, n_total = zone_counts(labels, n, clear)
     with np.errstate(invalid="ignore", divide="ignore"):
         clear_frac = np.where(n_total > 0, n_clear / np.maximum(n_total, 1), 0.0)
     if not require_zone0:
@@ -115,20 +120,35 @@ def process_scene(scene: Scene, zones: Zones, sign, res: float = 10.0,
                              f"Only {clear_frac[0]:.0%} of the area is clear "
                              f"({worst[0]} over {worst[1]:.0%}); dropped.",
                              value=float(clear_frac[0]))
-    bands = {}
-    for b in ("B03", "B04", "B08", "B12"):
-        rr = read_window(sign(scene.hrefs[b]), zones, out_res=res)
-        if rr is None or rr[0].shape != scl.shape:
-            return None, Receipt("S2", scene.date, scene.id, "read-error",
-                                 f"Band {b} window did not match the mask window.")
-        bands[b] = reflectance(rr[0], scene.props.get("baseline", "00.00"))
-    idx = indices_from_bands(bands["B03"], bands["B04"], bands["B08"], bands["B12"])
+    del scl
+    baseline = scene.props.get("baseline", "00.00")
+
+    def band(name):
+        rr = read_window(sign(scene.hrefs[name]), zones, out_res=res)
+        if rr is None or rr[0].shape != labels.shape:
+            return None
+        return reflectance(rr[0], baseline)
+
+    b08 = band("B08")
+    if b08 is None:
+        return None, Receipt("S2", scene.date, scene.id, "read-error",
+                             "Band B08 window did not match the mask window.")
     values = {}
-    for k, arr in idx.items():
+    for name, partner, order in (("NDVI", "B04", "b08_first"), ("NDWI", "B03", "partner_first"),
+                                 ("NBR", "B12", "b08_first")):
+        other = band(partner)
+        if other is None:
+            return None, Receipt("S2", scene.date, scene.id, "read-error",
+                                 f"Band {partner} window did not match the mask window.")
+        arr = _nd(b08, other) if order == "b08_first" else _nd(other, b08)
+        del other
         v = clear & np.isfinite(arr)
-        m, _, _ = zone_means(np.nan_to_num(arr), v, labels, n)
+        np.nan_to_num(arr, copy=False)
+        m, _, _ = zone_means(arr, v, labels, n)
+        del arr, v
         m[clear_frac < CLEAR_MIN] = np.nan
-        values[k] = m
+        values[name] = m
+    del b08, clear, labels
     return S2Observation(scene.id, scene.date, scene.minute_key, values, clear_frac, n_total,
                          props=dict(scene.props)), None
 

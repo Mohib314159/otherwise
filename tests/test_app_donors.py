@@ -98,3 +98,33 @@ def test_select_donors_grid_mismatch_raises():
     bad_cov = np.ones(n - 5)   # fewer covered cells than matrix columns
     with pytest.raises(AssertionError):
         select_donors(matrix, pre, bad_cov, None, k=5)
+
+
+def test_cell_index_maps_back_to_the_full_cell_list():
+    """Regression: the control-areas map drew the wrong cells.
+
+    `index` counts only the cells that survived the coverage filter, so it is
+    not a grid index. When low-coverage cells are dropped the two diverge, and
+    the page used `index` as if it were a grid index.
+    """
+    rng = np.random.default_rng(0)
+    B, n_cells = 30, 10
+    pre = np.zeros(B, dtype=bool); pre[:20] = True
+    y = np.linspace(0.5, 0.6, B)
+    # cells 0, 1 and 2 are poorly covered and will be dropped by prep.complete
+    donor_cov = np.array([0.1, 0.2, 0.3, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9])
+    n_good = int((donor_cov >= 0.70).sum())
+    donors = y[:, None] + rng.normal(0, 0.01, (B, n_good))
+    matrix = np.column_stack([y, donors])
+
+    sel = select_donors(matrix, pre, donor_cov, None, k=4)
+
+    assert sel.cell_index is not None
+    assert len(sel.cell_index) == len(sel.index)
+    # every reported cell is one that actually survived the coverage filter
+    covered = np.where(donor_cov >= 0.70)[0]
+    assert set(sel.cell_index.tolist()) <= set(covered.tolist())
+    # and none of the three dropped cells can be reported
+    assert not (set(sel.cell_index.tolist()) & {0, 1, 2})
+    # the bug: the raw column index would have named dropped cells
+    assert sel.index.min() < 3 <= sel.cell_index.min()

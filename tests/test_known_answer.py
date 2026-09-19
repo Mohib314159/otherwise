@@ -62,8 +62,23 @@ def test_grunheide_clearing_is_real():
     assert r["signals"]["NDVI"]["point"] < -0.15
 
 
-def test_events_larger_than_ring_are_not_called_real():
+def test_events_larger_than_ring_are_not_called_real_from_ring_controls():
+    """An event bigger than the 12 km control ring contaminates its own controls,
+    so a RING run of it must not come back REAL.
+
+    Wide mode exists precisely to give these events valid controls (Rhodes:
+    42 cells 20-150 km away), so a wide run reaching REAL is the intended
+    outcome, not a failure. The distinction is the point of the test: assert on
+    the mode that produced the run, not on the site.
+    """
     runs = {e["key"]: r for e, r in _runs()}
     for key in ("rhodes", "sindh"):
-        if key in runs:
-            assert runs[key]["verdict"]["status"] != "REAL", key
+        if key not in runs:
+            continue
+        r = runs[key]
+        if r.get("mode") == "wide":
+            assert r["controls"]["inner_m"] >= 12_000, (
+                f"{key} is marked wide but its controls start inside the ring")
+            continue
+        assert r["verdict"]["status"] != "REAL", (
+            f"{key} was called REAL from ring controls the event itself covers")

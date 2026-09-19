@@ -20,10 +20,16 @@ from .covariates import Covariates
 
 @dataclass
 class DonorSelection:
-    index: np.ndarray                    # indices into the donor columns (0-based donors)
+    index: np.ndarray                    # indices into the donor COLUMNS (post-coverage-filter)
     pre_rmse: np.ndarray                 # RMSE of each kept donor to the treated pre series
     notes: list[str] = field(default_factory=list)
     counts: dict = field(default_factory=dict)
+    cell_index: np.ndarray | None = None  # the same donors as indices into the FULL cell list
+
+    # `index` counts only the cells that survived the coverage filter, so it
+    # cannot be used to look a cell up in the grid. `cell_index` is the mapping
+    # back to the grid; the two differ whenever any cell was dropped for
+    # coverage, which is most runs. Use `cell_index` for anything user-facing.
 
 
 def select_donors(matrix: np.ndarray, pre: np.ndarray, donor_cov: np.ndarray,
@@ -65,4 +71,4 @@ def select_donors(matrix: np.ndarray, pre: np.ndarray, donor_cov: np.ndarray,
     keep = order[:k]
     counts["kept"] = int(len(keep))
     notes.append(f"ranked by pre-event similarity; kept the best {len(keep)}")
-    return DonorSelection(keep, rmse[keep], notes, counts)
+    return DonorSelection(keep, rmse[keep], notes, counts, cell_index=good_idx[keep])

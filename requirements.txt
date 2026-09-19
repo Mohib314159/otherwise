@@ -4,9 +4,15 @@ pandas>=2.0
 matplotlib>=3.7
 streamlit>=1.30
 pytest>=7.4
+# the app's own deps, so `pytest` can import src.app.* and drive the API
+fastapi>=0.110
+httpx>=0.27          # starlette TestClient needs it; without it the suite aborts at collection
+pillow>=10
+python-dateutil>=2.8
 # app data layer (milestone 1)
 requests>=2.31
 rasterio>=1.3
 shapely>=2.0
 pyproj>=3.6
 planetary-computer>=1.0
+pyshp>=2.3          # MTBS burn perimeters for scripts/blind_sample.py

@@ -11,3 +11,10 @@ services:
         value: 8
       - key: APP_MAX_LIVE_JOBS
         value: 1
+      # live-run memory budget on the 512 MB free tier; see DECISIONS.md
+      - key: APP_LIVE_FETCH_WORKERS
+        value: 2
+      - key: APP_GDAL_CACHEMAX_MB
+        value: 32
+      - key: APP_JOB_TIMEOUT_S
+        value: 2400

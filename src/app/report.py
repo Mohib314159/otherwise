@@ -113,13 +113,30 @@ def _effect_lines(signal_key, sig: dict) -> list[str]:
 
 
 def _placebo_lines(sig: dict) -> list[str]:
+    """Both placebo statistics, each labelled for what it actually measures.
+
+    `placebo_p` ranks the post/pre RMSPE ratio; `placebo_p_effect` ranks the
+    signed post-event gap. The old single line reported the ratio rank under the
+    label "cells with a divergence at least this large", which is the other
+    quantity, and never showed p_effect at all (CRITIQUE #7).
+    """
     p, n = sig.get("placebo_p"), sig.get("placebo_n")
-    k = placebo_k(p, n)
-    return [
-        f"- Placebo p: {fmt_p(p)}",
+    p_eff = sig.get("placebo_p_effect")
+    lines = [
         f"- Placebo n (untouched cells tested): {_na(n)}",
-        f"- Cells with a divergence at least this large: {_na(k)}",
+        f"- Placebo p by fit ratio: {fmt_p(p)} "
+        f"({_na(placebo_k(p, n))} of {_na(n)} cells whose post-event fit error grew, against their own "
+        f"pre-event fit, at least as much as this area's did)",
     ]
+    if isinstance(p_eff, (int, float)):
+        lines.append(
+            f"- Placebo p by gap size: {fmt_p(p_eff)} "
+            f"({_na(placebo_k(p_eff, n))} of {_na(n)} cells whose post-event gap was at least as large, "
+            f"in the same direction)")
+    if sig.get("placebo_symmetric") is False:
+        lines.append("- Note: these placebo units did not re-run the area's own control selection, so "
+                     "this p-value is anti-conservative (see DECISIONS.md, CRITIQUE #4)")
+    return lines
 
 
 def _time_placebo_table(entries: list) -> list[str]:
