@@ -17,9 +17,25 @@
     "n_pre": 68,
     "n_post": 16
    },
-   "live": null,
+   "live": {
+    "verdict": "REAL",
+    "mode": "ring",
+    "lead": "NDVI",
+    "point": -0.6005794254553538,
+    "lo": -0.6764584643467113,
+    "hi": -0.5044659761929675,
+    "width": 0.172,
+    "placebo_p": 0.024390243902439025,
+    "n_donors": 40,
+    "n_pre": 63,
+    "n_post": 16,
+    "donor_res_m": 40.0,
+    "scenes_read": 188,
+    "scenes_covering": 233,
+    "peak_note": "peak RSS is measured by scripts/memtest.py, not here"
+   },
    "error": null,
-   "live_seconds": null
+   "live_seconds": 1564.5
   },
   {
    "key": "rhodes",
@@ -211,5 +227,5 @@
    "live_seconds": null
   }
  ],
- "generated": 1789801796.062878
+ "generated": 1789804585.124726
 }
