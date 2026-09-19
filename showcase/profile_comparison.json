@@ -165,9 +165,25 @@
     "n_pre": 97,
     "n_post": 18
    },
-   "live": null,
+   "live": {
+    "verdict": "REAL",
+    "mode": "ring",
+    "lead": "VH",
+    "point": -1.0186851238312913,
+    "lo": -1.5796019469067109,
+    "hi": -0.22159279630306417,
+    "width": 1.358,
+    "placebo_p": 0.024390243902439025,
+    "n_donors": 40,
+    "n_pre": 97,
+    "n_post": 18,
+    "donor_res_m": 40.0,
+    "scenes_read": 111,
+    "scenes_covering": 122,
+    "peak_note": "peak RSS is measured by scripts/memtest.py, not here"
+   },
    "error": null,
-   "live_seconds": null
+   "live_seconds": 1167.1
   },
   {
    "key": "lutzerath",
@@ -186,9 +202,25 @@
     "n_pre": 42,
     "n_post": 12
    },
-   "live": null,
+   "live": {
+    "verdict": "CANT_TELL",
+    "mode": "ring",
+    "lead": "NDVI",
+    "point": -0.08302040921125575,
+    "lo": -0.1337503479949698,
+    "hi": -0.01779620220362338,
+    "width": 0.116,
+    "placebo_p": 0.8536585365853658,
+    "n_donors": 40,
+    "n_pre": 38,
+    "n_post": 12,
+    "donor_res_m": 40.0,
+    "scenes_read": 114,
+    "scenes_covering": 211,
+    "peak_note": "peak RSS is measured by scripts/memtest.py, not here"
+   },
    "error": null,
-   "live_seconds": null
+   "live_seconds": 2734.6
   },
   {
    "key": "hasankeyf",
@@ -207,9 +239,25 @@
     "n_pre": 29,
     "n_post": 8
    },
-   "live": null,
+   "live": {
+    "verdict": "CANT_TELL",
+    "mode": "ring",
+    "lead": "NDWI",
+    "point": 0.7587681739810987,
+    "lo": -0.2662318260189013,
+    "hi": 1.3337681739810987,
+    "width": 1.6,
+    "placebo_p": 0.2682926829268293,
+    "n_donors": 40,
+    "n_pre": 29,
+    "n_post": 8,
+    "donor_res_m": 40.0,
+    "scenes_read": 173,
+    "scenes_covering": 173,
+    "peak_note": "peak RSS is measured by scripts/memtest.py, not here"
+   },
    "error": null,
-   "live_seconds": null
+   "live_seconds": 2126.1
   },
   {
    "key": "sindh",
@@ -228,9 +276,25 @@
     "n_pre": 72,
     "n_post": 10
    },
-   "live": null,
+   "live": {
+    "verdict": "CANT_TELL",
+    "mode": "ring",
+    "lead": "NDWI",
+    "point": -0.24678598033555438,
+    "lo": -1.2717859803355545,
+    "hi": 0.7782140196644457,
+    "width": 2.05,
+    "placebo_p": 0.3170731707317073,
+    "n_donors": 40,
+    "n_pre": 68,
+    "n_post": 10,
+    "donor_res_m": 40.0,
+    "scenes_read": 233,
+    "scenes_covering": 798,
+    "peak_note": "peak RSS is measured by scripts/memtest.py, not here"
+   },
    "error": null,
-   "live_seconds": null
+   "live_seconds": 2083.2
   },
   {
    "key": "richmond",
@@ -249,9 +313,25 @@
     "n_pre": 55,
     "n_post": 17
    },
-   "live": null,
+   "live": {
+    "verdict": "CANT_TELL",
+    "mode": "ring",
+    "lead": "NDVI",
+    "point": 0.004198420973790888,
+    "lo": -0.03308083665436436,
+    "hi": 0.041477678601946164,
+    "width": 0.0746,
+    "placebo_p": 0.8536585365853658,
+    "n_donors": 40,
+    "n_pre": 46,
+    "n_post": 15,
+    "donor_res_m": 40.0,
+    "scenes_read": 178,
+    "scenes_covering": 200,
+    "peak_note": "peak RSS is measured by scripts/memtest.py, not here"
+   },
    "error": null,
-   "live_seconds": null
+   "live_seconds": 3238.4
   },
   {
    "key": "jau",
@@ -270,10 +350,26 @@
     "n_pre": 43,
     "n_post": 11
    },
-   "live": null,
+   "live": {
+    "verdict": "CANT_TELL",
+    "mode": "ring",
+    "lead": "NDVI",
+    "point": 0.019976132854065076,
+    "lo": -0.02384043771051557,
+    "hi": 0.09565930019288618,
+    "width": 0.1195,
+    "placebo_p": 0.8536585365853658,
+    "n_donors": 40,
+    "n_pre": 35,
+    "n_post": 8,
+    "donor_res_m": 40.0,
+    "scenes_read": 127,
+    "scenes_covering": 210,
+    "peak_note": "peak RSS is measured by scripts/memtest.py, not here"
+   },
    "error": null,
-   "live_seconds": null
+   "live_seconds": 1270.2
   }
  ],
- "generated": 1789819093.069487
+ "generated": 1789831712.688313
 }
