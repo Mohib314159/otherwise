@@ -19,9 +19,12 @@ export const SIGNAL_LABEL = {
   VV: "radar VV backscatter (dB)",
   VH: "radar VH backscatter (dB)",
   RATIO: "radar VH/VV (dB)",
+  NO2_TRAFFIC: "roadside / traffic NO₂",
+  NO2_BACKGROUND: "urban-background NO₂",
 };
 
 export const RADAR_SIGNALS = new Set(["VV", "VH", "RATIO"]);
+export const AIR_SIGNALS = new Set(["NO2_TRAFFIC", "NO2_BACKGROUND"]);
 
 export const REASON_LABEL = {
   cloud: "Cloud or shadow over the area",
@@ -90,6 +93,7 @@ export function fmtSignalValue(signal, value, { sign = false } = {}) {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
   const s = sign && value > 0 ? "+" : "";
   if (RADAR_SIGNALS.has(signal)) return `${s}${value.toFixed(1)} dB`;
+  if (AIR_SIGNALS.has(signal)) return `${s}${value.toFixed(1)} µg/m³`;
   return `${s}${value.toFixed(2)}`;
 }
 
@@ -130,15 +134,15 @@ const HOW_IT_WORKS_HTML = `
 <h2 style="font-size:20px;font-weight:600;margin:4px 0 4px;">How this works</h2>
 <p>Most tools tell you something changed. Otherwise asks whether it changed more than it would have anyway.</p>
 <h3>1. Data</h3>
-<p>Every Sentinel-2 optical scene and Sentinel-1 radar pass over the area for three years before the event and up to 18 months after, from Microsoft Planetary Computer. Cloud, shadow and haze are removed with the scene classification and a second temporal check; radar is kept to one orbit so the look angle is constant. Every observation thrown out is listed in the receipts.</p>
+<p>The data depend on the question. Land uses Sentinel-2 optical and Sentinel-1 radar. Air pollution uses hourly ground NO₂ monitors from LAQN and DEFRA AURN plus ERA5 meteorology. Every observation thrown out is listed in the receipts.</p>
 <h3>2. Controls</h3>
-<p>A grid of cells the same size as the area, 1 to 12 km away, is filtered to the same land cover (ESA WorldCover) and similar elevation (Copernicus DEM), then ranked by how closely each tracked the area before the event.</p>
+<p>Controls are matched to the unit being tested. Land uses nearby cells with similar land cover, terrain and pre-event history. Air uses same-type monitors in other UK cities, excluding a London spillover buffer, then ranks them by pre-policy NO₂ trajectory and baseline level.</p>
 <h3>3. Counterfactual</h3>
 <p>An augmented synthetic control (Ben-Michael, Feller &amp; Rothstein, 2021) builds the no-event trajectory as a weighted average of control cells, with a ridge correction for what the weights could not match. The gap after the event is the estimated effect.</p>
 <h3>4. Uncertainty</h3>
 <p>A conformal interval (Chernozhukov, W&uuml;thrich &amp; Zhu, 2021) is formed by refitting under hypothetical effect sizes and comparing post-event residuals with block permutations of the whole residual sequence. No distribution is assumed.</p>
 <h3>5. Placebo checks</h3>
-<p>The same test is run on every control cell as if it were the area, and at fake event dates before the real one. If the method finds effects where there are none, the verdict says so.</p>
+<p>The same test is run on untouched comparison units as if they were treated, and at fake event dates before the real one. Air placebos reselect their own controls and ridge penalty and use fake cohorts the same size as the treated cohort. If the method finds effects where there are none, the verdict says so.</p>
 <h3>6. Verdict</h3>
 <p>Real change: the interval excludes zero in the claimed direction, the effect exceeds a minimum meaningful size, and the placebo rate is low. Not real: the interval rules out a meaningful change. Can't tell: too few clear observations, a poor pre-event fit, or an interval too wide to decide.</p>
 <h3>Prior art</h3>

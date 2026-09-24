@@ -24,6 +24,8 @@ from .geometry import PolygonError, validate_polygon
 from .report import (SIGNAL_LABEL, render_report, fmt_p, fmt_signal,
                      interval_str as report_interval)
 from .run import RUNS_DIR, run_id, run_verdict
+from .air import AIR_CASES, air_run_id, run_air_verdict, fetch_case_boundary
+from .air.providers import CachedHTTP
 from .verdict import SIGNALS
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -52,11 +54,16 @@ class JobTimeout(RuntimeError):
 
 
 class RunRequest(BaseModel):
-    geojson: dict
-    event_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    # `domain` is additive: old land clients need not send it and keep the exact
+    # same request/ID path as before. Air uses a pre-registered case rather than
+    # pretending a user-drawn polygon is enough to define a policy exposure.
+    domain: str = "land"
+    geojson: dict | None = None
+    event_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     change_type: str = "other"
-    post_months: int = 12
+    post_months: int | None = None
     label: str = ""
+    case_id: str | None = None
 
 
 def _find_run(rid: str) -> str | None:
@@ -100,27 +107,31 @@ def _worker(job_id: str, req: RunRequest):
     with _sem:
         job.update(status="running", stage="starting", done=0, total=1, started=time.time())
 
-        deadline = time.time() + JOB_TIMEOUT_S
+        deadline = time.monotonic() + JOB_TIMEOUT_S
 
         def progress(stage, done, total):
-            if time.time() > deadline:
+            if time.monotonic() >= deadline:
                 raise JobTimeout(
                     f"This run passed the {JOB_TIMEOUT_S / 60:.0f}-minute limit and was stopped so "
                     f"other runs can start. Try a smaller area or a shorter window.")
             job.update(stage=stage, done=done, total=total)
 
         try:
-            out = run_verdict(req.geojson, req.event_date, req.change_type, req.post_months,
-                              label=req.label[:120], progress=progress, profile=LIVE_PROFILE)
-            try:
-                from .imagery import make_thumbnails
-                progress("imagery", 0, 1)
-                info = make_thumbnails(req.geojson, req.event_date, RUNS_DIR, out["id"])
-                for tag, meta in info.items():
-                    with open(os.path.join(RUNS_DIR, f"{out['id']}_{tag}.json"), "w") as f:
-                        json.dump(meta, f)
-            except Exception:
-                traceback.print_exc()
+            if req.domain == "air":
+                out = run_air_verdict(req.case_id or "", req.post_months, label=req.label[:120],
+                                      progress=progress)
+            else:
+                out = run_verdict(req.geojson, req.event_date, req.change_type, int(req.post_months or 12),
+                                  label=req.label[:120], progress=progress, profile=LIVE_PROFILE)
+                try:
+                    from .imagery import make_thumbnails
+                    progress("imagery", 0, 1)
+                    info = make_thumbnails(req.geojson, req.event_date, RUNS_DIR, out["id"])
+                    for tag, meta in info.items():
+                        with open(os.path.join(RUNS_DIR, f"{out['id']}_{tag}.json"), "w") as f:
+                            json.dump(meta, f)
+                except Exception:
+                    traceback.print_exc()
             job.update(status="done", run_id=out["id"], stage="done", done=1, total=1)
         except JobTimeout as e:
             job.update(status="error", error=str(e)[:300], stage="error")
@@ -138,13 +149,26 @@ def _worker(job_id: str, req: RunRequest):
 
 @app.post("/api/run")
 def submit(req: RunRequest):
-    if req.change_type not in SIGNALS:
-        raise HTTPException(400, "Unknown change type")
-    try:
-        validate_polygon(req.geojson)
-    except PolygonError as e:
-        raise HTTPException(400, str(e))
-    rid = run_id(req.geojson, req.event_date, req.change_type, int(min(max(req.post_months, 1), 18)))
+    domain = (req.domain or "land").lower()
+    # The validated route and background worker must use the same domain.
+    req.domain = domain
+    if domain == "air":
+        if not req.case_id or req.case_id not in AIR_CASES:
+            raise HTTPException(400, "Unknown air-pollution case")
+        months = int(min(max(req.post_months or AIR_CASES[req.case_id].default_post_months, 1), 18))
+        rid = air_run_id(req.case_id, months)
+    elif domain == "land":
+        if req.change_type not in SIGNALS:
+            raise HTTPException(400, "Unknown change type")
+        if req.geojson is None or req.event_date is None:
+            raise HTTPException(400, "Land runs require geojson and event_date")
+        try:
+            validate_polygon(req.geojson)
+        except PolygonError as e:
+            raise HTTPException(400, str(e))
+        rid = run_id(req.geojson, req.event_date, req.change_type, int(min(max(req.post_months or 12, 1), 18)))
+    else:
+        raise HTTPException(400, "Unknown analysis domain")
     if _find_run(rid):
         return {"run_id": rid, "done": True}
     if not LIVE_RUNS_ENABLED:
@@ -230,11 +254,45 @@ def track_record():
     return json.load(open(p))
 
 
+@app.get("/api/air/cases")
+def air_cases():
+    """Public, pre-registered policy cases. Published answer keys are metadata only."""
+    return [c.public_dict() for c in AIR_CASES.values() if c.supported]
+
+
+@app.get("/api/air/cases/{case_id}/boundary")
+def air_case_boundary(case_id: str):
+    case = AIR_CASES.get(case_id)
+    if case is None or not case.supported:
+        raise HTTPException(404, "Unknown air-pollution case")
+    try:
+        boundary = fetch_case_boundary(case, CachedHTTP())
+        return boundary or {"type": "FeatureCollection", "features": []}
+    except Exception as e:
+        raise HTTPException(503, f"Could not read the official policy boundary: {type(e).__name__}")
+
+
+@app.get("/api/air/validation")
+def air_validation():
+    """Known-answer table if it has actually been run; never fabricate pending rows."""
+    p = os.path.join(SHOWCASE_DIR, "air_validation.json")
+    payload = {"runs": [], "generated_by": None}
+    if os.path.exists(p):
+        try:
+            with open(p) as f:
+                payload = json.load(f)
+        except Exception:
+            payload = {"runs": [], "generated_by": None}
+    payload["cases"] = [c.public_dict() for c in AIR_CASES.values() if c.supported]
+    return payload
+
+
 @app.get("/api/health")
 def health():
     running = sum(1 for j in _jobs.values() if j["status"] == "running")
     queued = sum(1 for j in _jobs.values() if j["status"] == "queued")
     return {"ok": True, "live_runs": LIVE_RUNS_ENABLED, "live_profile": LIVE_PROFILE,
+            "air_pollution": True, "air_cases": len(AIR_CASES),
             "max_live_jobs": MAX_LIVE_JOBS, "job_timeout_s": JOB_TIMEOUT_S,
             "running": running, "queued": queued}
 

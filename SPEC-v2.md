@@ -2,6 +2,12 @@
 
 Read this together with SPEC.md, CLAUDE.md and DECISIONS.md. Everything in those still applies (honesty rules, no invented numbers, merge and push after each step, log decisions in DECISIONS.md, never touch `DONOTREAD/`).
 
+## Implementation status — 20 Sep 2026
+
+**Ground-NO₂ Part B is implemented and adversarially hardened as protocol `air-ground-no2-v2.2`.** It includes LAQN treated monitors, DEFRA AURN controls, ERA5 weather normalisation, official ULEZ geometries, fixed treated cohorts, exact-size symmetric placebos, conformal intervals, pre-trend/time-placebo/jackknife diagnostics, receipts and ordinary `/v/<id>` permalinks.
+
+Still intentionally incomplete: Sentinel-5P/TROPOMI, OpenAQ global expansion, richer socioeconomic/road/fleet donor covariates, Ratcliffe satellite validation, and later Part C signals. The plugin-interface refactor described below remains an architectural target; land has not been rewritten merely to satisfy the abstraction on paper.
+
 ## The idea in one line
 Researchers spend months answering "did this policy or event actually make a difference?", one question at a time. Otherwise answers it in minutes, for any place, with the evidence shown and its own accuracy published — first for land (done), now for **air pollution**, then UK open data, urban heat and night lights.
 

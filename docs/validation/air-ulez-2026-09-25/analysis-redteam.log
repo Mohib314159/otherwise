@@ -1,0 +1,9 @@
+null                       CANT_TELL  point=0.075
+true_minus6                REAL       point=-5.925
+monitor_dropout            CANT_TELL  point=-0.029
+one_station_drives         CANT_TELL  point=-5.925
+preexisting_decline        CANT_TELL  point=-10.203
+national_common_shock      CANT_TELL  point=0.075
+coincident_local_shock     REAL       point=-5.925
+identifiable attacks passed: 6/6
+coincident_local_shock is a documented residual identification limit, not a pass/fail gate

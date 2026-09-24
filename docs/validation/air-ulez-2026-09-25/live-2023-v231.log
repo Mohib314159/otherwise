@@ -1,0 +1,133 @@
+[air: ULEZ boundary] 0/1
+[air: London monitor metadata] 0/1
+[air: national control metadata] 0/1
+[air: London NO2 + ERA5] 1/32
+[air: London NO2 + ERA5] 2/32
+[air: London NO2 + ERA5] 3/32
+[air: London NO2 + ERA5] 4/32
+[air: London NO2 + ERA5] 5/32
+[air: London NO2 + ERA5] 6/32
+[air: London NO2 + ERA5] 7/32
+[air: London NO2 + ERA5] 8/32
+[air: London NO2 + ERA5] 9/32
+[air: London NO2 + ERA5] 10/32
+[air: London NO2 + ERA5] 11/32
+[air: London NO2 + ERA5] 12/32
+[air: London NO2 + ERA5] 13/32
+[air: London NO2 + ERA5] 14/32
+[air: London NO2 + ERA5] 15/32
+[air: London NO2 + ERA5] 16/32
+[air: London NO2 + ERA5] 17/32
+[air: London NO2 + ERA5] 18/32
+[air: London NO2 + ERA5] 19/32
+[air: London NO2 + ERA5] 20/32
+[air: London NO2 + ERA5] 21/32
+[air: London NO2 + ERA5] 22/32
+[air: London NO2 + ERA5] 23/32
+[air: London NO2 + ERA5] 24/32
+[air: London NO2 + ERA5] 25/32
+[air: London NO2 + ERA5] 26/32
+[air: London NO2 + ERA5] 27/32
+[air: London NO2 + ERA5] 28/32
+[air: London NO2 + ERA5] 29/32
+[air: London NO2 + ERA5] 30/32
+[air: London NO2 + ERA5] 31/32
+[air: London NO2 + ERA5] 32/32
+[air: control NO2 + ERA5] 1/80
+[air: control NO2 + ERA5] 2/80
+[air: control NO2 + ERA5] 3/80
+[air: control NO2 + ERA5] 4/80
+[air: control NO2 + ERA5] 5/80
+[air: control NO2 + ERA5] 6/80
+[air: control NO2 + ERA5] 7/80
+[air: control NO2 + ERA5] 8/80
+[air: control NO2 + ERA5] 9/80
+[air: control NO2 + ERA5] 10/80
+[air: control NO2 + ERA5] 11/80
+[air: control NO2 + ERA5] 12/80
+[air: control NO2 + ERA5] 13/80
+[air: control NO2 + ERA5] 14/80
+[air: control NO2 + ERA5] 15/80
+[air: control NO2 + ERA5] 16/80
+[air: control NO2 + ERA5] 17/80
+[air: control NO2 + ERA5] 18/80
+[air: control NO2 + ERA5] 19/80
+[air: control NO2 + ERA5] 20/80
+[air: control NO2 + ERA5] 21/80
+[air: control NO2 + ERA5] 22/80
+[air: control NO2 + ERA5] 23/80
+[air: control NO2 + ERA5] 24/80
+[air: control NO2 + ERA5] 25/80
+[air: control NO2 + ERA5] 26/80
+[air: control NO2 + ERA5] 27/80
+[air: control NO2 + ERA5] 28/80
+[air: control NO2 + ERA5] 29/80
+[air: control NO2 + ERA5] 30/80
+[air: control NO2 + ERA5] 31/80
+[air: control NO2 + ERA5] 32/80
+[air: control NO2 + ERA5] 33/80
+[air: control NO2 + ERA5] 34/80
+[air: control NO2 + ERA5] 35/80
+[air: control NO2 + ERA5] 36/80
+[air: control NO2 + ERA5] 37/80
+[air: control NO2 + ERA5] 38/80
+[air: control NO2 + ERA5] 39/80
+[air: control NO2 + ERA5] 40/80
+[air: control NO2 + ERA5] 41/80
+[air: control NO2 + ERA5] 42/80
+[air: control NO2 + ERA5] 43/80
+[air: control NO2 + ERA5] 44/80
+[air: control NO2 + ERA5] 45/80
+[air: control NO2 + ERA5] 46/80
+[air: control NO2 + ERA5] 47/80
+[air: control NO2 + ERA5] 48/80
+[air: control NO2 + ERA5] 49/80
+[air: control NO2 + ERA5] 50/80
+[air: control NO2 + ERA5] 51/80
+[air: control NO2 + ERA5] 52/80
+[air: control NO2 + ERA5] 53/80
+[air: control NO2 + ERA5] 54/80
+[air: control NO2 + ERA5] 55/80
+[air: control NO2 + ERA5] 56/80
+[air: control NO2 + ERA5] 57/80
+[air: control NO2 + ERA5] 58/80
+[air: control NO2 + ERA5] 59/80
+[air: control NO2 + ERA5] 60/80
+[air: control NO2 + ERA5] 61/80
+[air: control NO2 + ERA5] 62/80
+[air: control NO2 + ERA5] 63/80
+[air: control NO2 + ERA5] 64/80
+[air: control NO2 + ERA5] 65/80
+[air: control NO2 + ERA5] 66/80
+[air: control NO2 + ERA5] 67/80
+[air: control NO2 + ERA5] 68/80
+[air: control NO2 + ERA5] 69/80
+[air: control NO2 + ERA5] 70/80
+[air: control NO2 + ERA5] 71/80
+[air: control NO2 + ERA5] 72/80
+[air: control NO2 + ERA5] 73/80
+[air: control NO2 + ERA5] 74/80
+[air: control NO2 + ERA5] 75/80
+[air: control NO2 + ERA5] 76/80
+[air: control NO2 + ERA5] 77/80
+[air: control NO2 + ERA5] 78/80
+[air: control NO2 + ERA5] 79/80
+[air: control NO2 + ERA5] 80/80
+[air: traffic counterfactual] 0/1
+[air: background counterfactual] 0/1
+
+=== OTHERWISE ===
+Can't tell
+Weather-normalised NO₂ was 1.9 µg/m³ lower than the matched no-policy trajectory over the 3 months after 29 Aug 2023 (90% interval -4.0 to +0.4 µg/m³; -6.9%). But: only 9 usable same-type control monitors (need 12); the control pool cannot support placebo cohorts as large as the treated London cohort; only 0 valid exact-size placebo cohorts (need 19); the estimated improvement is not robust to leaving out one treated monitor; the estimated improvement is not robust to removing an influential control monitor. Weather-normalised NO₂ was 0.5 µg/m³ higher than the matched no-policy trajectory over the 3 months after 29 Aug 2023 (90% interval -1.0 to +2.2 µg/m³; +2.8%). But: only 6 usable same-type control monitors (need 12); the control pool cannot support placebo cohorts as large as the treated London cohort; only 0 valid exact-size placebo cohorts (need 19); the estimated improvement is not robust to leaving out one treated monitor; the estimated improvement is not robust to removing an influential control monitor.
+NO2_TRAFFIC       -6.89%    -1.93 µg/m³  90% [-4.01, +0.43]  placebo p=1.000
+NO2_BACKGROUND    +2.78%    +0.46 µg/m³  90% [-0.96, +2.15]  placebo p=1.000
+
+=== PUBLISHED ANSWER KEY (attached after estimation) ===
+- Tong et al. (2025), npj Clean Air: No detectable additional effect on NO₂ after the 2023 London-wide expansion.
+  Otherwise: -6.89% (90% -14.31% to +1.52%)
+  published study reported no detectable effect; compare with Otherwise verdict above
+- Tong et al. (2025), npj Clean Air: No detectable additional effect on NO₂ after the 2023 London-wide expansion.
+  Otherwise: +2.78% (90% -5.77% to +12.89%)
+  published study reported no detectable effect; compare with Otherwise verdict above
+
+Permalink id: 34d89f77f1989209  -> /v/34d89f77f1989209

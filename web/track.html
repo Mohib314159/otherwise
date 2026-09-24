@@ -17,11 +17,17 @@
   .table-wrap { margin-top: 24px; padding-bottom: 40px; }
   td.verdict-cell { font-weight: 500; }
   .v-REAL.verdict-cell, .v-NOT_REAL.verdict-cell, .v-CANT_TELL.verdict-cell { font-weight: 500; }
+  #air-validation { margin: 48px 0 72px; border-top: 1px solid var(--rule); padding-top: 18px; }
+  #air-validation h2 { font-size: 24px; font-weight: 600; }
+  #air-validation .blind-sub, #air-validation .protocol { color: var(--muted); max-width: 760px; margin-top: 10px; font-size: 14px; }
 </style>
 <!-- after the block above so it wins the cascade at equal specificity -->
 <link rel="stylesheet" href="/static/mobile.css">
+<link rel="stylesheet" href="/static/desktop.css?v=air-20260922">
+<link rel="stylesheet" href="/static/evidence.css?v=air-20260922">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 </head>
-<body>
+<body class="page-track">
 <div class="container">
   <div class="topbar">
     <a class="wordmark" href="/">Otherwise</a>

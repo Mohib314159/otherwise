@@ -1031,3 +1031,90 @@ One genuine argument for paying it: CPU Basic is 2 vCPU and **16 GB RAM**, which
 is enough to run the `full` profile, and that would dissolve the co-observation
 caveat live verdicts must currently carry. The same argument applies to any
 off-Render compute, so it is not specific to Hugging Face.
+
+## 2026-09-20 — air v1: ULEZ uses ground monitors first, with symmetric cohort placebos
+
+`SPEC-v2.md` says ground NO₂ + ERA5 first, then Sentinel-5P. That ordering is now implemented rather than treating "air" as a satellite-only feature.
+
+### Why ground first
+
+The central 2019 ULEZ is smaller than a useful TROPOMI causal unit and its published effects differ sharply between roadside/traffic and urban-background monitors. LAQN is therefore the treated network, DEFRA AURN supplies non-London controls, and ERA5 supplies meteorology. Sentinel-5P remains an **independent cross-sensor validation layer**, not a way to inflate the evidence count by mixing kilometre-scale columns with street monitors.
+
+### The estimator is not allowed to know the answer key
+
+Published ULEZ findings live in `src/app/air/cases.py`. The inference layer (`air/analysis.py`) never imports that module. `run_air_verdict` attaches the research comparison only after the effect, interval, placebos and verdict exist. If the ULEZ estimate disagrees with Ma (2021) or Tong et al. (2025), the track-record table shows the disagreement; no threshold or donor pool is tuned to make the paper fall inside the interval.
+
+### Monitor types stay separate
+
+Traffic/roadside and urban-background monitors are separate strata all the way through the pipeline. A disagreement between strata forces the combined verdict to CAN'T TELL rather than averaging away a physically meaningful difference.
+
+### Weather normalisation is pre-period-only
+
+Each monitor's weather model is selected and fit only before the policy date. ERA5 actual-weather predictions are replaced by a representative pre-policy weather state, leaving the calendar component and residual post-policy shift. This does not remove concurrent local policy or behavioural changes, which are listed as a limit on every air verdict.
+
+### Placebo design starts with the land symmetry lesson already learned
+
+Air never implements the treated-pool placebo shortcut. Every fake treated cohort has the same size as the real London cohort, is removed from the candidate pool, re-selects its own controls from pre-policy data, and re-selects its own ASCM lambda. The symmetric procedure is deterministic from the case/date/stratum seed. This is stricter than the old `estimator.py` snapshot in this uploaded archive and should be the model for the eventual land code reconciliation.
+
+### Validation surfaces
+
+- `python -m scripts.air_power` — synthetic null/effect calibration; reports REAL / NOT_REAL / CAN'T TELL separately.
+- `python -m scripts.air_known_answers` — runs pre-registered cases and writes `showcase/air_validation.json` **after** estimation.
+- `/api/air/validation` + `/track-record` — show real generated rows if they exist and explicitly show "not run yet" otherwise.
+- each run is ordinary `data/runs/<id>.json` and therefore gets `/v/<id>`, `report.md` and `run.json` like land.
+
+Known incompleteness is deliberate and public: no Sentinel-5P yet, no OpenAQ global provider, and no population/road-density donor covariates in ground-v1. Those are next only after the ULEZ ground results are inspected rather than before.
+
+## 2026-09-20 — air protocol v2.2: adversarial hardening before any live ULEZ claim
+
+The first air implementation was red-teamed before accepting a live ULEZ result. One attack exposed a real false-positive mechanism: if a high-baseline London monitor disappeared at the policy date, the week-by-week treated average could fall even with **zero true intervention effect**. The estimator called that synthetic case REAL. That is now a regression test and the protocol changed rather than tuning the example away.
+
+### Fixed treated composition
+
+A treated station must pass ≥80% coverage separately before and after implementation. Eligible stations form a fixed cohort. Their series are baseline-aligned using pre-policy means, and a week is kept only when ≥80% of that fixed cohort is observed. The dropout attack no longer produces a positive verdict.
+
+### Outcome missingness is no longer seasonally manufactured
+
+Donor outcomes may interpolate at most one internal missing week. Any remaining gap on a week used by the treated cohort excludes the donor. The old idea of filling a long post-policy hole from a donor's historical week-of-year pattern was rejected: it can manufacture exactly the smooth counterfactual we are trying to test.
+
+### Placebos are exact-size or they do not count
+
+Every placebo cohort has exactly the real treated cohort size, is removed from the candidate pool, and then re-runs donor selection and lambda tuning. No placebo cohort may silently shrink. A positive verdict requires at least 19 valid cohorts, plus both an RMSPE-ratio p-value and a signed-effect p-value ≤0.10.
+
+### New falsification/sensitivity gates
+
+Air now runs a 13-week lead/pre-trend check, fake pre-policy event dates, leave-one-treated-monitor-out refits, and influential-donor removal. An applicable failure yields CAN'T TELL. A synthetic one-monitor-only improvement and a pre-existing decline are both now rejected as decisive evidence.
+
+### NO₂-specific conformal search
+
+The inherited land/radar numerical search could stop at ±10 units even when a plausible roadside NO₂ effect was larger. Air now uses a wider adaptive search that is forced to span zero. If the accepted set is empty or reaches the numerical boundary, the interval is marked unresolved and REAL is disallowed.
+
+### Registered ULEZ windows/geographies corrected
+
+- 2019 starts 2018-03-08 rather than fitting across the earlier T-Charge transition.
+- 2021 is exploratory and forcibly CAN'T_TELL because the post-lockdown clean baseline is too short.
+- 2023 starts 2021-07-19 and defines treatment as the official London-wide/LEZ footprint minus the already-treated 2021 ULEZ polygon. The estimand is therefore the incremental post-29-Aug-2023 change in newly covered outer London.
+
+These choices were registered because they address known design contamination, not because they make an answer agree with a paper.
+
+### Control-policy contamination screen
+
+AURN candidates near known UK CAZ/LEZ/ZEZ launches are conservatively excluded when that launch falls inside the registered analysis window. The exclusions are written to the evidence JSON. This screen is intentionally incomplete rather than described as a universal policy database.
+
+### Remaining identification failure stays visible
+
+A synthetic London-only unmeasured shock beginning on exactly the policy date still looks like a policy effect. That is not patched with another threshold because it is a genuine observational identification limit. It is written into every air verdict's limitations and motivates richer covariates / independent sensors.
+
+### Immutable evidence
+
+Air run IDs now include `air-ground-no2-v2.2`. Results created by the old method cannot be silently served under the same permalink as results created by the hardened protocol.
+
+
+## 2026-09-25 Codex air validation checkpoint
+
+- Integrated the supplied air v2.2 archive and selected flagship UI styles; retained separate traffic/background estimation and land behavior.
+- Fixed verified ingestion/coverage bugs: DEFRA hour-ending timestamps and adjacent status, NOx column confusion, GLA MapServer endpoint, LAQN exclusive EndDate and NO2 instrument dates, absent ERA5 rejection and explicit coverage receipts.
+- Enforced the documented one-internal-week repair limit, excluded mixed policy weeks at analysis entry, and corrected positive-point/wide-interval abstention. Protocol is now air-ground-no2-v2.3.1 so prior evidence is not silently reinterpreted. These changes require method-owner review before any merge.
+- Saved evidence is immutable; cohort budgets enter identity; missing chart values become JSON null. Added Windows date/UTF-8/path/monotonic-time compatibility fixes and regression tests.
+- Latest full suite: 308 passed,20 skipped,8 xfailed. Live validation remains incomplete due LAQN annual timeouts; latest2019 has no estimate and latest2023 has inadequate placebo support. See docs/validation/air-ulez-2026-09-25.
+- No estimator tuning to literature; no merge to main. Further method proposals in ULEZ-DESIGN.md are not implemented by this checkpoint.

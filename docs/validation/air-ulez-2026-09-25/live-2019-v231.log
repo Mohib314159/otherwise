@@ -1,0 +1,108 @@
+[air: ULEZ boundary] 0/1
+[air: London monitor metadata] 0/1
+[air: national control metadata] 0/1
+[air: London NO2 + ERA5] 1/12
+[air: London NO2 + ERA5] 2/12
+[air: London NO2 + ERA5] 3/12
+[air: London NO2 + ERA5] 4/12
+[air: London NO2 + ERA5] 5/12
+[air: London NO2 + ERA5] 6/12
+[air: London NO2 + ERA5] 7/12
+[air: London NO2 + ERA5] 8/12
+[air: London NO2 + ERA5] 9/12
+[air: London NO2 + ERA5] 10/12
+[air: London NO2 + ERA5] 11/12
+[air: London NO2 + ERA5] 12/12
+[air: control NO2 + ERA5] 1/80
+[air: control NO2 + ERA5] 2/80
+[air: control NO2 + ERA5] 3/80
+[air: control NO2 + ERA5] 4/80
+[air: control NO2 + ERA5] 5/80
+[air: control NO2 + ERA5] 6/80
+[air: control NO2 + ERA5] 7/80
+[air: control NO2 + ERA5] 8/80
+[air: control NO2 + ERA5] 9/80
+[air: control NO2 + ERA5] 10/80
+[air: control NO2 + ERA5] 11/80
+[air: control NO2 + ERA5] 12/80
+[air: control NO2 + ERA5] 13/80
+[air: control NO2 + ERA5] 14/80
+[air: control NO2 + ERA5] 15/80
+[air: control NO2 + ERA5] 16/80
+[air: control NO2 + ERA5] 17/80
+[air: control NO2 + ERA5] 18/80
+[air: control NO2 + ERA5] 19/80
+[air: control NO2 + ERA5] 20/80
+[air: control NO2 + ERA5] 21/80
+[air: control NO2 + ERA5] 22/80
+[air: control NO2 + ERA5] 23/80
+[air: control NO2 + ERA5] 24/80
+[air: control NO2 + ERA5] 25/80
+[air: control NO2 + ERA5] 26/80
+[air: control NO2 + ERA5] 27/80
+[air: control NO2 + ERA5] 28/80
+[air: control NO2 + ERA5] 29/80
+[air: control NO2 + ERA5] 30/80
+[air: control NO2 + ERA5] 31/80
+[air: control NO2 + ERA5] 32/80
+[air: control NO2 + ERA5] 33/80
+[air: control NO2 + ERA5] 34/80
+[air: control NO2 + ERA5] 35/80
+[air: control NO2 + ERA5] 36/80
+[air: control NO2 + ERA5] 37/80
+[air: control NO2 + ERA5] 38/80
+[air: control NO2 + ERA5] 39/80
+[air: control NO2 + ERA5] 40/80
+[air: control NO2 + ERA5] 41/80
+[air: control NO2 + ERA5] 42/80
+[air: control NO2 + ERA5] 43/80
+[air: control NO2 + ERA5] 44/80
+[air: control NO2 + ERA5] 45/80
+[air: control NO2 + ERA5] 46/80
+[air: control NO2 + ERA5] 47/80
+[air: control NO2 + ERA5] 48/80
+[air: control NO2 + ERA5] 49/80
+[air: control NO2 + ERA5] 50/80
+[air: control NO2 + ERA5] 51/80
+[air: control NO2 + ERA5] 52/80
+[air: control NO2 + ERA5] 53/80
+[air: control NO2 + ERA5] 54/80
+[air: control NO2 + ERA5] 55/80
+[air: control NO2 + ERA5] 56/80
+[air: control NO2 + ERA5] 57/80
+[air: control NO2 + ERA5] 58/80
+[air: control NO2 + ERA5] 59/80
+[air: control NO2 + ERA5] 60/80
+[air: control NO2 + ERA5] 61/80
+[air: control NO2 + ERA5] 62/80
+[air: control NO2 + ERA5] 63/80
+[air: control NO2 + ERA5] 64/80
+[air: control NO2 + ERA5] 65/80
+[air: control NO2 + ERA5] 66/80
+[air: control NO2 + ERA5] 67/80
+[air: control NO2 + ERA5] 68/80
+[air: control NO2 + ERA5] 69/80
+[air: control NO2 + ERA5] 70/80
+[air: control NO2 + ERA5] 71/80
+[air: control NO2 + ERA5] 72/80
+[air: control NO2 + ERA5] 73/80
+[air: control NO2 + ERA5] 74/80
+[air: control NO2 + ERA5] 75/80
+[air: control NO2 + ERA5] 76/80
+[air: control NO2 + ERA5] 77/80
+[air: control NO2 + ERA5] 78/80
+[air: control NO2 + ERA5] 79/80
+[air: control NO2 + ERA5] 80/80
+[air: traffic counterfactual] 0/1
+[air: background counterfactual] 0/1
+
+=== OTHERWISE ===
+Can't tell
+No monitor stratum had enough data to run.
+
+=== PUBLISHED ANSWER KEY (attached after estimation) ===
+- Ma, Graham & Stettler (2021), Environmental Research Letters: Meteorology-normalised regression-discontinuity analysis reported a small initial average NO₂ effect (under 3%), with larger reductions at some sites.
+- Tong et al. (2025), npj Clean Air: ASCM + weather normalisation: 19.6% (13.3 µg/m³) at central urban-traffic sites after 3 months.
+- Tong et al. (2025), npj Clean Air: ASCM + weather normalisation: 8.2% (2.7 µg/m³) at central urban-background sites after 3 months.
+
+Permalink id: 2f1f5b972f78cc61  -> /v/2f1f5b972f78cc61

@@ -1,13 +1,18 @@
 # Otherwise — did it really change?
 
-**A public web app.** Draw an area on a map, say what supposedly happened there
-and when ("forest cleared in February 2020", "this field flooded"), and get a
-verdict: **real change / not real / can't tell**, with the evidence behind it.
+**A public counterfactual evidence app.** Choose a dated intervention and a measurable signal, then ask whether the observed outcome moved more than it would have anyway. Land change is the validated first signal family; **ground-level NO₂ policy evaluation is now the second, starting with London ULEZ**. Every result is a permanent evidence page with the estimate, matched controls, uncertainty, placebo checks, receipts and known limits.
 
 Most tools tell you *something changed*. Otherwise tells you whether it changed
 **more than it would have anyway**, by comparing the area with matched control
 areas that did not get the event, and by running the same test on untouched
 areas and fake dates to show how often the method finds effects that are not there.
+
+## Two signal families
+
+- **Land change** — user-drawn polygon; Sentinel-1/2; matched land-cover/elevation controls; augmented synthetic control; conformal interval; spatial and temporal placebos.
+- **Air pollution (ground-NO₂ v2.2)** — pre-registered ULEZ policy zones; LAQN NO₂ treated monitors; same-type non-London DEFRA AURN controls; ERA5 weather normalisation trained only before the policy; fixed-composition treated cohorts, pre-period-only seasonal weather normalisation, exact-size **symmetric** placebos, pre-trend and leave-one-monitor-out stress checks. Traffic and urban-background monitors are analysed separately. See [`docs/AIR_METHOD.md`](docs/AIR_METHOD.md).
+
+The air implementation intentionally attaches published ULEZ estimates **after** Otherwise has estimated the effect. Run `python -m scripts.air_known_answers` to generate the known-answer table; disagreement is kept, not tuned away. Sentinel-5P is the next independent cross-sensor layer and is not yet claimed as implemented.
 
 ## What it does, in one screen
 
@@ -53,7 +58,11 @@ make serve                      # http://127.0.0.1:8000
 python -m pytest -q             # test suite
 python -m scripts.fetch_area --bbox=-1.290,52.905,-1.282,52.911 --start 2021-01-01 --end 2023-12-31
 python -m scripts.run_sites     # recompute the showcase / known-answer sites
-python -m scripts.power         # detection-power table on cached real data
+python -m scripts.power         # land detection-power table on cached real data
+python -m scripts.run_air_case ulez-central-2019 --post-months 3
+python -m scripts.air_redteam          # adversarial synthetic failure tests
+python -m scripts.air_power --seeds 30 --effect -6
+python -m scripts.air_known_answers  # writes the air known-answer table after live runs
 ```
 
 Deployment (Hugging Face Spaces or Render, free tiers) is in `DEPLOY.md`.
@@ -62,11 +71,11 @@ Deployment (Hugging Face Spaces or Render, free tiers) is in `DEPLOY.md`.
 
 | Path | What |
 |---|---|
-| `src/app/` | the app: `fetch` (data), `estimator` (method), `verdict` (rules), `run` (one verdict), `server` (API) |
+| `src/app/` | shared app + land pipeline; `src/app/air/` is the NO₂/ULEZ plugin (providers, weather adjustment, fixed-cohort aggregation, hardened symmetric placebo inference, registered ULEZ cases, run orchestration) |
 | `web/` | the frontend: map landing page, verdict page, track record |
 | `showcase/` | precomputed verdicts for the showcase and the track-record page |
 | `SPEC.md`, `PLAN.md`, `DECISIONS.md`, `SITES.md` | what we are building, how, why, and the known-answer sites |
-| `docs/METHOD.md` | the full method write-up: data, estimator, uncertainty, placebo checks, verdict rules, limits |
+| `docs/METHOD.md` | land method; [`docs/AIR_METHOD.md`](docs/AIR_METHOD.md) is the ground-NO₂ / ULEZ method and validation protocol |
 | `docs/REDTEAM.md` | adversarial review of the method by us, including the two attacks that break it |
 | `src/scm.py`, `src/inference.py`, … | the original CarbonTwin engine (below) |
 

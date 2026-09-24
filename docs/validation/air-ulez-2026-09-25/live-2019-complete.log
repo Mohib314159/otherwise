@@ -1,0 +1,17 @@
+
+=== OTHERWISE ===
+Can't tell
+Weather-normalised NO₂ was 7.8 µg/m³ lower than the matched no-policy trajectory over the 3 months after 8 Apr 2019 (90% interval -12.8 to +9.8 µg/m³; -10.0%). But: only 43 pre-event weekly observations (need 52); the no-policy trajectory does not reproduce pre-policy NO₂ closely enough. Weather-normalised NO₂ was 1.8 µg/m³ higher than the matched no-policy trajectory over the 3 months after 8 Apr 2019 (90% interval -10.9 to +10.6 µg/m³; +6.0%). But: only 11 usable same-type control monitors (need 12); the control pool cannot support placebo cohorts as large as the treated London cohort; only 0 valid exact-size placebo cohorts (need 19); the estimated improvement is not robust to leaving out one treated monitor; the estimated improvement is not robust to removing an influential control monitor.
+NO2_TRAFFIC      -10.05%    -7.75 µg/m³  90% [-12.83, +9.82]  placebo p=0.268
+NO2_BACKGROUND    +6.02%    +1.81 µg/m³  90% [-10.95, +10.60]  placebo p=1.000
+
+=== PUBLISHED ANSWER KEY (attached after estimation) ===
+- Ma, Graham & Stettler (2021), Environmental Research Letters: Meteorology-normalised regression-discontinuity analysis reported a small initial average NO₂ effect (under 3%), with larger reductions at some sites.
+- Tong et al. (2025), npj Clean Air: ASCM + weather normalisation: 19.6% (13.3 µg/m³) at central urban-traffic sites after 3 months.
+  Otherwise: -10.05% (90% -16.63% to +12.73%)
+  published estimate outside Otherwise 90% interval
+- Tong et al. (2025), npj Clean Air: ASCM + weather normalisation: 8.2% (2.7 µg/m³) at central urban-background sites after 3 months.
+  Otherwise: +6.02% (90% -36.36% to +35.22%)
+  published estimate inside Otherwise 90% interval
+
+Permalink id: 14411a7b6a8ceb55  -> /v/14411a7b6a8ceb55

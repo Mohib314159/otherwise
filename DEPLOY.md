@@ -105,3 +105,11 @@ uvicorn src.app.server:app --reload --port 8000
 `python -m scripts.track_record` rebuilds `showcase/track_record.json` from
 every entry in `showcase/index.json` that has an `expected` value, and never
 counts a site without a source. Commit the result.
+
+## Air / ULEZ runtime notes
+
+The ground-NO₂ path makes outbound HTTPS requests to the public LAQN/Imperial ERG, DEFRA UK-AIR AURN, Open-Meteo ERA5 archive and GLA/TfL ArcGIS services. No API secret is required for the registered ULEZ cases.
+
+Set `APP_AIR_CACHE_DIR` to a writable location. The Docker/Render configuration uses `/data/air_cache`; `data/air_cache/` is ignored locally. The cache is an optimisation/provenance copy, not part of the estimator state.
+
+Run IDs include the air protocol version, so upgrading the method does not reuse an older permalink. A host without persistent storage may lose locally generated run JSON after restart; attach persistent storage if durable production permalinks are required beyond the committed showcase artefacts.

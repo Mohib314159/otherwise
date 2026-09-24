@@ -1,0 +1,8 @@
+# Tested Windows Python 3.12 environment. Keep the virtualenv path short.
+-r requirements.txt
+uvicorn[standard]>=0.29
+numpy==2.2.6
+pandas==2.2.3
+scipy==1.15.3
+pyarrow==19.0.1
+streamlit==1.45.1
