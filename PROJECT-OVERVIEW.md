@@ -169,7 +169,7 @@ Most of this is **not used by the app**. `scm.py`, `inference.py`, `audit.py`, `
   - `AIR_REDTEAM_REPORT.md` and `AIR_V2_2_RELEASE.md`: inherited history.
   - `validation/air-ulez-2026-09-25/`: Codex's ULEZ run files and logs.
   - `screenshots/`.
-- `tests/`: about 50 test files. `test_air_*.py` are from Codex. `test_redteam.py` deliberately encodes known weaknesses as "expected failures", so fixing one makes its test flip.
+- `tests/`: 47 test files. `test_air_*.py` are from Codex. `test_redteam.py` deliberately encodes known weaknesses as "expected failures", so fixing one makes its test flip.
 - `assets/`: demo PNGs from the CarbonTwin era.
 - `DONOTREAD/`: licensed data and private notes. It is **not in this checkout**, and must never be read or committed.
 
