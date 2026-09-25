@@ -18,6 +18,8 @@ SIGNAL_LABEL = {
     "VV": "radar VV backscatter (dB)",
     "VH": "radar VH backscatter (dB)",
     "RATIO": "radar VH/VV (dB)",
+    "NO2_TRAFFIC": "roadside / traffic NO₂",
+    "NO2_BACKGROUND": "urban-background NO₂",
 }
 
 CHANGE_TYPE_LABEL = {
@@ -61,6 +63,8 @@ def fmt_signal(signal: str | None, value) -> str:
         return "n/a"
     if signal in RADAR_SIGNALS:
         return f"{v:.2f} dB"
+    if signal in ("NO2_TRAFFIC", "NO2_BACKGROUND"):
+        return f"{v:.2f} µg/m³"
     return f"{v:.3f}"
 
 
@@ -74,6 +78,14 @@ def interval_str(signal, lo, hi) -> str:
     if lo is None or hi is None:
         return "n/a"
     return f"{fmt_signal(signal, lo)} to {fmt_signal(signal, hi)}"
+
+
+def air_placebo_p(sig: dict, key: str) -> str:
+    """An air placebo p only exists if at least one placebo cohort ran. Older run
+    files store a sentinel 1.0 when none did; that is not a test result."""
+    if not sig.get("placebo_n"):
+        return "not available (no placebo cohorts could be formed)"
+    return fmt_p(sig.get(key))
 
 
 def placebo_k(p, n):
@@ -133,7 +145,7 @@ def _placebo_lines(sig: dict) -> list[str]:
             f"- Placebo p by gap size: {fmt_p(p_eff)} "
             f"({_na(placebo_k(p_eff, n))} of {_na(n)} cells whose post-event gap was at least as large, "
             f"in the same direction)")
-    if sig.get("placebo_symmetric") is False:
+    if sig.get("placebo_symmetric") is not True:   # missing = run predates the fix
         lines.append("- Note: these placebo units did not re-run the area's own control selection, so "
                      "this p-value is anti-conservative (see DECISIONS.md, CRITIQUE #4)")
     return lines
@@ -156,8 +168,95 @@ def _time_placebo_table(entries: list) -> list[str]:
     return lines
 
 
+
+def _render_air_report(run: dict) -> str:
+    case = run.get("case") or {}
+    verdict = run.get("verdict") or {}
+    signals = run.get("signals") or {}
+    donors = run.get("donors") or {}
+    stations = run.get("stations") or {}
+    data = run.get("data_summary") or {}
+    research = run.get("research_comparison") or []
+    limits = run.get("limits") or []
+    method = run.get("method") or {}
+    out = [f"# {run.get('label') or case.get('label') or 'Air-pollution analysis'}", ""]
+    out += [case.get("description") or "Did NO₂ change more than it would have in comparable places?", ""]
+    out += ["## Verdict", f"**{verdict.get('status', 'n/a')}** — {verdict.get('headline', 'n/a')}", "",
+            str(verdict.get("statement") or "n/a"), ""]
+    for key, sig in signals.items():
+        out += [f"## {SIGNAL_LABEL.get(key, key)}",
+                f"- Effect vs no-policy trajectory: {fmt_signal(key, sig.get('point'))}",
+                f"- 90% interval: {interval_str(key, sig.get('lo'), sig.get('hi'))}",
+                f"- Relative effect: {sig.get('relative_pct', 'n/a'):.2f}%" if isinstance(sig.get('relative_pct'), (int,float)) else "- Relative effect: n/a",
+                f"- Counterfactual post-policy mean: {fmt_signal(key, sig.get('counterfactual_post_mean'))}",
+                f"- Treated monitors: {_na(sig.get('treated_station_count'))}",
+                f"- Control monitors used: {_na(sig.get('n_donors'))}",
+                f"- Pre-event weekly observations: {_na(sig.get('n_pre'))}",
+                f"- Post-event weekly observations: {_na(sig.get('n_post'))}",
+                f"- Pre-fit RMSE: {fmt_signal(key, sig.get('pre_rmse'))}",
+                f"- Symmetric in-space placebo p: {air_placebo_p(sig, 'placebo_p')}",
+                f"- Gap-size placebo p: {air_placebo_p(sig, 'placebo_p_effect')}",
+                f"- Placebo cohorts: {_na(sig.get('placebo_n'))}; cohort size {_na(sig.get('placebo_cohort_size'))}",
+                ""]
+        di = donors.get(key) or {}
+        ss = di.get("stations") or []
+        if ss:
+            out += ["Controls with non-zero/selected ASCM pool membership:", "",
+                    "| Station | Type | Source | Weight |", "|---|---|---|---:|"]
+            weights = di.get("weights") or []
+            for i, st in enumerate(ss):
+                out.append(f"| {_escape_cell(st.get('name'))} | {_escape_cell(st.get('site_type'))} | "
+                           f"{_escape_cell(st.get('source'))} | {(weights[i] if i < len(weights) else 0):.4f} |")
+            out.append("")
+    out += ["## Data and weather",
+            f"- Sources: {_s(data.get('source'))}",
+            f"- Pollutant: {_s(data.get('pollutant'))} ({_s(data.get('unit'))})",
+            f"- Aggregation: {_s(data.get('aggregation'))}",
+            f"- Usable treated monitors: {_na(stations.get('treated_usable'))}",
+            f"- Usable non-London controls fetched: {_na(stations.get('control_usable'))}",
+            "- Weather: ERA5; each monitor is normalised by a ridge model fitted and selected on pre-policy observations only.",
+            "- Traffic/roadside and background monitors are analysed separately.", ""]
+    if research:
+        out += ["## Published-study comparison",
+                "Published values are attached only after Otherwise has estimated the counterfactual; they are not estimator inputs.", "",
+                "| Study | Published finding | Otherwise | Comparison |", "|---|---|---|---|"]
+        for r in research:
+            ours = "n/a"
+            if isinstance(r.get("otherwise_pct"), (int,float)):
+                ours = f"{r['otherwise_pct']:+.2f}% ({r.get('otherwise_ugm3', 0):+.2f} µg/m³)"
+            out.append(f"| {_escape_cell(r.get('citation'))} | {_escape_cell(r.get('finding'))} | "
+                       f"{_escape_cell(ours)} | {_escape_cell(r.get('comparison'))} |")
+        out.append("")
+    out += ["## Honest limits"]
+    out += [f"- {_s(x)}" for x in limits] if limits else ["- n/a"]
+    out.append("")
+    out += ["## Receipts"]
+    receipts = run.get("receipts") or []
+    if receipts:
+        out += ["| Date | Sensor | Reason | Detail |", "|---|---|---|---|"]
+        for r in receipts[:MAX_RECEIPT_ROWS]:
+            out.append(f"| {_escape_cell(_fmt_date(r.get('date')))} | {_escape_cell(r.get('sensor'))} | "
+                       f"{_escape_cell(r.get('reason'))} | {_escape_cell(r.get('detail'))} |")
+        if len(receipts) > MAX_RECEIPT_ROWS:
+            out += ["", f"... and {len(receipts)-MAX_RECEIPT_ROWS} more."]
+    else:
+        out.append("n/a")
+    out += ["", "## Method"]
+    out += [f"- {k}: {_s(v)}" for k, v in method.items()] if method else ["- n/a"]
+    out += ["", "## Reproduce", f"Run `{_s(run.get('id'))}`, created {_s(run.get('created'))}.", "",
+            "POST to `/api/run`:", "", "```json",
+            json.dumps({"domain":"air", "case_id":run.get("case_id"), "post_months":run.get("post_months"),
+                        "label":run.get("label") or ""}, indent=2), "```", "",
+            "---",
+            "Ground NO₂: London Air Quality Network (Imperial ERG) and DEFRA UK-AIR AURN. "
+            "Weather: ERA5 via Open-Meteo historical API. ULEZ boundary: TfL/GLA open data.", ""]
+    return "\n".join(out)
+
+
 def render_report(run: dict) -> str:
     run = run if isinstance(run, dict) else {}
+    if run.get("domain") == "air":
+        return _render_air_report(run)
     label = run.get("label") or "Drawn area"
     change_type = run.get("change_type")
     event_date = run.get("event_date")

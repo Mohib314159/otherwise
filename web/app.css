@@ -673,3 +673,18 @@ section.block { padding: 32px 0; border-top: 1px solid var(--rule); }
   .verdict-key strong { margin: 0; }
   .verdict-key small { text-align: right; }
 }
+
+/* kept from main: older-placebo caveat (CRITIQUE #4) and the air verdict layout */
+.sure-caveat { margin: 0; font-size: 14px; line-height: 1.45; color: var(--muted); padding-top: 14px; border-top: 1px solid var(--rule); }
+/* Air-policy verdict: same evidence grammar as land, without pretending a monitor is an image. */
+.air-hero-number { font-family: "Instrument Serif", serif; font-size: clamp(58px, 9vw, 104px); line-height: .92; margin: 28px 0 8px; }
+.air-result-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:14px 0 20px; }
+.air-result-grid > div { border-top:1px solid var(--rule); padding-top:10px; }
+.air-effect { font-family:"Instrument Serif",serif; font-size:34px; line-height:1; }
+.air-signal + .air-signal { border-top:1px solid var(--rule); padding-top:42px; }
+.air-placebo-strip { margin-top:20px; }
+.air-research-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px; margin-top:16px; }
+.air-research-card { border:1px solid var(--rule); border-radius:4px; padding:15px; background:var(--panel); }
+.air-research-card > * + * { margin-top:7px; }
+.air-research-card a { font-size:13px; }
+@media (max-width:640px) { .air-result-grid { grid-template-columns:1fr; } .air-effect { font-size:30px; } }

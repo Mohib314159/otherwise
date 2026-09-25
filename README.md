@@ -4,10 +4,33 @@
 and when ("forest cleared in February 2020", "this field flooded"), and get a
 verdict: **real change / not real / can't tell**, with the evidence behind it.
 
+**Live site:** https://otherwise-r1vd.onrender.com (Render free tier: the first
+visit after 15 idle minutes takes about a minute to wake up).
+
 Most tools tell you *something changed*. Otherwise tells you whether it changed
 **more than it would have anyway**, by comparing the area with matched control
 areas that did not get the event, and by running the same test on untouched
 areas and fake dates to show how often the method finds effects that are not there.
+
+### What is and isn't validated yet
+
+- The known-answer sites are **candidates**, not yet confirmed: of 10, 4 correct
+  REAL, 0 missed, 0 false alarms, **6 can't tell** ([`docs/METHOD.md`](docs/METHOD.md) §10).
+- Committed showcase runs predate a fix to the placebo test (CRITIQUE #4 in
+  `DECISIONS.md`) that makes their placebo p-values look stronger than they
+  should; each page says so, and the re-runs are still owed.
+- Blind validation has event runs only and **no false-alarm rate yet**.
+- Live runs on the free tier are a "quick check" (coarser controls), not
+  equivalent to the showcase runs, and can be slow.
+
+### In development, not public: air pollution (ground NO₂ / London ULEZ)
+
+`src/app/air/` holds a ground-monitor NO₂ pipeline for London's ULEZ (LAQN
+treated monitors, DEFRA AURN controls, pre-policy-only ERA5 weather adjustment,
+exact-size symmetric placebos; [`docs/AIR_METHOD.md`](docs/AIR_METHOD.md)). It is
+**switched off** on the public site (`APP_AIR_ENABLED=0`) and makes no claims:
+no ULEZ run has yet produced a usable estimate, and air has no known-answer set
+or false-alarm test of its own. It will not be shown until both exist and pass.
 
 ## What it does, in one screen
 
@@ -53,7 +76,12 @@ make serve                      # http://127.0.0.1:8000
 python -m pytest -q             # test suite
 python -m scripts.fetch_area --bbox=-1.290,52.905,-1.282,52.911 --start 2021-01-01 --end 2023-12-31
 python -m scripts.run_sites     # recompute the showcase / known-answer sites
-python -m scripts.power         # detection-power table on cached real data
+python -m scripts.power         # land detection-power table on cached real data
+# air (in development; set APP_AIR_ENABLED=1 to see it in the local UI)
+python -m scripts.run_air_case ulez-central-2019 --post-months 3
+python -m scripts.air_redteam          # adversarial synthetic failure tests
+python -m scripts.air_power --seeds 30 --effect -6
+python -m scripts.air_known_answers  # writes the air known-answer table after live runs
 ```
 
 Deployment (Hugging Face Spaces or Render, free tiers) is in `DEPLOY.md`.
@@ -62,11 +90,11 @@ Deployment (Hugging Face Spaces or Render, free tiers) is in `DEPLOY.md`.
 
 | Path | What |
 |---|---|
-| `src/app/` | the app: `fetch` (data), `estimator` (method), `verdict` (rules), `run` (one verdict), `server` (API) |
+| `src/app/` | shared app + land pipeline; `src/app/air/` is the in-development NO₂/ULEZ pipeline, off by default (providers, weather adjustment, fixed-cohort aggregation, hardened symmetric placebo inference, registered ULEZ cases, run orchestration) |
 | `web/` | the frontend: map landing page, verdict page, track record |
 | `showcase/` | precomputed verdicts for the showcase and the track-record page |
 | `SPEC.md`, `PLAN.md`, `DECISIONS.md`, `SITES.md` | what we are building, how, why, and the known-answer sites |
-| `docs/METHOD.md` | the full method write-up: data, estimator, uncertainty, placebo checks, verdict rules, limits |
+| `docs/METHOD.md` | land method; [`docs/AIR_METHOD.md`](docs/AIR_METHOD.md) is the ground-NO₂ / ULEZ method and validation protocol |
 | `docs/REDTEAM.md` | adversarial review of the method by us, including the two attacks that break it |
 | `src/scm.py`, `src/inference.py`, … | the original CarbonTwin engine (below) |
 
