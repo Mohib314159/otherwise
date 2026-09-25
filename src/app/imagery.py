@@ -203,7 +203,7 @@ def _clear_share(prov, sc, zones) -> float | None:
 
 
 def make_control_thumbnails(run: dict, out_dir: str, k: int = 3, max_try: int = 16,
-                            same_day_window: int = 5) -> list[dict]:
+                            windows: tuple[int, ...] = (5, 30)) -> list[dict]:
     """Before/after thumbnails of the `k` highest-weighted control cells, for the
     verdict page's "compared with" panel. Purely visual; the verdict never uses them.
 
@@ -211,12 +211,14 @@ def make_control_thumbnails(run: dict, out_dir: str, k: int = 3, max_try: int = 
     area's own before/after thumbnail whenever that scene covers it, so the two
     are compared on identical dates. Distant (wide-mode) controls can fall on
     another tile; then the clearest scene within +-`same_day_window` days is used
-    and its real date is recorded and shown. A control whose scene is not clear
+    and its real date is recorded and shown. If a control is under cloud on the
+    area's dates, the search widens to +-30 days; a "before" image never crosses
+    to after the event date or vice versa. A control that is still not clear
     enough (0.9 before, 0.6 after, the same bar as the area's own thumbnails) is
     skipped and the next-highest weight is tried, and that is recorded too."""
     from datetime import date as _date, timedelta as _td
-    from shapely.geometry import shape
     rid = run["id"]
+    ev = _date.fromisoformat(run["event_date"])
     meta = {}
     for tag in ("before", "after"):
         p = os.path.join(out_dir, f"{rid}_{tag}.json")
@@ -261,22 +263,31 @@ def make_control_thumbnails(run: dict, out_dir: str, k: int = 3, max_try: int = 
         for tag, min_clear in (("before", 0.9), ("after", 0.6)):
             want = meta[tag]
             d0 = _date.fromisoformat(want["date"])
-            scenes = prov.search_s2(bbox, (d0 - _td(days=same_day_window)).isoformat(),
-                                    (d0 + _td(days=same_day_window)).isoformat(), max_cloud=80)
-            scenes = [s for s in scenes if s.geometry is None or s.geometry.contains(cell.wgs84)]
-            if not scenes:
-                ok = False; break
-            epsg = scenes[0].epsg or cell.epsg
-            scenes = [s for s in scenes if (s.epsg or epsg) == epsg]
-            same = [s for s in scenes if s.id == want.get("scene_id")]
-            same_day = [s for s in scenes if s.date == want["date"]]
-            zones = Zones.build([sq, cell.utm], cell.epsg, epsg)
-            ranked = same + same_day + sorted(scenes, key=lambda s: abs((_date.fromisoformat(s.date) - d0).days))
-            chosen = None
-            for sc in ranked[:6]:
-                cf = _clear_share(prov, sc, zones)
-                if cf is not None and cf >= min_clear:
-                    chosen = (sc, cf); break
+            chosen, zones = None, None
+            for win in windows:
+                lo, hi = d0 - _td(days=win), d0 + _td(days=win)
+                lo, hi = (lo, min(hi, ev - _td(days=1))) if tag == "before" else (max(lo, ev + _td(days=1)), hi)
+                scenes = prov.search_s2(bbox, lo.isoformat(), hi.isoformat(), max_cloud=80)
+                scenes = [s for s in scenes if s.geometry is None or s.geometry.contains(cell.wgs84)]
+                if not scenes:
+                    continue
+                epsg = scenes[0].epsg or cell.epsg
+                scenes = [s for s in scenes if (s.epsg or epsg) == epsg]
+                same = [s for s in scenes if s.id == want.get("scene_id")]
+                same_day = [s for s in scenes if s.date == want["date"]]
+                zones = Zones.build([sq, cell.utm], cell.epsg, epsg)
+                rest = sorted(scenes, key=lambda s: (abs((_date.fromisoformat(s.date) - d0).days),
+                                                     s.props.get("cloud_cover") or 0))
+                seen = set()
+                for sc in same + same_day + rest:
+                    if sc.id in seen or len(seen) >= 8:
+                        continue
+                    seen.add(sc.id)
+                    cf = _clear_share(prov, sc, zones)
+                    if cf is not None and cf >= min_clear:
+                        chosen = (sc, cf); break
+                if chosen:
+                    break
             if chosen is None:
                 ok = False; break
             sc, cf = chosen
@@ -290,7 +301,7 @@ def make_control_thumbnails(run: dict, out_dir: str, k: int = 3, max_try: int = 
             out.append(entry)
         else:
             skipped.append({"grid_index": int(gi), "weight": round(float(w), 4),
-                            "reason": "no clear scene on the area's before/after dates"})
+                            "reason": "no clear scene within 30 days of the area's before/after dates"})
     with open(os.path.join(out_dir, f"{rid}_controls.json"), "w") as f:
         json.dump({"controls": out, "skipped": skipped, "lead_signal": lead}, f)
     return out
