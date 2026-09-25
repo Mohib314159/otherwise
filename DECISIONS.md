@@ -1297,3 +1297,48 @@ Air run IDs now include `air-ground-no2-v2.2`. Results created by the old method
 - Saved evidence is immutable; cohort budgets enter identity; missing chart values become JSON null. Added Windows date/UTF-8/path/monotonic-time compatibility fixes and regression tests.
 - Latest full suite: 308 passed,20 skipped,8 xfailed. Live validation remains incomplete due LAQN annual timeouts; latest2019 has no estimate and latest2023 has inadequate placebo support. See docs/validation/air-ulez-2026-09-25.
 - No estimator tuning to literature; no merge to main. Further method proposals in ULEZ-DESIGN.md are not implemented by this checkpoint.
+
+## 2026-09-25 — Codex air changes: triage (architect review)
+
+Reviewed by reading the current code in `src/app/air/` and `src/app/estimator.py`,
+not the handoff's description of it. Git cannot separate what came from the v2.2
+archive and what Codex changed (the whole air package arrived in one commit), so
+this reviews the method **as it now stands**, including the inherited v2.2
+decisions logged above under 2026-09-20, which nobody had triaged. Verdict key
+as for CRITIQUE: **valid** / **partly valid** / **wrong**.
+
+| # | Change | Verdict | Reason | Action |
+|---|---|---|---|---|
+| 1 | Shared `conformal_interval` gains `max_half`, `ensure_zero`, `boundary_hit`, `accepted_empty` | valid | Defaults reproduce the old land behaviour exactly: 120 random panels, identical lo/hi/p/grid against main's version (checked this session). Air uses the wider search and abstains when the accepted set touches the search edge or is empty. | Keep. CRITIQUE #19 (units inferred from scale) still open for land. |
+| 2 | NOT REAL now needs the interval, not just the sign: a positive point with an interval that still admits a ≥1 µg/m³ drop is CAN'T TELL | valid | `_decide`: NOT REAL requires `lo > 0` (clearly worse) or `lo > -AIR_MIN_EFFECT` (interval rules out a meaningful drop). Calling NOT REAL while the interval contains the effect being tested was simply wrong. Makes NOT REAL harder, REAL unchanged. | Keep. Log it as a verdict-rule change: it is one. |
+| 3 | Donor weekly repair: at most one internal one-week hole, both neighbours exactly 7 days away; otherwise no repair and the donor is dropped if a used week is missing | valid, conservative | Stricter than "one gap": a series with two holes gets no repair at all. Cannot manufacture a smooth counterfactual. One edge: for a Monday launch (8 Apr 2019 is a Monday) no week is dropped, so a donor hole in the first post week is interpolated from one pre and one post week. Donors are untreated, so this is not treatment leakage. | Keep. Note only. |
+| 4 | Weeks straddling a mid-week launch dropped from the panel | valid | A mixed pre/post week is neither; excluding it is the standard answer. Tested. | Keep. |
+| 5 | Weather: all four core ERA5 fields required; internal gaps ≤3 days interpolated separately before and after the policy date; longer gaps exclude the station; absent boundary-layer height recorded as unavailable | partly valid | The no-leakage part is right: repair never crosses the policy date, the model and reference weather use pre-policy data only (tested: post-policy values cannot change the fit). But the check is over every day in the station's window, including days with no NO₂, so a station can be dropped for weather gaps on days that contribute nothing. Conservative (costs stations, not false alarms), and ERA5 gaps should be rare. | Keep. Read the coverage receipts on the next live run to see whether it ever bites. |
+| 6 | Zero placebo cohorts returned p = 1.0 and the CLI printed `p=1.000` | valid (Codex flagged it, did not fix it) | A sentinel, not a test. | **Fixed this session:** stored as null; CLI, report, share preview and verdict page say no placebo test could be run, including for older files carrying 1.0. No verdict changes (REAL already needs ≥19 cohorts). |
+| 7 | Ingestion fixes: DEFRA hour-ending timestamps incl. 24:00 and year end; NO₂ status column read beside NO₂; NOx-as-NO₂ not mistaken for NO₂; LAQN `EndDate` exclusive; NO₂ instrument dates bound station activity; GLA MapServer endpoint | valid on the tests; live behaviour not independently re-verified | Each has a regression test on realistic fixtures (`tests/test_air_providers.py`). I did not re-download the endpoints this session. These are data-correctness fixes, not method changes. | Keep. Re-verify against live responses when LAQN acquisition is fixed. |
+| 8 | Run identity includes the protocol string and cohort fetch budgets; saved results never recomputed or overwritten | partly valid | Right for evidence integrity. Data vintage and dependency versions are not in the ID, so a re-acquisition needs a fresh `APP_RUNS_DIR`; a proper retry/snapshot identity is a product decision, not yet made. | Open. |
+| 9 | Pre-fit gate `pre_rmse > max(1.5 × placebo median, 5.0)` is bypassed when `|point| ≥ 3 × pre_rmse` | partly valid, **flag** | Same shape as land's 4× bypass, which CRITIQUE #1 flagged as a rule that rescues results. Here it arrived with v2.2 before any live ULEZ result existed, so the repo shows no post-hoc tuning, but it is unvalidated. The 5.0 µg/m³ floor is also unexplained. | Open: justify both with the air power test, or remove before any air claim. |
+| 10 | Inherited v2.2: ground monitors first; answer keys never imported by the estimator; traffic and background never pooled; pre-policy-only weather; exact-size symmetric placebos, ≥19 cohorts, both p-values ≤0.10; 2021 forced CAN'T TELL; 2023 estimand = newly covered outer London | valid | Verified in code: `analysis.py` imports only the shared estimator, not `cases.py`. These match SPEC-v2 and `ULEZ-DESIGN.md` §1. The placebo design is stricter than land's was. | Keep. |
+| 11 | Inherited v2.2: control-city policy screen | partly valid | Screens only the launches it lists; the code says so. Birmingham CAZ (Jun 2021) is the case that matters for 2023 and should be checked explicitly. | Open. |
+
+### Not in this code, and needed before air is shown
+
+These are gaps against `ULEZ-DESIGN.md`, not defects in what exists: no
+roadside-minus-background differencing, no traffic-hours filter, no NOx series, a
+step rather than a ramp, no announcement-date test, no minimum detectable effect
+on the page. Adopting any of them changes the estimand, so they need a
+pre-registered design decision and a fresh power test, not a patch. Until then:
+air stays off (`APP_AIR_ENABLED=0`), and nothing public claims anything about
+ULEZ. The bar for switching it on is Mohib's: its own known-answer set (a large
+point source, the COVID relative-null, null cities and fake dates) and a
+false-alarm rate from `scripts.air_power` on the current protocol.
+
+### Also done in this merge
+
+- Air hidden, not removed: `APP_AIR_ENABLED` defaults to off, and `render.yaml` pins it to `"0"`. The landing tab only
+  appears when the server reports air cases; `/api/air/*` returns 404 and air
+  runs are refused. Codex's desktop UI (`desktop.css`, `evidence.css`, favicon,
+  null-safe charts) ships as is, per Mohib.
+- README, SPEC-v2 status and AIR_METHOD header no longer present air as a live or
+  validated signal. The live URL, https://otherwise-r1vd.onrender.com, is recorded in README
+  and DEPLOY.

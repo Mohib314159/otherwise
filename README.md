@@ -1,18 +1,36 @@
 # Otherwise — did it really change?
 
-**A public counterfactual evidence app.** Choose a dated intervention and a measurable signal, then ask whether the observed outcome moved more than it would have anyway. Land change is the validated first signal family; **ground-level NO₂ policy evaluation is now the second, starting with London ULEZ**. Every result is a permanent evidence page with the estimate, matched controls, uncertainty, placebo checks, receipts and known limits.
+**A public web app.** Draw an area on a map, say what supposedly happened there
+and when ("forest cleared in February 2020", "this field flooded"), and get a
+verdict: **real change / not real / can't tell**, with the evidence behind it.
+
+**Live site:** https://otherwise-r1vd.onrender.com (Render free tier: the first
+visit after 15 idle minutes takes about a minute to wake up).
 
 Most tools tell you *something changed*. Otherwise tells you whether it changed
 **more than it would have anyway**, by comparing the area with matched control
 areas that did not get the event, and by running the same test on untouched
 areas and fake dates to show how often the method finds effects that are not there.
 
-## Two signal families
+### What is and isn't validated yet
 
-- **Land change** — user-drawn polygon; Sentinel-1/2; matched land-cover/elevation controls; augmented synthetic control; conformal interval; spatial and temporal placebos.
-- **Air pollution (ground-NO₂ v2.2)** — pre-registered ULEZ policy zones; LAQN NO₂ treated monitors; same-type non-London DEFRA AURN controls; ERA5 weather normalisation trained only before the policy; fixed-composition treated cohorts, pre-period-only seasonal weather normalisation, exact-size **symmetric** placebos, pre-trend and leave-one-monitor-out stress checks. Traffic and urban-background monitors are analysed separately. See [`docs/AIR_METHOD.md`](docs/AIR_METHOD.md).
+- The known-answer sites are **candidates**, not yet confirmed: of 10, 4 correct
+  REAL, 0 missed, 0 false alarms, **6 can't tell** ([`docs/METHOD.md`](docs/METHOD.md) §10).
+- Committed showcase runs predate a fix to the placebo test (CRITIQUE #4 in
+  `DECISIONS.md`) that makes their placebo p-values look stronger than they
+  should; each page says so, and the re-runs are still owed.
+- Blind validation has event runs only and **no false-alarm rate yet**.
+- Live runs on the free tier are a "quick check" (coarser controls), not
+  equivalent to the showcase runs, and can be slow.
 
-The air implementation intentionally attaches published ULEZ estimates **after** Otherwise has estimated the effect. Run `python -m scripts.air_known_answers` to generate the known-answer table; disagreement is kept, not tuned away. Sentinel-5P is the next independent cross-sensor layer and is not yet claimed as implemented.
+### In development, not public: air pollution (ground NO₂ / London ULEZ)
+
+`src/app/air/` holds a ground-monitor NO₂ pipeline for London's ULEZ (LAQN
+treated monitors, DEFRA AURN controls, pre-policy-only ERA5 weather adjustment,
+exact-size symmetric placebos; [`docs/AIR_METHOD.md`](docs/AIR_METHOD.md)). It is
+**switched off** on the public site (`APP_AIR_ENABLED=0`) and makes no claims:
+no ULEZ run has yet produced a usable estimate, and air has no known-answer set
+or false-alarm test of its own. It will not be shown until both exist and pass.
 
 ## What it does, in one screen
 
@@ -59,6 +77,7 @@ python -m pytest -q             # test suite
 python -m scripts.fetch_area --bbox=-1.290,52.905,-1.282,52.911 --start 2021-01-01 --end 2023-12-31
 python -m scripts.run_sites     # recompute the showcase / known-answer sites
 python -m scripts.power         # land detection-power table on cached real data
+# air (in development; set APP_AIR_ENABLED=1 to see it in the local UI)
 python -m scripts.run_air_case ulez-central-2019 --post-months 3
 python -m scripts.air_redteam          # adversarial synthetic failure tests
 python -m scripts.air_power --seeds 30 --effect -6
@@ -71,7 +90,7 @@ Deployment (Hugging Face Spaces or Render, free tiers) is in `DEPLOY.md`.
 
 | Path | What |
 |---|---|
-| `src/app/` | shared app + land pipeline; `src/app/air/` is the NO₂/ULEZ plugin (providers, weather adjustment, fixed-cohort aggregation, hardened symmetric placebo inference, registered ULEZ cases, run orchestration) |
+| `src/app/` | shared app + land pipeline; `src/app/air/` is the in-development NO₂/ULEZ pipeline, off by default (providers, weather adjustment, fixed-cohort aggregation, hardened symmetric placebo inference, registered ULEZ cases, run orchestration) |
 | `web/` | the frontend: map landing page, verdict page, track record |
 | `showcase/` | precomputed verdicts for the showcase and the track-record page |
 | `SPEC.md`, `PLAN.md`, `DECISIONS.md`, `SITES.md` | what we are building, how, why, and the known-answer sites |

@@ -1,6 +1,12 @@
-# Air-pollution method — ground NO₂ / ULEZ protocol v2.2
+# Air-pollution method — ground NO₂ / ULEZ protocol (in development)
 
-This is the production protocol for Otherwise's second signal family. It answers a deliberately narrow question:
+> **Status, 25 Sep 2026.** Code protocol is `air-ground-no2-v2.3.1` (this document was
+> written for v2.2; the v2.3.1 differences and their review are in `DECISIONS.md`,
+> "Codex air changes: triage"). Air is **not public**: it is switched off on the live
+> site (`APP_AIR_ENABLED=0`), no ULEZ run has produced a usable estimate, and it has no
+> known-answer set or false-alarm test yet. Nothing here is a finding.
+
+This is the in-development protocol for Otherwise's second signal family. It answers a deliberately narrow question:
 
 > **After a registered policy date, did NO₂ at exposed monitoring sites change more than a matched no-policy trajectory suggests it would have changed anyway?**
 
