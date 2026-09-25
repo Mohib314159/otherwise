@@ -1,0 +1,396 @@
+{
+ "seed": 20260918,
+ "sample_generated": "2026-09-18T23:29:35+00:00",
+ "sample_n": 247,
+ "sample_git_commit": "6d8776d",
+ "git_commit": "4c98145",
+ "generated": "2026-09-25T14:30:55+00:00",
+ "completed": 247,
+ "pending": 0,
+ "median_seconds": 3601.7,
+ "overall": {
+  "n": 247,
+  "n_events": 130,
+  "n_nulls": 117,
+  "errors": 234,
+  "events": {
+   "n": 7,
+   "hit": 5,
+   "miss": 0,
+   "cant_tell": 2,
+   "error": 123,
+   "detection_rate": 0.714,
+   "miss_rate": 0.0,
+   "cant_tell_rate": 0.286
+  },
+  "nulls": {
+   "n": 6,
+   "false_alarm": 0,
+   "correct": 4,
+   "cant_tell": 2,
+   "error": 111,
+   "false_alarm_rate": 0.0,
+   "correct_rate": 0.667,
+   "cant_tell_rate": 0.333
+  }
+ },
+ "by": {
+  "type": {
+   "burn": {
+    "n": 17,
+    "n_events": 15,
+    "n_nulls": 2,
+    "errors": 16,
+    "events": {
+     "n": 0,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 0,
+     "error": 15,
+     "detection_rate": null,
+     "miss_rate": null,
+     "cant_tell_rate": null
+    },
+    "nulls": {
+     "n": 1,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 1,
+     "error": 1,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 0.0,
+     "cant_tell_rate": 1.0
+    }
+   },
+   "clearing": {
+    "n": 230,
+    "n_events": 115,
+    "n_nulls": 115,
+    "errors": 218,
+    "events": {
+     "n": 7,
+     "hit": 5,
+     "miss": 0,
+     "cant_tell": 2,
+     "error": 108,
+     "detection_rate": 0.714,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 0.286
+    },
+    "nulls": {
+     "n": 5,
+     "false_alarm": 0,
+     "correct": 4,
+     "cant_tell": 1,
+     "error": 110,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 0.8,
+     "cant_tell_rate": 0.2
+    }
+   }
+  },
+  "source": {
+   "hansen": {
+    "n": 230,
+    "n_events": 115,
+    "n_nulls": 115,
+    "errors": 218,
+    "events": {
+     "n": 7,
+     "hit": 5,
+     "miss": 0,
+     "cant_tell": 2,
+     "error": 108,
+     "detection_rate": 0.714,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 0.286
+    },
+    "nulls": {
+     "n": 5,
+     "false_alarm": 0,
+     "correct": 4,
+     "cant_tell": 1,
+     "error": 110,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 0.8,
+     "cant_tell_rate": 0.2
+    }
+   },
+   "mtbs": {
+    "n": 17,
+    "n_events": 15,
+    "n_nulls": 2,
+    "errors": 16,
+    "events": {
+     "n": 0,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 0,
+     "error": 15,
+     "detection_rate": null,
+     "miss_rate": null,
+     "cant_tell_rate": null
+    },
+    "nulls": {
+     "n": 1,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 1,
+     "error": 1,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 0.0,
+     "cant_tell_rate": 1.0
+    }
+   }
+  },
+  "size_bucket": {
+   "<50 ha": {
+    "n": 170,
+    "n_events": 82,
+    "n_nulls": 88,
+    "errors": 160,
+    "events": {
+     "n": 5,
+     "hit": 4,
+     "miss": 0,
+     "cant_tell": 1,
+     "error": 77,
+     "detection_rate": 0.8,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 0.2
+    },
+    "nulls": {
+     "n": 5,
+     "false_alarm": 0,
+     "correct": 4,
+     "cant_tell": 1,
+     "error": 83,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 0.8,
+     "cant_tell_rate": 0.2
+    }
+   },
+   "50-150 ha": {
+    "n": 53,
+    "n_events": 29,
+    "n_nulls": 24,
+    "errors": 51,
+    "events": {
+     "n": 2,
+     "hit": 1,
+     "miss": 0,
+     "cant_tell": 1,
+     "error": 27,
+     "detection_rate": 0.5,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 0.5
+    },
+    "nulls": {
+     "n": 0,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 0,
+     "error": 24,
+     "false_alarm_rate": null,
+     "correct_rate": null,
+     "cant_tell_rate": null
+    }
+   },
+   ">150 ha": {
+    "n": 24,
+    "n_events": 19,
+    "n_nulls": 5,
+    "errors": 23,
+    "events": {
+     "n": 0,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 0,
+     "error": 19,
+     "detection_rate": null,
+     "miss_rate": null,
+     "cant_tell_rate": null
+    },
+    "nulls": {
+     "n": 1,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 1,
+     "error": 4,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 0.0,
+     "cant_tell_rate": 1.0
+    }
+   }
+  },
+  "climate": {
+   "tropical": {
+    "n": 92,
+    "n_events": 23,
+    "n_nulls": 69,
+    "errors": 89,
+    "events": {
+     "n": 1,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 1,
+     "error": 22,
+     "detection_rate": 0.0,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 1.0
+    },
+    "nulls": {
+     "n": 2,
+     "false_alarm": 0,
+     "correct": 1,
+     "cant_tell": 1,
+     "error": 67,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 0.5,
+     "cant_tell_rate": 0.5
+    }
+   },
+   "temperate": {
+    "n": 74,
+    "n_events": 51,
+    "n_nulls": 23,
+    "errors": 70,
+    "events": {
+     "n": 3,
+     "hit": 3,
+     "miss": 0,
+     "cant_tell": 0,
+     "error": 48,
+     "detection_rate": 1.0,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 0.0
+    },
+    "nulls": {
+     "n": 1,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 1,
+     "error": 22,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 0.0,
+     "cant_tell_rate": 1.0
+    }
+   },
+   "boreal": {
+    "n": 74,
+    "n_events": 49,
+    "n_nulls": 25,
+    "errors": 68,
+    "events": {
+     "n": 3,
+     "hit": 2,
+     "miss": 0,
+     "cant_tell": 1,
+     "error": 46,
+     "detection_rate": 0.667,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 0.333
+    },
+    "nulls": {
+     "n": 3,
+     "false_alarm": 0,
+     "correct": 3,
+     "cant_tell": 0,
+     "error": 22,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 1.0,
+     "cant_tell_rate": 0.0
+    }
+   },
+   "dry": {
+    "n": 7,
+    "n_events": 7,
+    "n_nulls": 0,
+    "errors": 7,
+    "events": {
+     "n": 0,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 0,
+     "error": 7,
+     "detection_rate": null,
+     "miss_rate": null,
+     "cant_tell_rate": null
+    },
+    "nulls": {
+     "n": 0,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 0,
+     "error": 0,
+     "false_alarm_rate": null,
+     "correct_rate": null,
+     "cant_tell_rate": null
+    }
+   }
+  },
+  "date_precision": {
+   "day": {
+    "n": 17,
+    "n_events": 15,
+    "n_nulls": 2,
+    "errors": 16,
+    "events": {
+     "n": 0,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 0,
+     "error": 15,
+     "detection_rate": null,
+     "miss_rate": null,
+     "cant_tell_rate": null
+    },
+    "nulls": {
+     "n": 1,
+     "false_alarm": 0,
+     "correct": 0,
+     "cant_tell": 1,
+     "error": 1,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 0.0,
+     "cant_tell_rate": 1.0
+    }
+   },
+   "year": {
+    "n": 230,
+    "n_events": 115,
+    "n_nulls": 115,
+    "errors": 218,
+    "events": {
+     "n": 7,
+     "hit": 5,
+     "miss": 0,
+     "cant_tell": 2,
+     "error": 108,
+     "detection_rate": 0.714,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 0.286
+    },
+    "nulls": {
+     "n": 5,
+     "false_alarm": 0,
+     "correct": 4,
+     "cant_tell": 1,
+     "error": 110,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 0.8,
+     "cant_tell_rate": 0.2
+    }
+   }
+  }
+ },
+ "run_order_seed": 20260918,
+ "definitions": {
+  "detection_rate": "REAL verdicts / finished event runs",
+  "miss_rate": "NOT_REAL verdicts / finished event runs",
+  "false_alarm_rate": "REAL verdicts / finished null runs",
+  "correct_rate": "NOT_REAL verdicts / finished null runs",
+  "cant_tell_rate": "CAN'T TELL verdicts / finished runs of that kind",
+  "error": "the run raised or timed out; excluded from the rates"
+ }
+}

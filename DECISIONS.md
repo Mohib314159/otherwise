@@ -1563,3 +1563,32 @@ reason the v1 numbers are superseded rather than merged.
 The attempt's log is kept as `logs/blind_attempt1_submission_timeout_bug.log` in the
 run worktree. Its one genuine result (a CAN'T TELL) is kept; the 246 bogus rows are
 retried.
+
+## 2026-09-25 — Codex UI pass V4 (branch `uiv4`) landed, reconciled
+
+`uiv4` touches only `web/` (7 files) and is based on the Hero V3 merge (963b8be). It was
+merged three-way into main and every hunk reviewed.
+
+**Taken from V4:**
+- the "1 Pick a place → 2 Name the event → 3 See if it broke away" hero flow;
+- outcome labels on the demo chart;
+- example cards as real links showing before/after thumbnails, the sourced blurb and
+  "Open evidence";
+- keyboard support: Escape closes drawing, the rail and the workbench, and cards take focus;
+- the manifest description.
+
+**Rejected: stale reverts in V4's snapshot:**
+- the cache-first `sw.js` (main keeps network-first; a test guards it);
+- "Test the cause" (main keeps "Test whether it's real");
+- deletion of the hidden air tab, its panel and landing.js block (still gated by
+  `APP_AIR_ENABLED=0`);
+- the Batch link and the Copernicus/WorldCover/DEM attribution;
+- the CSS cache-busting (now `v=ui5`);
+- the invisible "Split" button colour;
+- the attribution and air-tab styles.
+
+**Changed:** the example rail's new heading said "Start with a place you already know
+changed", but the rail includes the two no-change sites. It now reads "Start with a
+documented case."
+
+Suite 368 passed; screenshots in `docs/screenshots/2026-09-25-ui-v4/`.

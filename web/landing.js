@@ -122,6 +122,11 @@ heroCases?.addEventListener("click", () => {
     document.body.classList.remove("is-workbench");
   } else if (caseRail) {
     caseRail.animate([{ transform: "translateY(0)" }, { transform: "translateY(-8px)" }, { transform: "translateY(0)" }], { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)" });
+    const firstCase = caseRail.querySelector(".sc-card");
+    if (firstCase) {
+      firstCase.focus({ preventScroll: true });
+      firstCase.animate([{ transform: "translateY(0)" }, { transform: "translateY(-5px)" }, { transform: "translateY(0)" }], { duration: 460, easing: "cubic-bezier(.2,.8,.2,1)" });
+    }
   }
 });
 caseClose?.addEventListener("click", () => document.body.classList.remove("show-cases"));
@@ -130,6 +135,20 @@ map.on("click", () => document.body.classList.remove("show-cases"));
 if (location.hash === "#new") {
   requestAnimationFrame(() => openWorkbench());
 }
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  if (document.body.classList.contains("is-drawing")) {
+    drawHandler?.disable();
+    document.body.classList.remove("is-drawing");
+    return;
+  }
+  if (document.body.classList.contains("show-cases")) {
+    document.body.classList.remove("show-cases");
+    return;
+  }
+  if (document.body.classList.contains("is-workbench")) closeWorkbench();
+});
 
 // ---- showcase ----------------------------------------------------------------
 
@@ -148,23 +167,37 @@ async function loadShowcase() {
   }
 
   const bounds = L.latLngBounds([]);
-  entries.forEach((entry) => {
-    const card = document.createElement("div");
+  entries.forEach((entry, index) => {
+    const card = document.createElement("a");
     card.className = "sc-card";
+    card.href = `/v/${entry.id}`;
 
-    const thumb = entry.thumb
-      ? `<img class="sc-thumb" src="${escapeHtml(entry.thumb)}" alt="" loading="lazy">`
-      : `<div class="sc-thumb placeholder"></div>`;
+    const [place, eventTitle] = splitExampleLabel(entry.label);
+    card.setAttribute("aria-label", `Open evidence for ${entry.label}`);
+
+    const beforeSrc = `/api/runs/${entry.id}/before.png`;
+    const afterSrc = entry.thumb || `/api/runs/${entry.id}/after.png`;
+    const loading = index < 3 ? "eager" : "lazy";
     const verdictLabel = VERDICT_LABEL[entry.status] || entry.status;
     const changeLabel = CHANGE_TYPE_LABEL[entry.change_type] || entry.change_type;
 
     card.innerHTML = `
-      ${thumb}
+      <div class="sc-visual" aria-hidden="true">
+        <img class="sc-thumb sc-before" src="${escapeHtml(beforeSrc)}" alt="" loading="${loading}" decoding="async">
+        <img class="sc-thumb sc-after" src="${escapeHtml(afterSrc)}" alt="" loading="${loading}" decoding="async">
+        <span class="sc-seam"></span>
+        <span class="sc-image-label sc-before-label">Before</span>
+        <span class="sc-image-label sc-after-label">After</span>
+      </div>
       <div class="sc-body">
-        <div class="sc-label">${escapeHtml(entry.label)}</div>
-        <div class="sc-meta">${escapeHtml(changeLabel)} &middot; ${fmtDate(entry.event_date)} &middot; ${fmtHa(entry.area.ha)}</div>
         <div class="sc-verdict"><span class="dot dot-${entry.status}"></span><span class="v-${entry.status}">${escapeHtml(verdictLabel)}</span></div>
-        <div class="sc-effect" data-effect></div>
+        <div class="sc-place">${escapeHtml(place)}</div>
+        <div class="sc-label">${escapeHtml(eventTitle)}</div>
+        <div class="sc-blurb">${escapeHtml(entry.blurb || `${changeLabel} · ${fmtDate(entry.event_date)}`)}</div>
+        <div class="sc-foot">
+          <span class="sc-effect" data-effect>${escapeHtml(fmtDate(entry.event_date))} · ${escapeHtml(fmtHa(entry.area.ha))}</span>
+          <span class="sc-open">Open evidence <span aria-hidden="true">↗</span></span>
+        </div>
       </div>`;
 
     const layer = L.geoJSON(entry.area.geojson, {
@@ -179,15 +212,18 @@ async function loadShowcase() {
     dot.on("click", () => { location.href = `/v/${entry.id}`; });
 
     const mosaicTile = [...document.querySelectorAll(".mosaic-tile")].find((el) => el.dataset.runId === entry.id);
-    card.addEventListener("mouseenter", () => {
+    const activate = () => {
       layer.setStyle({ color: "var(--counter)", weight: 2.5 });
       mosaicTile?.classList.add("is-active");
-    });
-    card.addEventListener("mouseleave", () => {
+    };
+    const deactivate = () => {
       layer.setStyle({ color: "var(--ink)", weight: 1.5 });
       mosaicTile?.classList.remove("is-active");
-    });
-    card.addEventListener("click", () => { location.href = `/v/${entry.id}`; });
+    };
+    card.addEventListener("mouseenter", activate);
+    card.addEventListener("mouseleave", deactivate);
+    card.addEventListener("focus", activate);
+    card.addEventListener("blur", deactivate);
 
     listEl.appendChild(card);
     loadEffectSize(entry.id, card.querySelector("[data-effect]"));
@@ -217,6 +253,13 @@ async function loadEffectSize(id, el) {
   if (point === null) return;
   const label = SIGNAL_LABEL[lead] || lead;
   el.textContent = `${point} ${label} vs matched places`;
+}
+
+function splitExampleLabel(label) {
+  const raw = String(label || "Example check");
+  const i = raw.indexOf(":");
+  if (i < 0) return [raw, "Open the completed check"];
+  return [raw.slice(0, i).trim(), raw.slice(i + 1).trim()];
 }
 
 function escapeHtml(s) {
