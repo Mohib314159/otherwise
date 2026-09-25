@@ -83,7 +83,7 @@ def audit(run: dict) -> dict:
         for tag in ("before", "after"):
             if c[tag]["date"] != (out.get(tag) or {}).get("date"):
                 out["problems"].append(f"control {c['rank']} {tag}: dated {c[tag]['date']}, not the area's "
-                                       f"{(out.get(tag) or {}).get('date')} (different tile; date shown on the page)")
+                                       f"{(out.get(tag) or {}).get('date')} (another tile, or cloud on the area's date; date shown on the page)")
     return out
 
 

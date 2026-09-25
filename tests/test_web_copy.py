@@ -345,6 +345,7 @@ def test_a_live_run_is_labelled_a_quick_check(load):
 
 def test_the_label_follows_method_profile_too(load):
     run = copy.deepcopy(showcase_run("REAL"))
+    run.pop("profile", None)                  # only method.profile says how it was run
     run.setdefault("method", {})["profile"] = "live"
     pg = load(run)
     assert pg.query_selector("#quick-mark") is not None

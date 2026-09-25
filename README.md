@@ -16,9 +16,9 @@ areas and fake dates to show how often the method finds effects that are not the
 
 - The known-answer sites are **candidates**, not yet confirmed: of 10, 4 correct
   REAL, 0 missed, 0 false alarms, **6 can't tell** ([`docs/METHOD.md`](docs/METHOD.md) §10).
-- Committed showcase runs predate a fix to the placebo test (CRITIQUE #4 in
-  `DECISIONS.md`) that makes their placebo p-values look stronger than they
-  should; each page says so, and the re-runs are still owed.
+- Every showcase run was re-run on 25 Sep 2026 under the fixed, symmetric placebo
+  test (CRITIQUE #4 in `DECISIONS.md`). No verdict changed; the numbers are the
+  generated tables in [`docs/METHOD.md`](docs/METHOD.md) §10.
 - Blind validation has event runs only and **no false-alarm rate yet**.
 - Live runs on the free tier are a "quick check" (coarser controls), not
   equivalent to the showcase runs, and can be slow.

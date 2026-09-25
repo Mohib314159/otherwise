@@ -1463,3 +1463,79 @@ as a note.
 
 **Copy:** the panel says a difference "points to something local … the charts below test
 it", not that pictures prove the cause.
+
+## 2026-09-25 — fair placebo test published: showcase and power re-run (CRITIQUE #4)
+
+All ten showcase sites were re-run in full mode under the symmetric placebo, and
+`scripts/power.py` was run under both procedures. The numbers are published as they
+came out; the generated tables are in `docs/METHOD.md` §10 (`showcase/power.json`,
+`showcase/track_record.json`).
+
+**Showcase: no verdict changed.** Effects and intervals are identical, because only
+the placebo procedure changed. Placebo p moved as follows:
+
+| Site | Placebo p, old | Placebo p, new |
+|---|---|---|
+| Grünheide | 0.029 | 0.016 |
+| Table Mountain | 0.032 | 0.016 |
+| Rhodes | 0.023 | 0.023 |
+| Austin | 0.016 | 0.016 |
+| Saddleworth | 0.016 | 0.016 |
+| Lützerath | 0.623 | 0.820 |
+| Hasankeyf | 0.951 | 0.279 |
+| Richmond | 0.933 | 0.934 |
+| Jaú | 0.639 | 0.672 |
+
+Grünheide and Table Mountain went down because the unit count rose from 33 and 30 to
+60. Their old p sat at the resolution floor, 1/(n+1); the new one sits at the floor too.
+This is the resolution effect recorded on 19 Sep, not evidence getting stronger.
+
+**Sindh changed for a different reason.** `run_sites.py` specifies wide mode (150–400
+km), but the committed Sindh run was a ring run: the planned wide re-run had never
+finished. This time it did. NDWI +0.58 (90% interval +0.19 to +0.77), so the direction
+is right for a flood. Only 12 control cells were usable, against the 20 required, so the
+verdict is CAN'T TELL. It is the same verdict as before, with a different reason.
+
+**Power, both procedures on one rebuilt Midlands cache.** The old cache is gone and its
+exact geometry was never recorded, so the area is not identical to the 18 Sep table.
+
+| Signal | Injected effect | REAL, symmetric (fair) | REAL, asymmetric (old) |
+|---|---|---|---|
+| NDVI | none | 0/20 | 0/20 |
+| NDVI | −0.05 | 3/20 | 3/20 |
+| NDVI | −0.10 | 11/20 | 13/20 |
+| NDVI | −0.20 | 16/20 | 18/20 |
+| VH | none | 0/20 | 0/20 |
+| VH | −0.5 dB | 0/20 | 0/20 |
+| VH | −1 dB | 8/20 | 8/20 |
+| VH | −2 dB | 19/20 | 19/20 |
+
+The fair test costs some optical power and raises no false alarms, as predicted. The
+VH run first used NDVI-sized effects by mistake; it was re-run in dB and only that run is
+published. CRITIQUE #9 still stands: `power.py`'s gate omits the pre-fit,
+controls-shifted and in-time checks.
+
+**A display bug this exposed, now fixed.** Every run made before the CRITIQUE #11 fix
+stored donor indices into the *coverage-filtered* column list. Yesterday's control
+thumbnails mapped those indices onto all cells and so pictured the wrong neighbours.
+This was display only; no estimate used the mapping. The re-runs store correct indices,
+and all control thumbnails were regenerated from them.
+
+- Where the correctly indexed controls were under cloud near the area's dates, the
+  search now widens to ±30 days, never crossing the event.
+- If the main controls still cannot be pictured, the page says so: "The control
+  carrying 100% of the no-event prediction had no clear view … so it is not shown"
+  (Grünheide; also Hasankeyf 89 %, Sindh 36 %).
+
+**The older-placebo caveat.** No showcase page shows it any more, because every run
+carries `placebo_symmetric: true`. The code stays until the blind-validation re-run
+replaces the 34 old-procedure blind runs that the track record still summarises; it
+is removed after that.
+
+Visible consequence, recorded so nobody "fixes" it cosmetically: Grünheide's correctly
+indexed controls are farmland and grassland, not pine forest, because ESA WorldCover
+2020 classes the drawn area as grassland and the donor filter matches that class. They
+match the area's pre-event greenness trajectory, which is what the method uses, but they
+do not look like it. The earlier, wrongly indexed thumbnails showed forest. The land-cover
+label of the Grünheide polygon is itself a finding worth checking before it is used in
+outreach.

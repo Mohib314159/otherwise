@@ -533,6 +533,21 @@ function renderNumber(d) {
 
 // ---- act 1c: the drawn area next to its matched control areas ---------------
 
+/** Say plainly when the controls that carry the prediction could not be pictured. */
+function controlsNote(ci, shown) {
+  const missing = ((ci && ci.skipped) || []).filter((s) => s.weight > 0);
+  const nShownW = shown.filter((c) => c.role === "weighted").length;
+  const parts = [];
+  if (missing.length) {
+    const share = Math.round(missing.reduce((a, s) => a + s.weight, 0) * 100);
+    parts.push(`${missing.length === 1 ? "The control" : `${missing.length} controls`} carrying ${share}% of the no-event prediction had no clear view within 30 days of these dates, so ${missing.length === 1 ? "it is" : "they are"} not shown.`);
+  }
+  if (shown.some((c) => c.role === "pool")) {
+    parts.push(`${nShownW ? "The other columns are" : "The columns shown are"} the closest pre-event matches from the same control pool, which the prediction did not weight.`);
+  }
+  return parts.length ? `<p class="cmp-note muted">${parts.join(" ")}</p>` : "";
+}
+
 function fmtKm(m) {
   if (!Number.isFinite(m)) return "";
   return m >= 10000 ? `${Math.round(m / 1000)} km away` : `${(m / 1000).toFixed(1)} km away`;
@@ -568,7 +583,7 @@ function renderControlsImagery(d) {
       <div class="label">Compared with matched places</div>
       <p class="cmp-lede muted">Top row before the event, bottom row after${sameDates ? ", every column on the same two dates" : ""}. The control areas behaved like yours before the event and did not get it. If yours changed and they did not, that points to something local to your area rather than the season, the weather or a regional trend; the charts below test it.</p>
       <div class="cmp-grid" style="--cols:${cols.length}">${cols.join("")}</div>
-      ${ctl.some((c) => c.role === "pool") ? `<p class="cmp-note muted">The no-event prediction put its weight on ${ctl.filter((c) => c.role === "weighted").length === 1 ? "one control" : "the weighted controls"}; the others shown are the closest pre-event matches from the same pool, for comparison.</p>` : ""}
+      ${controlsNote(d.control_imagery, ctl)}
     </section>`;
 }
 

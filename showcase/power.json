@@ -1,0 +1,226 @@
+{
+ "generated_by": "scripts/power.py (both placebo procedures on one cache)",
+ "date": "2026-09-25",
+ "area": {
+  "bbox": [
+   -1.29,
+   52.905,
+   -1.28,
+   52.912
+  ],
+  "window": [
+   "2020-01-01",
+   "2024-12-31"
+  ],
+  "cells": 400,
+  "cache_key": "1c896056fb5d6e27",
+  "s2_observations": 95,
+  "s1_observations": 211,
+  "note": "Rebuilt Midlands test area. The cache behind the earlier table (5f0bbacbdf08fe51) is gone and its geometry was not recorded, so this is not the identical area; compare procedures within this file, not against the old table."
+ },
+ "procedure": "20 randomly chosen real control cells treated as the area; step effect injected after a fake event at 70% of the window; 90% conformal interval, minimum effect and placebo p <= 0.10 (power.py's gate, which omits the pre-fit, controls-shifted and in-time checks: CRITIQUE #9).",
+ "NDVI": {
+  "symmetric": [
+   {
+    "signal": "NDVI",
+    "effect": 0.0,
+    "n": 20,
+    "detected": 0,
+    "cant_tell": 0,
+    "rate": 0.0,
+    "symmetric_placebo": true,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   },
+   {
+    "signal": "NDVI",
+    "effect": -0.05,
+    "n": 20,
+    "detected": 3,
+    "cant_tell": 0,
+    "rate": 0.15,
+    "symmetric_placebo": true,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   },
+   {
+    "signal": "NDVI",
+    "effect": -0.1,
+    "n": 20,
+    "detected": 11,
+    "cant_tell": 0,
+    "rate": 0.55,
+    "symmetric_placebo": true,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   },
+   {
+    "signal": "NDVI",
+    "effect": -0.2,
+    "n": 20,
+    "detected": 16,
+    "cant_tell": 0,
+    "rate": 0.8,
+    "symmetric_placebo": true,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   }
+  ],
+  "asymmetric": [
+   {
+    "signal": "NDVI",
+    "effect": 0.0,
+    "n": 20,
+    "detected": 0,
+    "cant_tell": 0,
+    "rate": 0.0,
+    "symmetric_placebo": false,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   },
+   {
+    "signal": "NDVI",
+    "effect": -0.05,
+    "n": 20,
+    "detected": 3,
+    "cant_tell": 0,
+    "rate": 0.15,
+    "symmetric_placebo": false,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   },
+   {
+    "signal": "NDVI",
+    "effect": -0.1,
+    "n": 20,
+    "detected": 13,
+    "cant_tell": 0,
+    "rate": 0.65,
+    "symmetric_placebo": false,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   },
+   {
+    "signal": "NDVI",
+    "effect": -0.2,
+    "n": 20,
+    "detected": 18,
+    "cant_tell": 0,
+    "rate": 0.9,
+    "symmetric_placebo": false,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   }
+  ]
+ },
+ "VH": {
+  "symmetric": [
+   {
+    "signal": "VH",
+    "effect": 0.0,
+    "n": 20,
+    "detected": 0,
+    "cant_tell": 0,
+    "rate": 0.0,
+    "symmetric_placebo": true,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   },
+   {
+    "signal": "VH",
+    "effect": -0.5,
+    "n": 20,
+    "detected": 0,
+    "cant_tell": 0,
+    "rate": 0.0,
+    "symmetric_placebo": true,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   },
+   {
+    "signal": "VH",
+    "effect": -1.0,
+    "n": 20,
+    "detected": 8,
+    "cant_tell": 0,
+    "rate": 0.4,
+    "symmetric_placebo": true,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   },
+   {
+    "signal": "VH",
+    "effect": -2.0,
+    "n": 20,
+    "detected": 19,
+    "cant_tell": 0,
+    "rate": 0.95,
+    "symmetric_placebo": true,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   }
+  ],
+  "asymmetric": [
+   {
+    "signal": "VH",
+    "effect": 0.0,
+    "n": 20,
+    "detected": 0,
+    "cant_tell": 0,
+    "rate": 0.0,
+    "symmetric_placebo": false,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   },
+   {
+    "signal": "VH",
+    "effect": -0.5,
+    "n": 20,
+    "detected": 0,
+    "cant_tell": 0,
+    "rate": 0.0,
+    "symmetric_placebo": false,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   },
+   {
+    "signal": "VH",
+    "effect": -1.0,
+    "n": 20,
+    "detected": 8,
+    "cant_tell": 0,
+    "rate": 0.4,
+    "symmetric_placebo": false,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   },
+   {
+    "signal": "VH",
+    "effect": -2.0,
+    "n": 20,
+    "detected": 19,
+    "cant_tell": 0,
+    "rate": 0.95,
+    "symmetric_placebo": false,
+    "cache": "data/cache_midlands/1c896056fb5d6e27/",
+    "unit_cov_min": 0.5,
+    "units_tried": 20
+   }
+  ]
+ }
+}

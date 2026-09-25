@@ -3,7 +3,11 @@
   "id": "5a5f8d14423c28f0",
   "label": "Gr\u00fcnheide, Germany: forest cleared for the Tesla factory",
   "event_date": "2020-02-13",
-  "problems": [],
+  "problems": [
+   "control 1 before: dated 2020-01-17, not the area's 2020-01-24 (another tile, or cloud on the area's date; date shown on the page)",
+   "control 2 before: dated 2020-02-08, not the area's 2020-01-24 (another tile, or cloud on the area's date; date shown on the page)",
+   "control 3 before: dated 2020-01-17, not the area's 2020-01-24 (another tile, or cloud on the area's date; date shown on the page)"
+  ],
   "before": {
    "date": "2020-01-24",
    "clear": 0.94,
@@ -28,27 +32,27 @@
   "controls": [
    {
     "rank": 1,
-    "role": "weighted",
-    "weight": 1.0,
-    "before": "2020-01-24",
+    "role": "pool",
+    "weight": 0.0,
+    "before": "2020-01-17",
     "after": "2020-03-14",
-    "same_scenes": true
+    "same_scenes": false
    },
    {
     "rank": 2,
     "role": "pool",
     "weight": 0.0,
-    "before": "2020-01-24",
+    "before": "2020-02-08",
     "after": "2020-03-14",
-    "same_scenes": true
+    "same_scenes": false
    },
    {
     "rank": 3,
     "role": "pool",
     "weight": 0.0,
-    "before": "2020-01-24",
+    "before": "2020-01-17",
     "after": "2020-03-14",
-    "same_scenes": true
+    "same_scenes": false
    }
   ],
   "key": "grunheide"
@@ -83,7 +87,7 @@
    {
     "rank": 1,
     "role": "weighted",
-    "weight": 0.3128,
+    "weight": 0.3392,
     "before": "2023-07-13",
     "after": "2023-08-17",
     "same_scenes": false
@@ -91,7 +95,7 @@
    {
     "rank": 2,
     "role": "weighted",
-    "weight": 0.2098,
+    "weight": 0.2093,
     "before": "2023-07-13",
     "after": "2023-08-17",
     "same_scenes": false
@@ -99,7 +103,7 @@
    {
     "rank": 3,
     "role": "weighted",
-    "weight": 0.1921,
+    "weight": 0.1898,
     "before": "2023-07-13",
     "after": "2023-08-17",
     "same_scenes": false
@@ -137,7 +141,7 @@
    {
     "rank": 1,
     "role": "weighted",
-    "weight": 0.1481,
+    "weight": 0.1821,
     "before": "2021-03-16",
     "after": "2021-04-30",
     "same_scenes": true
@@ -145,7 +149,7 @@
    {
     "rank": 2,
     "role": "weighted",
-    "weight": 0.1385,
+    "weight": 0.1481,
     "before": "2021-03-16",
     "after": "2021-04-30",
     "same_scenes": true
@@ -153,7 +157,7 @@
    {
     "rank": 3,
     "role": "weighted",
-    "weight": 0.0719,
+    "weight": 0.1413,
     "before": "2021-03-16",
     "after": "2021-04-30",
     "same_scenes": true
@@ -220,7 +224,7 @@
   "label": "Saddleworth Moor, England: June 2018 moorland fire",
   "event_date": "2018-06-24",
   "problems": [
-   "control 2 before: dated 2018-05-22, not the area's 2018-05-27 (different tile; date shown on the page)"
+   "control 2 before: dated 2018-05-22, not the area's 2018-05-27 (another tile, or cloud on the area's date; date shown on the page)"
   ],
   "before": {
    "date": "2018-05-27",
@@ -317,7 +321,7 @@
    {
     "rank": 3,
     "role": "weighted",
-    "weight": 0.1072,
+    "weight": 0.2138,
     "before": "2022-11-23",
     "after": "2023-01-17",
     "same_scenes": false
@@ -386,7 +390,14 @@
   "id": "2d6a535e10cc094e",
   "label": "Sindh, Pakistan: 2022 monsoon floods near Lake Manchar",
   "event_date": "2022-08-25",
-  "problems": [],
+  "problems": [
+   "control 1 before: dated 2022-08-03, not the area's 2022-08-04 (another tile, or cloud on the area's date; date shown on the page)",
+   "control 1 after: dated 2022-08-28, not the area's 2022-08-29 (another tile, or cloud on the area's date; date shown on the page)",
+   "control 2 before: dated 2022-08-11, not the area's 2022-08-04 (another tile, or cloud on the area's date; date shown on the page)",
+   "control 2 after: dated 2022-08-31, not the area's 2022-08-29 (another tile, or cloud on the area's date; date shown on the page)",
+   "control 3 before: dated 2022-07-17, not the area's 2022-08-04 (another tile, or cloud on the area's date; date shown on the page)",
+   "control 3 after: dated 2022-08-31, not the area's 2022-08-29 (another tile, or cloud on the area's date; date shown on the page)"
+  ],
   "before": {
    "date": "2022-08-04",
    "clear": 1.0,
@@ -412,25 +423,25 @@
    {
     "rank": 1,
     "role": "weighted",
-    "weight": 0.4106,
-    "before": "2022-08-04",
-    "after": "2022-08-29",
-    "same_scenes": true
+    "weight": 0.2904,
+    "before": "2022-08-03",
+    "after": "2022-08-28",
+    "same_scenes": false
    },
    {
     "rank": 2,
     "role": "weighted",
-    "weight": 0.2884,
-    "before": "2022-08-04",
-    "after": "2022-08-29",
-    "same_scenes": true
+    "weight": 0.2209,
+    "before": "2022-08-11",
+    "after": "2022-08-31",
+    "same_scenes": false
    },
    {
     "rank": 3,
     "role": "weighted",
-    "weight": 0.0929,
-    "before": "2022-08-04",
-    "after": "2022-08-29",
+    "weight": 0.1243,
+    "before": "2022-07-17",
+    "after": "2022-08-31",
     "same_scenes": false
    }
   ],
