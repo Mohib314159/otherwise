@@ -76,10 +76,8 @@ The rest of the Render setup (first visit afterwards takes ~1 minute).
 
 1. Create a free account at https://render.com (sign in with GitHub).
 2. New → **Blueprint**, pick this repo. Render reads `render.yaml`.
-3. Click Apply. The service builds from the Dockerfile and gets a URL. Render
-   adds a random suffix when the plain name is taken; this project's live
-   service is **https://otherwise-r1vd.onrender.com**. Every push to `main`
-   redeploys it automatically.
+3. Click Apply. The service builds from the Dockerfile and gets a URL like
+   `https://otherwise.onrender.com`.
 4. If live runs time out on the free plan, set the environment variable
    `APP_LIVE_RUNS=0` in the Render dashboard: the site keeps working with the
    showcase examples and tells visitors that live runs are off.
@@ -107,16 +105,3 @@ uvicorn src.app.server:app --reload --port 8000
 `python -m scripts.track_record` rebuilds `showcase/track_record.json` from
 every entry in `showcase/index.json` that has an `expected` value, and never
 counts a site without a source. Commit the result.
-
-## Air / ULEZ runtime notes
-
-Air is **off** unless the environment variable `APP_AIR_ENABLED=1` is set;
-`render.yaml` pins it to `0` for the public site. While off, the Land/Air tab is
-hidden and `/api/air/*` returns 404. Keep it off until air has its own
-known-answer set and false-alarm test (see `DECISIONS.md`).
-
-The ground-NO₂ path makes outbound HTTPS requests to the public LAQN/Imperial ERG, DEFRA UK-AIR AURN, Open-Meteo ERA5 archive and GLA/TfL ArcGIS services. No API secret is required for the registered ULEZ cases.
-
-Set `APP_AIR_CACHE_DIR` to a writable location. The Docker/Render configuration uses `/data/air_cache`; `data/air_cache/` is ignored locally. The cache is an optimisation/provenance copy, not part of the estimator state.
-
-Run IDs include the air protocol version, so upgrading the method does not reuse an older permalink. A host without persistent storage may lose locally generated run JSON after restart; attach persistent storage if durable production permalinks are required beyond the committed showcase artefacts.

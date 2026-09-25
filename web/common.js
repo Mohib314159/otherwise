@@ -19,12 +19,9 @@ export const SIGNAL_LABEL = {
   VV: "radar VV backscatter (dB)",
   VH: "radar VH backscatter (dB)",
   RATIO: "radar VH/VV (dB)",
-  NO2_TRAFFIC: "roadside / traffic NO₂",
-  NO2_BACKGROUND: "urban-background NO₂",
 };
 
 export const RADAR_SIGNALS = new Set(["VV", "VH", "RATIO"]);
-export const AIR_SIGNALS = new Set(["NO2_TRAFFIC", "NO2_BACKGROUND"]);
 
 export const REASON_LABEL = {
   cloud: "Cloud or shadow over the area",
@@ -93,7 +90,6 @@ export function fmtSignalValue(signal, value, { sign = false } = {}) {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
   const s = sign && value > 0 ? "+" : "";
   if (RADAR_SIGNALS.has(signal)) return `${s}${value.toFixed(1)} dB`;
-  if (AIR_SIGNALS.has(signal)) return `${s}${value.toFixed(1)} µg/m³`;
   return `${s}${value.toFixed(2)}`;
 }
 
@@ -151,7 +147,7 @@ const HOW_IT_WORKS_HTML = `
   </div>
   <div class="method-step">
     <span class="method-num">04</span>
-    <div><strong>Try to fool it.</strong><p>We repeat the test on untouched control places and on fake earlier dates. If this place does not stand out from the control places, Otherwise does not call the change real; a fake date that also fires is flagged on the verdict page.</p></div>
+    <div><strong>Try to fool it.</strong><p>We repeat the test on control places and fake dates. If the method fires too easily, Otherwise does not call the change real.</p></div>
   </div>
 </div>
 <div class="verdict-key" aria-label="Verdict meanings">
@@ -165,19 +161,12 @@ const HOW_IT_WORKS_HTML = `
     <p>Sentinel-2 optical and Sentinel-1 radar observations are filtered for quality. Candidate controls are screened by land cover and terrain, then ranked by pre-event similarity.</p>
     <p>The counterfactual uses augmented synthetic control. Uncertainty is estimated with conformal inference, with spatial and pre-event placebo checks used as stress tests. Every excluded observation and intermediate diagnostic is kept in the run receipt.</p>
     <p class="method-cites">Methods: Ben-Michael, Feller &amp; Rothstein (2021); Chernozhukov, W&uuml;thrich &amp; Zhu (2021). Data via Microsoft Planetary Computer.</p>
-    <p><strong>Prior art.</strong></p>
-    <ul class="prior-art">
-      <li><a href="https://github.com/oballinger/PWTT" target="_blank" rel="noopener">PWTT (Ballinger)</a> — pixel-wise t-test against each pixel's own history, no matched controls.</li>
-      <li><a href="https://github.com/quantifyearth/tmf-implementation" target="_blank" rel="noopener">Cambridge 4C PACT / tmf-implementation</a> — pixel-matched counterfactuals for tropical forest carbon, command line, on a forest-cover map.</li>
-      <li><a href="https://github.com/epingchris/placebo_evaluation" target="_blank" rel="noopener">Placebo evaluation of counterfactual methods (4C, 2025)</a> — the idea behind the placebo check.</li>
-      <li>Global Forest Watch, Pachama dynamic baselines, CTrees LUCA, Earth Blox.</li>
-    </ul>
   </div>
 </details>
 <div class="method-links">
   <a href="/track-record">Track record <span aria-hidden="true">↗</span></a>
   <a href="https://github.com/Mohib314159/carbon-twin" target="_blank" rel="noopener">Source <span aria-hidden="true">↗</span></a>
-</div>`;
+</div>`
 
 /** Mounts the drawer + backdrop once, wires every [data-drawer-trigger] to open it. */
 export function initHowItWorksDrawer() {

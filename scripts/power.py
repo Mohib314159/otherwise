@@ -16,13 +16,12 @@ import numpy as np
 
 from src.app.estimator import conformal_interval, fit_ascm, space_placebo
 from src.app.prep import binned
-from src.app.run import _placebo_selector
 from src.app.series import AreaData
 from src.app.verdict import ALPHA, MIN_EFFECT, PLACEBO_P_MAX
 
 
 def main(cache_dir: str | None = None, signal: str = "NDVI", n_units: int = 20,
-         effects=(0.0, -0.05, -0.10, -0.20), seed: int = 0, symmetric: bool = True,
+         effects=(0.0, -0.05, -0.10, -0.20), seed: int = 0, symmetric: bool = False,
          unit_cov_min: float = 0.50):
     """symmetric=True gives every placebo unit the treated unit's own donor
     selection (CRITIQUE #4). Run both ways on the SAME cache to see what the fix
@@ -83,11 +82,9 @@ def main(cache_dir: str | None = None, signal: str = "NDVI", n_units: int = 20,
             f = fit_ascm(y, D, b.pre)
             point = float(np.mean(f.effect[~b.pre]))
             ci = conformal_interval(y, D, b.pre, f.lam, point, max(f.pre_rmse, 1e-3), alpha=ALPHA, n_grid=21)
-            kw = {}
-            if symmetric:
-                kw = {"pool": pool,
-                      "select_for": _placebo_selector(pool, b.pre, np.arange(pool.shape[0]), None, 60)}
-            sp = space_placebo(y, D, b.pre, f.lam, point, max_units=30, **kw)
+            # The symmetric placebo procedure (CRITIQUE #4) is not on this branch;
+            # see DECISIONS.md. This p-value is anti-conservative.
+            sp = space_placebo(y, D, b.pre, f.lam, point, max_units=30)
             found = (ci.hi < 0 if eff < 0 else (ci.lo > 0 or ci.hi < 0)) and abs(point) >= MIN_EFFECT[signal] and sp.p_value <= PLACEBO_P_MAX
             hits += int(found); n += 1
         rows.append({"signal": signal, "effect": eff, "n": n, "detected": hits, "cant_tell": cant,
@@ -103,7 +100,7 @@ if __name__ == "__main__":
     cache = args[0] if args else None
     sig = args[1] if len(args) > 1 else "NDVI"
     out = {}
-    modes = [False] if "--asymmetric" in flags else ([True] if "--symmetric" in flags else [True, False])
+    modes = [False]   # only the asymmetric procedure exists on this branch
     for sym in modes:
         print(f"=== placebo procedure: {'symmetric (CRITIQUE #4 fix)' if sym else 'asymmetric (old)'} ===",
               flush=True)

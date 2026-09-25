@@ -9,11 +9,6 @@ services:
         value: 10000
       - key: APP_FETCH_WORKERS
         value: 8
-      # air/ULEZ stays off until it has its own known-answer set and false-alarm test
-      - key: APP_AIR_ENABLED
-        value: "0"
-      - key: APP_AIR_CACHE_DIR
-        value: /data/air_cache
       - key: APP_MAX_LIVE_JOBS
         value: 1
       # live-run memory budget on the 512 MB free tier; see DECISIONS.md

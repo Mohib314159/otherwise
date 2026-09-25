@@ -23,10 +23,7 @@ from .fetch import MemoryBudgetError
 from .geometry import PolygonError, validate_polygon
 from .report import (SIGNAL_LABEL, render_report, fmt_p, fmt_signal,
                      interval_str as report_interval)
-from .review import router as review_router
 from .run import RUNS_DIR, run_id, run_verdict
-from .air import AIR_CASES, air_run_id, run_air_verdict, fetch_case_boundary
-from .air.providers import CachedHTTP
 from .verdict import SIGNALS
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -42,15 +39,8 @@ LIVE_RUNS_ENABLED = os.environ.get("APP_LIVE_RUNS", "1") == "1"
 # killed safely, so cancellation is cooperative: run_verdict calls back on
 # progress often (once per scene), and the callback raises past the deadline.
 JOB_TIMEOUT_S = float(os.environ.get("APP_JOB_TIMEOUT_S", "2400"))
-# Air/ULEZ is off unless explicitly enabled. It has no validated known-answer set
-# or false-alarm test yet (SPEC-v2 rule 3), so a default deploy must not offer it.
-# Off means: /api/air/* return 404, air runs are refused, the landing tab stays
-# hidden. Existing air permalinks under /v/<id> still render (immutable evidence).
-AIR_ENABLED = os.environ.get("APP_AIR_ENABLED", "0") == "1"
 
 app = FastAPI(title="Otherwise", docs_url=None, redoc_url=None)
-# blind review + analyst annotations; self-contained router, own storage
-app.include_router(review_router)
 
 _jobs: "OrderedDict[str, dict]" = OrderedDict()
 _lock = threading.Lock()
@@ -62,16 +52,11 @@ class JobTimeout(RuntimeError):
 
 
 class RunRequest(BaseModel):
-    # `domain` is additive: old land clients need not send it and keep the exact
-    # same request/ID path as before. Air uses a pre-registered case rather than
-    # pretending a user-drawn polygon is enough to define a policy exposure.
-    domain: str = "land"
-    geojson: dict | None = None
-    event_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    geojson: dict
+    event_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     change_type: str = "other"
-    post_months: int | None = None
+    post_months: int = 12
     label: str = ""
-    case_id: str | None = None
 
 
 def _find_run(rid: str) -> str | None:
@@ -115,31 +100,27 @@ def _worker(job_id: str, req: RunRequest):
     with _sem:
         job.update(status="running", stage="starting", done=0, total=1, started=time.time())
 
-        deadline = time.monotonic() + JOB_TIMEOUT_S
+        deadline = time.time() + JOB_TIMEOUT_S
 
         def progress(stage, done, total):
-            if time.monotonic() >= deadline:
+            if time.time() > deadline:
                 raise JobTimeout(
                     f"This run passed the {JOB_TIMEOUT_S / 60:.0f}-minute limit and was stopped so "
                     f"other runs can start. Try a smaller area or a shorter window.")
             job.update(stage=stage, done=done, total=total)
 
         try:
-            if req.domain == "air":
-                out = run_air_verdict(req.case_id or "", req.post_months, label=req.label[:120],
-                                      progress=progress)
-            else:
-                out = run_verdict(req.geojson, req.event_date, req.change_type, int(req.post_months or 12),
-                                  label=req.label[:120], progress=progress, profile=LIVE_PROFILE)
-                try:
-                    from .imagery import make_thumbnails
-                    progress("imagery", 0, 1)
-                    info = make_thumbnails(req.geojson, req.event_date, RUNS_DIR, out["id"])
-                    for tag, meta in info.items():
-                        with open(os.path.join(RUNS_DIR, f"{out['id']}_{tag}.json"), "w") as f:
-                            json.dump(meta, f)
-                except Exception:
-                    traceback.print_exc()
+            out = run_verdict(req.geojson, req.event_date, req.change_type, req.post_months,
+                              label=req.label[:120], progress=progress, profile=LIVE_PROFILE)
+            try:
+                from .imagery import make_thumbnails
+                progress("imagery", 0, 1)
+                info = make_thumbnails(req.geojson, req.event_date, RUNS_DIR, out["id"])
+                for tag, meta in info.items():
+                    with open(os.path.join(RUNS_DIR, f"{out['id']}_{tag}.json"), "w") as f:
+                        json.dump(meta, f)
+            except Exception:
+                traceback.print_exc()
             job.update(status="done", run_id=out["id"], stage="done", done=1, total=1)
         except JobTimeout as e:
             job.update(status="error", error=str(e)[:300], stage="error")
@@ -157,28 +138,13 @@ def _worker(job_id: str, req: RunRequest):
 
 @app.post("/api/run")
 def submit(req: RunRequest):
-    domain = (req.domain or "land").lower()
-    # The validated route and background worker must use the same domain.
-    req.domain = domain
-    if domain == "air":
-        if not AIR_ENABLED:
-            raise HTTPException(404, "Air-pollution analysis is not enabled on this server")
-        if not req.case_id or req.case_id not in AIR_CASES:
-            raise HTTPException(400, "Unknown air-pollution case")
-        months = int(min(max(req.post_months or AIR_CASES[req.case_id].default_post_months, 1), 18))
-        rid = air_run_id(req.case_id, months)
-    elif domain == "land":
-        if req.change_type not in SIGNALS:
-            raise HTTPException(400, "Unknown change type")
-        if req.geojson is None or req.event_date is None:
-            raise HTTPException(400, "Land runs require geojson and event_date")
-        try:
-            validate_polygon(req.geojson)
-        except PolygonError as e:
-            raise HTTPException(400, str(e))
-        rid = run_id(req.geojson, req.event_date, req.change_type, int(min(max(req.post_months or 12, 1), 18)))
-    else:
-        raise HTTPException(400, "Unknown analysis domain")
+    if req.change_type not in SIGNALS:
+        raise HTTPException(400, "Unknown change type")
+    try:
+        validate_polygon(req.geojson)
+    except PolygonError as e:
+        raise HTTPException(400, str(e))
+    rid = run_id(req.geojson, req.event_date, req.change_type, int(min(max(req.post_months, 1), 18)))
     if _find_run(rid):
         return {"run_id": rid, "done": True}
     if not LIVE_RUNS_ENABLED:
@@ -264,53 +230,11 @@ def track_record():
     return json.load(open(p))
 
 
-def _require_air():
-    if not AIR_ENABLED:
-        raise HTTPException(404, "Air-pollution analysis is not enabled on this server")
-
-
-@app.get("/api/air/cases")
-def air_cases():
-    """Public, pre-registered policy cases. Published answer keys are metadata only."""
-    _require_air()
-    return [c.public_dict() for c in AIR_CASES.values() if c.supported]
-
-
-@app.get("/api/air/cases/{case_id}/boundary")
-def air_case_boundary(case_id: str):
-    _require_air()
-    case = AIR_CASES.get(case_id)
-    if case is None or not case.supported:
-        raise HTTPException(404, "Unknown air-pollution case")
-    try:
-        boundary = fetch_case_boundary(case, CachedHTTP())
-        return boundary or {"type": "FeatureCollection", "features": []}
-    except Exception as e:
-        raise HTTPException(503, f"Could not read the official policy boundary: {type(e).__name__}")
-
-
-@app.get("/api/air/validation")
-def air_validation():
-    """Known-answer table if it has actually been run; never fabricate pending rows."""
-    _require_air()
-    p = os.path.join(SHOWCASE_DIR, "air_validation.json")
-    payload = {"runs": [], "generated_by": None}
-    if os.path.exists(p):
-        try:
-            with open(p) as f:
-                payload = json.load(f)
-        except Exception:
-            payload = {"runs": [], "generated_by": None}
-    payload["cases"] = [c.public_dict() for c in AIR_CASES.values() if c.supported]
-    return payload
-
-
 @app.get("/api/health")
 def health():
     running = sum(1 for j in _jobs.values() if j["status"] == "running")
     queued = sum(1 for j in _jobs.values() if j["status"] == "queued")
     return {"ok": True, "live_runs": LIVE_RUNS_ENABLED, "live_profile": LIVE_PROFILE,
-            "air_pollution": AIR_ENABLED, "air_cases": len(AIR_CASES) if AIR_ENABLED else 0,
             "max_live_jobs": MAX_LIVE_JOBS, "job_timeout_s": JOB_TIMEOUT_S,
             "running": running, "queued": queued}
 
@@ -375,8 +299,7 @@ def _share_text(run: dict) -> tuple[str, str]:
             f"{name} {fmt_signal(lead, sig.get('point'))} relative to the "
             f"control trajectory, {months} months after {when} "
             f"(90% interval {report_interval(lead, sig.get('lo'), sig.get('hi'))}; "
-            + (f"in-space placebo p {fmt_p(sig.get('placebo_p'))})." if sig.get("placebo_n")
-               else "no placebo test could be run)."))
+            f"in-space placebo p {fmt_p(sig.get('placebo_p'))}).")
     desc = " ".join(parts) or SHARE_DEFAULT_DESC
     return title[:200], desc[:300]
 
@@ -409,19 +332,22 @@ def _share_block(rid: str, run: dict | None, base: str) -> str:
 
 
 # ---- pages -----------------------------------------------------------------
-# Installable app (PWA). Both files are served from the root so the service
-# worker's scope can be the whole site; no-cache so a deploy is picked up at once.
 @app.get("/manifest.webmanifest")
 def pwa_manifest():
-    return FileResponse(os.path.join(WEB_DIR, "manifest.webmanifest"),
-                        media_type="application/manifest+json",
-                        headers={"Cache-Control": "no-cache"})
+    return FileResponse(
+        os.path.join(WEB_DIR, "manifest.webmanifest"),
+        media_type="application/manifest+json",
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 @app.get("/sw.js")
 def service_worker():
-    return FileResponse(os.path.join(WEB_DIR, "sw.js"), media_type="application/javascript",
-                        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"})
+    return FileResponse(
+        os.path.join(WEB_DIR, "sw.js"),
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"},
+    )
 
 
 @app.get("/")

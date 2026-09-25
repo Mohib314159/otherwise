@@ -7,8 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Otherwise">
-<title>Otherwise — See the change. Test whether it’s real.</title>
-<meta name="description" content="Draw a place, name an event, and compare what happened there with matched places that behaved the same before it.">
+<title>Otherwise — See the change. Test the cause.</title>
+<meta name="description" content="Pick a place, name an event, and test whether it changed more than matched places did.">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/static/icon-180.png">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
@@ -17,22 +17,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
-<link rel="stylesheet" href="/static/app.css?v=ui3">
-<link rel="stylesheet" href="/static/landing.css?v=ui3">
-<link rel="stylesheet" href="/static/mobile.css?v=ui3">
-<link rel="stylesheet" href="/static/desktop.css?v=ui3">
+<link rel="stylesheet" href="/static/app.css">
+<link rel="stylesheet" href="/static/landing.css">
+<link rel="stylesheet" href="/static/mobile.css">
+<link rel="stylesheet" href="/static/desktop.css">
 </head>
 <body class="page-landing">
 <div id="map" role="application" aria-label="Interactive map for selecting an area"></div>
 <div class="hero-mosaic" id="hero-mosaic" aria-hidden="true">
-  <div class="mosaic-tile mosaic-a" data-run-id="917915c7bc6e2fb9"><picture><source media="(min-width: 641px)" srcset="/api/runs/917915c7bc6e2fb9/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
-  <div class="mosaic-tile mosaic-b" data-run-id="5a5f8d14423c28f0"><picture><source media="(min-width: 641px)" srcset="/api/runs/5a5f8d14423c28f0/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
-  <div class="mosaic-tile mosaic-c" data-run-id="0423e078c5f38593"><picture><source media="(min-width: 641px)" srcset="/api/runs/0423e078c5f38593/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
-  <div class="mosaic-tile mosaic-d" data-run-id="2ee1c9c9753b3a11"><picture><source media="(min-width: 641px)" srcset="/api/runs/2ee1c9c9753b3a11/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
-  <div class="mosaic-tile mosaic-e" data-run-id="f8b923727d8e96f4"><picture><source media="(min-width: 641px)" srcset="/api/runs/f8b923727d8e96f4/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
-  <div class="mosaic-tile mosaic-f" data-run-id="4cf27cafaf37cb06"><picture><source media="(min-width: 641px)" srcset="/api/runs/4cf27cafaf37cb06/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
-  <div class="mosaic-tile mosaic-g" data-run-id="0c2af4baa8c24486"><picture><source media="(min-width: 641px)" srcset="/api/runs/0c2af4baa8c24486/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
-  <div class="mosaic-tile mosaic-h" data-run-id="2d6a535e10cc094e"><picture><source media="(min-width: 641px)" srcset="/api/runs/2d6a535e10cc094e/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
+  <div class="mosaic-tile mosaic-a" data-run-id="917915c7bc6e2fb9"><picture><source media="(min-width: 641px)" srcset="/api/runs/917915c7bc6e2fb9/after.png"><img src="/static/favicon.svg" alt="" loading="eager" decoding="async"></picture></div>
+  <div class="mosaic-tile mosaic-b" data-run-id="5a5f8d14423c28f0"><picture><source media="(min-width: 641px)" srcset="/api/runs/5a5f8d14423c28f0/after.png"><img src="/static/favicon.svg" alt="" loading="eager" decoding="async"></picture></div>
+  <div class="mosaic-tile mosaic-c" data-run-id="0423e078c5f38593"><picture><source media="(min-width: 641px)" srcset="/api/runs/0423e078c5f38593/after.png"><img src="/static/favicon.svg" alt="" loading="eager" decoding="async"></picture></div>
+  <div class="mosaic-tile mosaic-d" data-run-id="2ee1c9c9753b3a11"><picture><source media="(min-width: 641px)" srcset="/api/runs/2ee1c9c9753b3a11/after.png"><img src="/static/favicon.svg" alt="" loading="eager" decoding="async"></picture></div>
+  <div class="mosaic-tile mosaic-e" data-run-id="f8b923727d8e96f4"><picture><source media="(min-width: 641px)" srcset="/api/runs/f8b923727d8e96f4/after.png"><img src="/static/favicon.svg" alt="" loading="eager" decoding="async"></picture></div>
+  <div class="mosaic-tile mosaic-f" data-run-id="4cf27cafaf37cb06"><picture><source media="(min-width: 641px)" srcset="/api/runs/4cf27cafaf37cb06/after.png"><img src="/static/favicon.svg" alt="" loading="eager" decoding="async"></picture></div>
+  <div class="mosaic-tile mosaic-g" data-run-id="0c2af4baa8c24486"><picture><source media="(min-width: 641px)" srcset="/api/runs/0c2af4baa8c24486/after.png"><img src="/static/favicon.svg" alt="" loading="eager" decoding="async"></picture></div>
+  <div class="mosaic-tile mosaic-h" data-run-id="2d6a535e10cc094e"><picture><source media="(min-width: 641px)" srcset="/api/runs/2d6a535e10cc094e/after.png"><img src="/static/favicon.svg" alt="" loading="eager" decoding="async"></picture></div>
 </div>
 <div class="map-wash" aria-hidden="true"></div>
 <div class="map-grid" aria-hidden="true"></div>
@@ -56,9 +56,13 @@
 
 <main class="landing-shell">
   <section class="hero-panel" id="hero-panel" aria-labelledby="hero-title">
-    <div class="hero-eyebrow"><span class="live-dot"></span> Counterfactual earth checks</div>
-    <h1 id="hero-title">See the change.<br><em>Test whether it’s real.</em></h1>
-    <p class="hero-copy">Draw a place and name what happened. Otherwise compares it with nearby places that behaved the same before the event.</p>
+    <div class="hero-eyebrow"><span class="live-dot"></span> Satellite change, checked against matched places</div>
+    <h1 id="hero-title">See the change.<br><em>Test the cause.</em></h1>
+    <p class="hero-copy">Pick a place and name an event. Otherwise finds similar places that matched it before — then checks whether yours actually broke away after.</p>
+
+    <div class="hero-flow" aria-label="How Otherwise works">
+      <span><b>1</b> Pick a place</span><i aria-hidden="true">→</i><span><b>2</b> Name the event</span><i aria-hidden="true">→</i><span><b>3</b> See if it broke away</span>
+    </div>
 
     <div class="counterfactual-demo" aria-hidden="true">
       <div class="demo-labels"><span>before</span><span>event</span><span>after</span></div>
@@ -67,7 +71,9 @@
         <path class="ghost-line" d="M8 73 C55 58 86 62 126 51 S190 43 228 48 C270 53 313 51 412 50"/>
         <path class="observed-line" d="M8 73 C55 58 86 62 126 51 S190 43 228 48 C272 46 312 30 412 17"/>
       </svg>
-      <div class="demo-key"><span><i class="key-observed"></i>This place</span><span><i class="key-ghost"></i>Matched places</span></div>
+      <div class="demo-key"><span><i class="key-observed"></i>Your place</span><span><i class="key-ghost"></i>Matched places</span></div>
+      <span class="demo-outcome demo-outcome-observed">what happened</span>
+      <span class="demo-outcome demo-outcome-ghost">without the event</span>
     </div>
 
     <div class="hero-actions">
@@ -75,11 +81,11 @@
         Check an area
         <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M4 9h9M10 5l4 4-4 4"/></svg>
       </button>
-      <button class="secondary-action" id="hero-cases" type="button">Explore examples</button>
+      <button class="secondary-action" id="hero-cases" type="button">Open a real case</button>
     </div>
 
     <div class="hero-proof" aria-label="What the check uses">
-      <span>Sentinel-1 + 2</span><span>Matched controls</span><span>Placebo tests</span>
+      <span>Sentinel-1 + 2</span><i aria-hidden="true">•</i><span>Matched controls</span><i aria-hidden="true">•</i><span>Placebo-tested</span>
     </div>
   </section>
 
@@ -96,14 +102,6 @@
       <div class="step-count" id="step-count">1 / 3</div>
     </div>
 
-    <!-- Air/ULEZ: hidden unless the server has APP_AIR_ENABLED=1 (landing.js reveals it). -->
-    <div class="domain-picker" id="domain-picker" role="tablist" aria-label="Signal family" style="display:none;">
-      <button class="domain-tab active" id="domain-land" type="button" role="tab" aria-selected="true">Land change</button>
-      <button class="domain-tab" id="domain-air" type="button" role="tab" aria-selected="false">Air pollution</button>
-    </div>
-    <p class="intro-line" id="domain-intro" hidden></p>
-
-    <div id="land-analysis-panel">
     <div class="step-rail" aria-hidden="true">
       <span class="active" data-step-dot="1"><b>01</b><em>Area</em></span>
       <span data-step-dot="2"><b>02</b><em>Event</em></span>
@@ -198,51 +196,17 @@
       <div class="progress-link" id="progress-link"></div>
       <p class="quick-disclosure">Live checks use a faster control read than the published examples. The verdict page labels this clearly.</p>
     </section>
-    </div>
-
-  <div class="panel-section" id="air-analysis-panel" style="display:none;">
-      <div class="label">Air policy lab</div>
-      <p class="showcase-note">Ground NO₂ from London Air Quality Network is weather-normalised with ERA5, then compared with same-type DEFRA AURN monitors in other UK cities. Published ULEZ findings are attached only after estimation.</p>
-      <form id="air-run-form" style="margin-top:12px;">
-        <div class="field-row">
-          <label class="field" for="air-case">Policy / event</label>
-          <select id="air-case" name="case_id"></select>
-        </div>
-        <p class="draw-hint" id="air-case-description"></p>
-        <div class="field-row">
-          <label class="field" for="air-post-months">Look how long after?</label>
-          <select id="air-post-months" name="post_months">
-            <option value="1">1 month</option><option value="3" selected>3 months</option>
-            <option value="6">6 months</option><option value="12">12 months</option>
-          </select>
-        </div>
-        <div class="field-row">
-          <label class="field" for="air-label">Label <span class="muted">(optional)</span></label>
-          <input type="text" id="air-label" maxlength="120" placeholder="e.g. Independent ULEZ replication">
-        </div>
-        <button class="btn" id="air-submit-btn" type="submit" style="width:100%;">Test the policy</button>
-        <div id="air-run-error" style="color:var(--notreal);font-size:13px;margin-top:10px;display:none;"></div>
-      </form>
-      <div id="air-progress-block" style="display:none;margin-top:14px;">
-        <div class="progress-wrap"><div class="progress-bar-track"><div class="progress-bar-fill" id="air-progress-fill"></div></div></div>
-        <div class="progress-stage" id="air-progress-stage">Starting…</div>
-        <div class="progress-note">This is a research-grade run: it downloads years of hourly monitor data and ERA5 weather, then re-fits matched counterfactuals and symmetric placebos. The resulting verdict gets a permanent URL.</div>
-        <div class="progress-link" id="air-progress-link"></div>
-      </div>
-    </div>
 
     <footer class="workbench-footer">
       <button class="footer-link" type="button" data-drawer-trigger>How it works</button>
       <a href="/track-record">Track record</a>
-      <a href="/batch">Batch</a>
     </footer>
-    <p class="workbench-attribution">Contains modified Copernicus Sentinel data. Land cover &copy; ESA WorldCover. Terrain &copy; Copernicus DEM. Data via Microsoft Planetary Computer.</p>
   </aside>
 </main>
 
 <section class="case-rail" id="case-rail" aria-label="Example checks">
   <div class="case-rail-head">
-    <div><span class="rail-kicker">Known events</span><strong>Open a completed check.</strong></div>
+    <div><span class="rail-kicker">Real cases</span><strong>Start with a place you already know changed.</strong></div>
     <div class="case-rail-actions">
       <a href="/track-record">All checks <span aria-hidden="true">↗</span></a>
       <button class="case-close" id="case-close" type="button" aria-label="Close examples">×</button>

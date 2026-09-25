@@ -28,7 +28,6 @@ ROW_FIELDS = ["id", "label", "source", "type", "expected", "status", "lead", "po
 SIZE_BUCKETS = ["<50 ha", "50-150 ha", ">150 ha"]
 CLIMATES = ["tropical", "temperate", "boreal", "dry"]
 TIMEOUT_S = 25 * 60
-RUN_ORDER_SEED = [None]          # set from --shuffle-seed, recorded in summary.json
 
 
 # ----------------------------------------------------------------------------
@@ -155,7 +154,6 @@ def build_summary(sample: dict, rows: list[dict]) -> dict:
         "completed": len(rows), "pending": sample.get("n_items", 0) - len(rows),
         "median_seconds": (sorted(r["seconds"] for r in done)[len(done) // 2] if done else None),
         "overall": _counts(rows), "by": by,
-        "run_order_seed": RUN_ORDER_SEED[0],
         "definitions": {"detection_rate": "REAL verdicts / finished event runs",
                         "miss_rate": "NOT_REAL verdicts / finished event runs",
                         "false_alarm_rate": "REAL verdicts / finished null runs",
@@ -171,30 +169,6 @@ def build_summary(sample: dict, rows: list[dict]) -> dict:
 
 def _pct(x):
     return "-" if x is None else f"{100 * x:.0f}%"
-
-
-def _ci(k, n) -> str:
-    """"k of n (rate, 95% CI lo-hi)", or "not measured" when n is 0.
-
-    Wilson score interval (`src.app.review.wilson`): these denominators are
-    small and the rates sit near 0 and 1, where the normal approximation
-    leaves the unit interval."""
-    from src.app.review import wilson
-    if not n:
-        return "not measured (no finished runs of this kind)"
-    ci = wilson(k, n)
-    return f"{k} of {n} = {100 * k / n:.1f}% (95% CI {100 * ci[0]:.1f}-{100 * ci[1]:.1f}%)"
-
-
-def _gap_note(o: dict) -> str:
-    """Say plainly, in the doc, when a rate has no runs behind it yet."""
-    if o["nulls"]["n"] == 0 and o["events"]["n"] > 0:
-        return (" No control (no-change) item has finished yet, so the false-alarm rate "
-                "below is not measured. Until it is, the detection rate on its own says "
-                "nothing about how often the tool cries wolf, and should not be quoted alone.")
-    if o["events"]["n"] == 0:
-        return " No event item has finished yet, so the detection rate is not measured."
-    return ""
 
 
 def _table(title: str, groups: dict) -> str:
@@ -242,10 +216,7 @@ fact; every drawn item is listed, misses and errors included.
 ## Ground truth and sampling
 
 Seed **{sample.get('seed')}**, sample drawn {sample.get('generated')} at commit
-`{summary.get('sample_git_commit')}`: {kinds_txt} ({n_items} items). The draw is
-scripted and seeded end to end; no item was hand-picked, kept or dropped after
-being seen. Re-running `scripts/blind_sample.py` with the same seed against the
-same fixed dataset releases reproduces it.
+`{sample.get('sample_git_commit')}`: {kinds_txt} ({n_items} items).
 
 **Hansen Global Forest Change {h.get('version', '')}** (Hansen et al. 2013, updated; 30 m
 `lossyear` and `treecover2000` tiles read as windows from Google Cloud Storage).
@@ -280,27 +251,7 @@ Climate class is a fixed per-tile mapping: {', '.join(f'{t} = {c}' for t, c in h
 `mtbs_perimeter_data.zip`): {'used' if mt.get('used') else 'not used'}{(' (' + str(mt.get('error')) + ')') if mt.get('error') else ''}.
 {'Events are wildfires (Incid_Type = Wildfire) with ignition date between ' + ' and '.join(crit.get('mtbs', {}).get('dates', ['?', '?'])) + ' and ' + '-'.join(str(x) for x in crit.get('mtbs', {}).get('acres', ['?', '?'])) + ' acres, drawn uniformly (' + str(mt.get('eligible')) + ' eligible). The polygon is a box centred on the largest part of the perimeter shrunk by ' + str(crit.get('mtbs', {}).get('shrink_m')) + ' m, capped at ' + str(crit.get('max_box_ha')) + ' ha and shrunk further until at least ' + str(int(100 * crit.get('mtbs', {}).get('min_inside', 0))) + '% of it lies inside the perimeter; the event date is the MTBS ignition date (day precision) with post_months = ' + str(crit.get('mtbs', {}).get('post_months_burn')) + '. Nulls are boxes of the same sizes placed 10-120 km from a sampled fire, at least ' + str(crit.get('mtbs', {}).get('null_min_dist_m')) + ' m from every MTBS perimeter of any year, with at least 80% of pixels tree-covered (Hansen treecover2000 >= 30) and no Hansen loss in the box or its 300 m buffer. Climate: latitude >= 55 N is boreal (Alaska), longitude 118 W-100 W is dry (interior West), else temperate.' if mt.get('used') else ''}
 
-**Sources considered and not used**, so a reader knows what is missing rather
-than assuming it was tried:
-
-- *Copernicus EMS rapid mapping* (floods). Not used: the delineation products
-  are per-activation archives meant for manual download, with no stable
-  programmatic index that a seeded sampler could draw from mechanically. One
-  EMS flood (Sindh 2022) is in the hand-picked known-answer set instead.
-- *EFFIS / GWIS burnt areas* (Europe). Not used: the download endpoint
-  redirected to an interactive request form and the WFS endpoint timed out from
-  this environment on 2026-09-18, so nothing could be scripted against it.
-  MTBS covers burns instead, for the USA only.
-- *JRC Global Surface Water* (water change and stable-water/stable-land
-  controls). Reachable -- the public bucket lists
-  `downloads2021/change/change_<lon>_<lat>v1_4_2021.tif` -- but not used: the
-  change and transitions layers describe 1984-2021 as a whole and carry no
-  event year, so they cannot give a dated event the tool can be asked about.
-  The yearly-classification product could, and is the obvious next source to
-  add; it was not implemented here.
-
-Water and flood events are therefore **absent from this blind sample**, and the
-numbers below say nothing about how the tool behaves on them.
+EFFIS burnt areas were not used.
 
 ## Commands
 
@@ -308,13 +259,6 @@ numbers below say nothing about how the tool behaves on them.
 python -m scripts.blind_sample --seed {sample.get('seed')} --n-events 60 --n-null 60 --out {sample_path}{' --mtbs <path>/mtbs_perimeter_data.zip' if mt.get('used') else ''}
 python -m scripts.blind_validation --sample {sample_path} --parallel {parallel} --out {out_dir}
 ```
-
-The outstanding items are run in a seeded random order (`--shuffle-seed`,
-recorded as `run_order_seed` in `summary.json`), so a run stopped part-way
-leaves a random subsample of the draw rather than, say, every event and no
-control. **The verdicts are tied to the commit above**: another track was
-changing the fetch and estimator path in parallel, so re-running at a later
-commit can legitimately give different numbers.
 
 Each item calls `run_verdict(geojson, event_date, change_type, post_months, mode="auto")`
 unchanged, in its own process with `APP_FETCH_WORKERS=8` and `APP_CACHE_DIR=data/cache_blind`,
@@ -335,23 +279,11 @@ to answer, and the reason is stored with every run.
 
 ## Results so far ({summary['completed']} of {n_items} items; median run {summary['median_seconds']} s)
 
-Tool alone, over finished runs only, with 95% Wilson intervals:
-
-| Rate | Value |
-|---|---|
-| Detection (REAL on an event) | {_ci(o['events']['hit'], o['events']['n'])} |
-| Miss (NOT REAL on an event) | {_ci(o['events']['miss'], o['events']['n'])} |
-| Can't tell on an event | {_ci(o['events']['cant_tell'], o['events']['n'])} |
-| False alarm (REAL on a control) | {_ci(o['nulls']['false_alarm'], o['nulls']['n'])} |
-| Correct on a control | {_ci(o['nulls']['correct'], o['nulls']['n'])} |
-| Can't tell on a control | {_ci(o['nulls']['cant_tell'], o['nulls']['n'])} |
-
-{o['errors']} of the items attempted so far produced no verdict (raised or timed
-out); they are excluded from every rate above and listed below. A rate shown as
-"not measured" has no finished runs behind it and no number is invented for it.
-
-So far {o['n_events']} event items and {o['n_nulls']} control items have been
-attempted, of which {o['events']['n']} and {o['nulls']['n']} finished.{_gap_note(o)}
+Overall: **{o['events']['hit']} of {o['events']['n']} events detected ({_pct(o['events']['detection_rate'])})**,
+{o['events']['miss']} missed ({_pct(o['events']['miss_rate'])}), {o['events']['cant_tell']} can't tell ({_pct(o['events']['cant_tell_rate'])});
+**{o['nulls']['false_alarm']} of {o['nulls']['n']} nulls raised a false alarm ({_pct(o['nulls']['false_alarm_rate'])})**,
+{o['nulls']['correct']} correctly NOT REAL ({_pct(o['nulls']['correct_rate'])}), {o['nulls']['cant_tell']} can't tell ({_pct(o['nulls']['cant_tell_rate'])});
+{o['errors']} errors.
 
 {_table('By change type', summary['by']['type'])}
 {_table('By source and date precision', {**{f'{k} (source)': v for k, v in summary['by']['source'].items()}, **{f'{k} (date precision)': v for k, v in summary['by']['date_precision'].items()}})}
@@ -393,11 +325,7 @@ def load_rows(path: str) -> dict[str, dict]:
 
 
 def refresh(sample: dict, rows: dict[str, dict], out_dir: str, sample_path: str, parallel: int, doc_path: str):
-    """Rebuild summary.json and the doc. Rows on disk are merged in first, so a
-    second runner working on other items does not erase them from the tables."""
-    merged = load_rows(os.path.join(out_dir, "results.jsonl"))
-    merged.update(rows)
-    lst = list(merged.values())
+    lst = list(rows.values())
     summary = build_summary(sample, lst)
     with open(os.path.join(out_dir, "summary.json"), "w") as f:
         json.dump(summary, f, indent=1)
@@ -412,17 +340,11 @@ def main(argv=None):
     ap.add_argument("--parallel", type=int, default=3)
     ap.add_argument("--ids", nargs="*", default=None, help="only these item ids")
     ap.add_argument("--limit", type=int, default=None, help="stop after this many new items")
-    ap.add_argument("--shuffle-seed", type=int, default=None,
-                    help="run the outstanding items in this seeded random order. Runs take minutes "
-                         "each, so a run is normally stopped before the sample is exhausted; a "
-                         "seeded shuffle makes the finished subset a random subsample of the draw "
-                         "(rather than all events, or all of one tile) so the rates stay unbiased.")
     ap.add_argument("--summary-only", action="store_true")
     ap.add_argument("--timeout", type=int, default=TIMEOUT_S)
     ap.add_argument("--doc", default="docs/BLIND_VALIDATION.md")
     a = ap.parse_args(argv)
 
-    RUN_ORDER_SEED[0] = a.shuffle_seed
     out_dir = a.out if a.out.endswith("/") else a.out + "/"
     runs_dir = os.path.join(out_dir, "runs")
     os.makedirs(runs_dir, exist_ok=True)
@@ -451,9 +373,6 @@ def main(argv=None):
         return
 
     todo = [it for it in items if it["id"] not in rows or rows[it["id"]].get("status") in (None, "error")]
-    if a.shuffle_seed is not None:
-        import random as _random
-        _random.Random(a.shuffle_seed).shuffle(todo)
     if a.limit:
         todo = todo[:a.limit]
     log(f"{len(items)} items in scope, {len(rows)} rows already, {len(todo)} to run, parallel={a.parallel}")

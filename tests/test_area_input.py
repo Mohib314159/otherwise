@@ -138,7 +138,7 @@ def page(browser, cdn, web_url):
     def route(r, req):
         if req.url.startswith(web_url):
             path = req.url[len(web_url) - 1:]
-            if path.split("?")[0] == "/api/run":   # not /api/runs/<id>/... (e.g. thumbnails)
+            if path.startswith("/api/run"):
                 pg.posted.append(json.loads(req.post_data))
                 r.fulfill(status=200, content_type="application/json",
                           body='{"job_id":"t","run_id":"t","done":false}')
@@ -288,10 +288,6 @@ def test_drawing_with_the_mouse_produces_a_polygon_the_server_accepts(page):
     """The real leaflet-draw path: click vertices, close on the first one."""
     page.evaluate("window.__DEBUG_MAP.setView([52.4, -1.5], 15)")
     page.wait_for_timeout(300)
-    # The landing page opens on an overview; "Check an area" opens the workbench.
-    if page.is_visible("#hero-start"):
-        page.click("#hero-start")
-        page.wait_for_timeout(500)
     page.click("#draw-btn")
     page.wait_for_timeout(300)
     pts = [(700, 400), (880, 400), (880, 540), (700, 540)]

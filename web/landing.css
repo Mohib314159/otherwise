@@ -358,8 +358,85 @@ body.is-drawing .draw-coach { opacity: 1; visibility: visible; transform: transl
 .case-rail-actions { display: flex; align-items: center; gap: 7px; }
 .case-close { display: none; width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(255,255,255,.16); background: rgba(8,10,9,.58); color: rgba(255,255,255,.72); font: 400 17px/1 Inter,sans-serif; cursor: pointer; }
 
-/* restored under the new workbench: licence attribution and the (server-gated) air tab */
-.workbench-attribution { margin: 10px 0 0; font-size: 10px; line-height: 1.5; color: #8a8b84; }
-.workbench .domain-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin: 14px 0 4px; background: #e9ebe1; border-radius: 13px; }
-.workbench .domain-tab { border: none; border-radius: 10px; min-height: 40px; font-weight: 600; background: transparent; cursor: pointer; }
-.workbench .domain-tab.active { background: #17200d; color: #d9ff71; }
+/* Final polish: explain the product in one glance, then let the imagery sell it. */
+.hero-flow {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  margin-top: 15px; color: rgba(255,255,255,.74); font-size: 10.5px; font-weight: 600;
+}
+.hero-flow span { display: inline-flex; align-items: center; gap: 6px; }
+.hero-flow b {
+  width: 20px; height: 20px; display: inline-grid; place-items: center; border-radius: 50%;
+  color: #18200f; background: var(--landing-accent); font-size: 9px; line-height: 1;
+  box-shadow: 0 0 0 3px rgba(217,255,113,.08);
+}
+.hero-flow > i { color: rgba(255,255,255,.32); font-style: normal; }
+.counterfactual-demo { position: relative; }
+.demo-outcome {
+  position: absolute; right: 13px; padding: 3px 6px; border-radius: 6px;
+  font-size: 8px; line-height: 1; letter-spacing: .02em; pointer-events: none;
+  backdrop-filter: blur(6px);
+}
+.demo-outcome-observed { top: 32px; color: #17200e; background: rgba(217,255,113,.9); }
+.demo-outcome-ghost { top: 65px; color: rgba(255,255,255,.66); background: rgba(11,13,12,.64); border: 1px solid rgba(255,255,255,.09); }
+.hero-proof { align-items: center; }
+.hero-proof > i { color: rgba(255,255,255,.22); font-style: normal; font-size: 9px; }
+
+/* Example cards are miniature investigations, not generic marketing tiles. */
+.sc-card { text-decoration: none; color: inherit; }
+.sc-visual { position: absolute; inset: 0; overflow: hidden; }
+.sc-thumb.sc-before,
+.sc-thumb.sc-after {
+  top: 0; bottom: 0; height: 100%; object-fit: cover;
+  transition: width .48s cubic-bezier(.2,.8,.2,1), left .48s cubic-bezier(.2,.8,.2,1), transform .55s cubic-bezier(.2,.8,.2,1), filter .25s ease;
+}
+.sc-thumb.sc-before { left: 0; right: auto; width: 50%; object-position: 44% center; }
+.sc-thumb.sc-after { left: 50%; right: auto; width: 50%; object-position: 56% center; }
+.sc-card:hover .sc-thumb.sc-before,
+.sc-card:focus-visible .sc-thumb.sc-before { width: 39%; transform: scale(1.04); }
+.sc-card:hover .sc-thumb.sc-after,
+.sc-card:focus-visible .sc-thumb.sc-after { left: 39%; width: 61%; transform: scale(1.04); filter: saturate(.98) contrast(1.05) brightness(1.04); }
+.sc-seam {
+  position: absolute; z-index: 2; top: 0; bottom: 0; left: 50%; width: 1px;
+  background: rgba(255,255,255,.58); box-shadow: 0 0 0 1px rgba(0,0,0,.12);
+  transition: left .48s cubic-bezier(.2,.8,.2,1);
+}
+.sc-card:hover .sc-seam,
+.sc-card:focus-visible .sc-seam { left: 39%; }
+.sc-image-label {
+  position: absolute; z-index: 3; top: 10px; padding: 4px 6px; border-radius: 6px;
+  color: rgba(255,255,255,.74); background: rgba(7,9,8,.54); border: 1px solid rgba(255,255,255,.10);
+  backdrop-filter: blur(7px); font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
+}
+.sc-before-label { left: 10px; }
+.sc-after-label { right: 10px; }
+.sc-card::after {
+  background: linear-gradient(180deg, rgba(5,7,6,.03) 0%, rgba(5,7,6,.08) 31%, rgba(5,7,6,.72) 66%, rgba(5,7,6,.96) 100%);
+}
+.sc-body { gap: 0; }
+.sc-verdict {
+  position: static; align-self: flex-start; width: max-content; margin-bottom: 7px;
+  background: rgba(8,10,9,.76); border: 1px solid rgba(255,255,255,.08);
+}
+.sc-place { color: var(--landing-accent); font-size: 8.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.sc-label { margin-top: 3px; }
+.sc-blurb {
+  margin-top: 5px; color: rgba(255,255,255,.64); font-size: 9px; line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.sc-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 9px; }
+.sc-effect { margin-top: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-open { flex: 0 0 auto; color: #fff; font-size: 8.5px; font-weight: 650; opacity: .78; transform: translateX(0); transition: opacity .18s ease, transform .18s ease; }
+.sc-card:hover .sc-open,
+.sc-card:focus-visible .sc-open { opacity: 1; transform: translateX(2px); }
+
+/* Keyboard polish across the landing shell. */
+.page-landing button:focus-visible,
+.page-landing a:focus-visible,
+.page-landing input:focus-visible,
+.page-landing select:focus-visible {
+  outline: 2px solid var(--landing-accent); outline-offset: 3px;
+}
+.sc-card:focus-visible { border-color: rgba(217,255,113,.72); box-shadow: 0 0 0 3px rgba(217,255,113,.14), 0 18px 44px rgba(0,0,0,.24); }
+.primary-action:hover svg,
+.primary-action:focus-visible svg { transform: translateX(2px); }
+.primary-action svg { transition: transform .18s ease; }

@@ -524,7 +524,7 @@
     padding: 7px 11px;
     background: transparent;
   }
-  .page-verdict .compare-preset.active { background: #fff; color: var(--ink); box-shadow: 0 2px 8px rgba(20,24,20,.08); }
+  .page-verdict .compare-preset.active { background: #fff; box-shadow: 0 2px 8px rgba(20,24,20,.08); }
   .page-verdict .act1-aside {
     min-height: 100%;
     padding: 24px;
@@ -921,5 +921,41 @@
   }
   .page-landing .mosaic-tile.is-active img {
     filter: saturate(.98) brightness(.88) contrast(1.08);
+  }
+}
+
+@media (min-width: 641px) {
+  /* Keep the first ten seconds dense with meaning, not copy. */
+  .page-landing .hero-copy { margin-top: 19px; max-width: 560px; }
+  .page-landing .hero-flow { margin-top: 14px; }
+  .page-landing .counterfactual-demo { margin-top: 16px; }
+  .page-landing .hero-actions { margin-top: 17px; }
+  .page-landing .hero-proof { margin-top: 11px; }
+
+  /* Give completed cases enough visual area to be the second hero. */
+  .page-landing .case-rail {
+    width: min(910px, calc(100vw - 590px));
+    bottom: 22px;
+  }
+  .page-landing .case-rail-head { margin-bottom: 9px; }
+  .page-landing .case-rail-head strong { font-size: 11px; color: rgba(255,255,255,.74); }
+  .page-landing .case-list { grid-auto-columns: minmax(258px, 1fr); gap: 11px; padding: 1px 1px 7px; }
+  .page-landing .sc-card,
+  .page-landing .sc-body { min-height: 184px; }
+  .page-landing .sc-card {
+    border-radius: 18px; border-color: rgba(255,255,255,.14);
+    box-shadow: 0 18px 50px rgba(0,0,0,.23);
+  }
+  .page-landing .sc-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,.30); box-shadow: 0 24px 58px rgba(0,0,0,.30); }
+  .page-landing .sc-body { padding: 14px 15px 13px; }
+  .page-landing .sc-label { font-size: 13.5px; line-height: 1.17; max-width: 96%; }
+  .page-landing .sc-blurb { max-width: 96%; }
+  .page-landing .sc-effect { font-size: 8.5px; color: rgba(255,255,255,.59); }
+
+  /* A faint edge hint says the row continues without adding another control. */
+  .page-landing .case-rail::after {
+    content: ""; position: absolute; pointer-events: none; right: 0; bottom: 7px;
+    width: 28px; height: 184px; border-radius: 0 18px 18px 0;
+    background: linear-gradient(90deg, transparent, rgba(6,8,7,.36)); opacity: .72;
   }
 }

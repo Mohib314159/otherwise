@@ -1,7 +1,7 @@
 {
   "name": "Otherwise — Satellite Change Verification",
   "short_name": "Otherwise",
-  "description": "Draw a place, name an event, and compare what happened there with matched places that behaved the same before it.",
+  "description": "Pick a place, name an event, and test whether it changed more than matched places did.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

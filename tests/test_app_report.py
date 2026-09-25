@@ -33,12 +33,3 @@ def test_render_report_missing_fields_are_na_not_invented():
     md = render_report(run)
     assert "n/a" in md
     assert "REAL" in md
-
-
-def test_report_flags_placebo_p_from_before_the_symmetric_fix():
-    from src.app.report import _placebo_lines
-    base = {"placebo_n": 40, "placebo_p": 0.02}
-    note = "anti-conservative"
-    assert any(note in l for l in _placebo_lines(dict(base)))                       # flag missing: old run
-    assert any(note in l for l in _placebo_lines({**base, "placebo_symmetric": False}))
-    assert not any(note in l for l in _placebo_lines({**base, "placebo_symmetric": True}))
