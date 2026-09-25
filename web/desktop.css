@@ -509,7 +509,8 @@
   .page-verdict .compare-presets {
     width: fit-content;
     display: grid;
-    grid-template-columns: repeat(3, auto);
+    grid-auto-flow: column;              /* 3 or 4 presets on one line */
+    grid-auto-columns: auto;
     gap: 4px;
     margin-top: 10px;
     padding: 4px;

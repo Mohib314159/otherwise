@@ -50,7 +50,13 @@ def audit(run: dict) -> dict:
                     "days_from_event": (d - ev).days}
         if not ok_side(d):
             out["problems"].append(f"{tag}: dated {m['date']}, on the wrong side of the event")
-        if (m.get("clear") or 0) < min_clear:
+        out[tag]["clear_basis"] = m.get("clear_basis", "scl")
+        if m.get("clear_basis") == "scene_cloud_cover<=5%":
+            out.setdefault("notes", []).append(
+                f"{tag}: accepted on scene cloud cover {m.get('scene_cloud_cover')}% because the pixel "
+                f"classification scores bright ground as cloud here (area clear share {m.get('clear')}); "
+                f"checked by eye")
+        elif (m.get("clear") or 0) < min_clear:
             out["problems"].append(f"{tag}: clear share {m.get('clear')} below {min_clear}")
     frames = _load(os.path.join(SHOWCASE, f"{rid}_frames.json")) or []
     fr = sorted(frames, key=lambda f: f["date"])
@@ -86,13 +92,20 @@ def build(run: dict, audit_row: dict) -> None:
     from src.app.pixels import compute_pixel_change
     rid, geo = run["id"], run["area"]["geojson"]
     if any(p.startswith(("before", "after")) for p in audit_row["problems"]):
+        for p in audit_row["problems"]:           # never keep a thumbnail that failed the audit
+            for tag in ("before", "after"):
+                if p.startswith(tag):
+                    for ext in ("png", "json"):
+                        f = os.path.join(SHOWCASE, f"{rid}_{tag}.{ext}")
+                        if os.path.exists(f):
+                            os.remove(f)
         info = make_thumbnails(geo, run["event_date"], SHOWCASE, rid)
         for tag, meta in info.items():
             json.dump(meta, open(os.path.join(SHOWCASE, f"{rid}_{tag}.json"), "w"))
-        print(f"   thumbnails regenerated: {{k: v['date'] for k, v in info.items()}}", flush=True)
+        print("   thumbnails regenerated:", {k: v["date"] for k, v in info.items()}, flush=True)
     if any(p.startswith("time-lapse") for p in audit_row["problems"]):
         w0, w1 = run["window"]
-        fr = make_timelapse(geo, w0, w1, SHOWCASE, rid)
+        fr = make_timelapse(geo, w0, w1, SHOWCASE, rid, event_date=run["event_date"])
         print(f"   time-lapse regenerated: {len(fr)} frames", flush=True)
     if not audit_row["change_overlay"]:
         px = compute_pixel_change(geo, run["event_date"], run["change_type"], run["post_months"], SHOWCASE, rid)

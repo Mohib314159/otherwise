@@ -717,3 +717,7 @@ section.block { padding: 32px 0; border-top: 1px solid var(--rule); }
   .cmp-grid { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 62%; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
   .cmp-col { scroll-snap-align: start; }
 }
+@media (max-width: 640px) {
+  .lapse-head { margin-bottom: 20px; }            /* room for the event label above the track */
+  .lapse-event-lbl { font-size: 9px; }
+}

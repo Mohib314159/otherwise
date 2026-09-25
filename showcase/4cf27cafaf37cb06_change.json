@@ -1,0 +1,55 @@
+{
+ "status": "ok",
+ "signal": "NDWI",
+ "expected_sign": 1,
+ "fraction_changed": 0.044,
+ "expected_null_fraction": 0.05,
+ "placebo_p": 0.556,
+ "n_placebo_cells": 8,
+ "median_cell_fraction": 0.036,
+ "p95_cell_fraction": 0.157,
+ "n_area_pixels": 4328,
+ "n_area_pixels_total": 4899,
+ "n_control_pixels": 78314,
+ "landcover_class": 80,
+ "landcover": "water",
+ "landcover_fraction": 0.75,
+ "worldcover_year": 2020,
+ "tile": "37SGB",
+ "epsg": 32637,
+ "cell_px": 70,
+ "pre": {
+  "n_scenes": 8,
+  "dates": [
+   "2019-11-21",
+   "2019-10-02",
+   "2019-09-22",
+   "2019-08-28",
+   "2019-09-27",
+   "2019-08-13",
+   "2019-08-23",
+   "2019-08-18"
+  ]
+ },
+ "post": {
+  "n_scenes": 8,
+  "dates": [
+   "2020-05-14",
+   "2020-06-28",
+   "2020-01-25",
+   "2020-06-23",
+   "2020-04-14",
+   "2020-06-18",
+   "2020-06-13",
+   "2020-03-05"
+  ]
+ },
+ "threshold": 1.167,
+ "median_delta_area": 0.742,
+ "median_delta_controls": 0.914,
+ "map": "4cf27cafaf37cb06_change.png",
+ "overlay": "4cf27cafaf37cb06_changeoverlay.png",
+ "notes": [
+  "Only 8 placebo cells; placebo_p is coarse."
+ ]
+}

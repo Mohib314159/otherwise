@@ -566,7 +566,7 @@ function renderControlsImagery(d) {
   return `
     <section class="act reveal" id="act-controls">
       <div class="label">Compared with matched places</div>
-      <p class="cmp-lede muted">Top row before the event, bottom row after${sameDates ? ", every column on the same two dates" : ""}. The control areas behaved like yours before the event and did not get it. If yours changed and they did not, the change is not explained by season, weather or a regional trend.</p>
+      <p class="cmp-lede muted">Top row before the event, bottom row after${sameDates ? ", every column on the same two dates" : ""}. The control areas behaved like yours before the event and did not get it. If yours changed and they did not, that points to something local to your area rather than the season, the weather or a regional trend; the charts below test it.</p>
       <div class="cmp-grid" style="--cols:${cols.length}">${cols.join("")}</div>
       ${ctl.some((c) => c.role === "pool") ? `<p class="cmp-note muted">The no-event prediction put its weight on ${ctl.filter((c) => c.role === "weighted").length === 1 ? "one control" : "the weighted controls"}; the others shown are the closest pre-event matches from the same pool, for comparison.</p>` : ""}
     </section>`;

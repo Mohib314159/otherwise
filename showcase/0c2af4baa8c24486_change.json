@@ -1,0 +1,55 @@
+{
+ "status": "ok",
+ "signal": "NBR",
+ "expected_sign": -1,
+ "fraction_changed": 0.03,
+ "expected_null_fraction": 0.05,
+ "placebo_p": 0.4,
+ "n_placebo_cells": 9,
+ "median_cell_fraction": 0.014,
+ "p95_cell_fraction": 0.166,
+ "n_area_pixels": 9560,
+ "n_area_pixels_total": 9986,
+ "n_control_pixels": 406753,
+ "landcover_class": 10,
+ "landcover": "tree cover",
+ "landcover_fraction": 0.63,
+ "worldcover_year": 2021,
+ "tile": "35SNV",
+ "epsg": 32635,
+ "cell_px": 100,
+ "pre": {
+  "n_scenes": 8,
+  "dates": [
+   "2022-09-26",
+   "2022-09-16",
+   "2023-07-13",
+   "2022-10-01",
+   "2022-07-28",
+   "2022-07-23",
+   "2022-07-18",
+   "2023-06-23"
+  ]
+ },
+ "post": {
+  "n_scenes": 8,
+  "dates": [
+   "2023-08-22",
+   "2023-07-23",
+   "2023-08-02",
+   "2023-08-12",
+   "2023-09-21",
+   "2023-10-11",
+   "2023-07-28",
+   "2023-09-01"
+  ]
+ },
+ "threshold": -0.802,
+ "median_delta_area": -0.487,
+ "median_delta_controls": -0.498,
+ "map": "0c2af4baa8c24486_change.png",
+ "overlay": "0c2af4baa8c24486_changeoverlay.png",
+ "notes": [
+  "Only 9 placebo cells; placebo_p is coarse."
+ ]
+}
