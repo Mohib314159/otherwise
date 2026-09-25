@@ -1,4 +1,4 @@
-const CACHE = "otherwise-shell-v4";
+const CACHE = "otherwise-shell-v5";
 const SHELL = [
   "/",
   "/track-record",
