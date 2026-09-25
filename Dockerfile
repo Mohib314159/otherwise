@@ -14,10 +14,9 @@ COPY scripts ./scripts
 
 ENV APP_RUNS_DIR=/data/runs \
     APP_CACHE_DIR=/data/cache \
-    APP_AIR_CACHE_DIR=/data/air_cache \
     APP_FETCH_WORKERS=12 \
     PORT=7860
-RUN mkdir -p /data/runs /data/cache /data/air_cache
+RUN mkdir -p /data/runs /data/cache
 
 EXPOSE 7860
 CMD ["sh", "-c", "uvicorn src.app.server:app --host 0.0.0.0 --port ${PORT}"]

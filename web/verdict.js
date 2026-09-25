@@ -105,6 +105,7 @@ function renderCompare(d) {
       <div class="compare-divider" id="compare-divider"><div class="compare-handle">${HANDLE_SVG}</div></div>
       <span class="compare-tag before">Before · ${fmtDate(im.before.date)}</span>
       <span class="compare-tag after">After · ${fmtDate(im.after.date)}</span>
+      <div class="compare-coach" id="compare-coach" aria-hidden="true"><span>↔</span> Drag to compare</div>
       ${px.map ? `<button type="button" class="compare-toggle" id="compare-map-toggle" aria-pressed="false">Change map</button>` : ""}
     </div>`;
 }
@@ -124,16 +125,21 @@ function renderAct1(d) {
   const hasPair = !!(d.imagery && d.imagery.before && d.imagery.after);
   return `
     <section class="act reveal" id="act-1">
-      <div class="label">What we saw</div>
+      <div class="label">Satellite evidence</div>
       <div class="act1-grid">
         <div class="act1-media">
           ${renderCompare(d)}
+          ${hasPair ? `<div class="compare-presets" role="group" aria-label="Comparison view">
+            <button type="button" class="compare-preset" data-compare-preset="100">Before</button>
+            <button type="button" class="compare-preset active" data-compare-preset="50">Split</button>
+            <button type="button" class="compare-preset" data-compare-preset="0">After</button>
+          </div>` : ""}
           <div id="lapse-mount"></div>
         </div>
         <aside class="act1-aside">
           ${renderNumber(d)}
           ${pixelLine}
-          <p class="act1-lede muted">The white outline is the drawn area${hasPair ? ". Drag the divider to compare" : ""}${(d.pixels && d.pixels.map) ? "; the change map marks pixels that changed more than their surroundings" : ""}.</p>
+          <p class="act1-lede muted">${hasPair ? "Same place, two dates. Drag the divider or tap Before / Split / After. " : ""}The white outline is the area you drew${(d.pixels && d.pixels.map) ? ". The change map highlights pixels that moved more than their surroundings" : ""}.</p>
         </aside>
       </div>
     </section>`;
@@ -155,6 +161,11 @@ function initCompare() {
     divider.style.left = `${pct}%`;
     el.setAttribute("aria-valuenow", Math.round(pct));
     el.setAttribute("aria-valuetext", `${Math.round(pct)}% before, ${Math.round(100 - pct)}% after`);
+    document.querySelectorAll("[data-compare-preset]").forEach((btn) => {
+      const target = Number(btn.dataset.comparePreset);
+      btn.classList.toggle("active", Math.abs(target - pct) < 1);
+      btn.setAttribute("aria-pressed", Math.abs(target - pct) < 1 ? "true" : "false");
+    });
   }
   set(50);
 
@@ -163,8 +174,10 @@ function initCompare() {
     const r = el.getBoundingClientRect();
     return ((e.clientX - r.left) / r.width) * 100;
   };
+  const hideCoach = () => document.getElementById("compare-coach")?.classList.add("hidden");
   el.addEventListener("pointerdown", (e) => {
     if (e.target.closest && e.target.closest(".compare-toggle")) return;
+    hideCoach();
     dragging = true;
     el.setPointerCapture(e.pointerId);
     set(fromEvent(e));
@@ -176,10 +189,18 @@ function initCompare() {
   el.addEventListener("pointercancel", stop);
   el.addEventListener("keydown", (e) => {
     const step = e.shiftKey ? 10 : 2;
+    hideCoach();
     if (e.key === "ArrowLeft") { set(pct - step, { animate: true }); e.preventDefault(); }
     else if (e.key === "ArrowRight") { set(pct + step, { animate: true }); e.preventDefault(); }
     else if (e.key === "Home") { set(0, { animate: true }); e.preventDefault(); }
     else if (e.key === "End") { set(100, { animate: true }); e.preventDefault(); }
+  });
+
+  document.querySelectorAll("[data-compare-preset]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      hideCoach();
+      set(Number(btn.dataset.comparePreset), { animate: true });
+    });
   });
 
   el.querySelectorAll("img").forEach((img) => {
@@ -502,7 +523,7 @@ function renderCharts(d) {
   const sig = d.signals[lead];
   return `
     <section class="act reveal" id="act-2">
-      <div class="label">What it did, and what it would have done anyway</div>
+      <div class="label">Observed vs counterfactual</div>
       <div class="chart-wrap" id="main-chart"></div>
       <div class="chart-legend">
         <span><span class="swatch" style="border-color:var(--treated)"></span>This area</span>
@@ -550,17 +571,12 @@ function renderSure(d) {
   const gapLine = kGap === null
     ? ""
     : `<p class="sure-line second"><span class="sure-tag">Counted by gap size instead</span>${kGap} of those ${n} cells moved at least as far as this area did, in the same direction (${sig.placebo_p_effect.toFixed(2)}).</p>`;
-  // Runs made before the CRITIQUE #4 fix carry no placebo_symmetric flag: their
-  // placebo cells reused this area's control selection, which flatters the p-value.
-  const asymLine = (kFit === null || sig.placebo_symmetric === true)
-    ? ""
-    : `<p class="sure-caveat"><span class="sure-tag">Older placebo procedure</span>This run predates a fix to the placebo test: its control cells were scored against controls chosen for this area rather than for themselves, which makes the p-value look stronger than it should. It has not been re-run yet.</p>`;
   return `
     <section class="act reveal" id="act-3">
-      <div class="label">How sure</div>
+      <div class="label">Placebo test</div>
       <div class="sure-row">
         <div class="strip-wrap" id="placebo-strip"></div>
-        <div class="sure-lines">${fitLine}${gapLine}${asymLine}</div>
+        <div class="sure-lines">${fitLine}${gapLine}</div>
       </div>
     </section>`;
 }
@@ -773,203 +789,7 @@ function initReveal(onEnter) {
 
 // ---- top-level render -------------------------------------------------------
 
-// ---- air-policy verdict -------------------------------------------------------
-
-function airSignalRows(d) {
-  return ["NO2_TRAFFIC", "NO2_BACKGROUND"]
-    .filter((k) => d.signals && d.signals[k])
-    .map((k) => [k, d.signals[k]]);
-}
-
-function airStationTypeLabel(signal) {
-  return signal === "NO2_TRAFFIC" ? "Roadside / traffic monitors" : "Urban-background monitors";
-}
-
-function fmtAirPct(v) {
-  if (!Number.isFinite(v)) return "—";
-  if (Math.abs(v) < 0.05) return "0.0%";
-  return `${v > 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}%`;
-}
-
-function renderAirTop(d) {
-  const st = d.verdict.status;
-  const lead = d.verdict.lead_signal;
-  const sig = d.signals[lead] || {};
-  const effect = Number.isFinite(sig.relative_pct) ? fmtAirPct(sig.relative_pct) : fmtSigned(lead, sig.point);
-  return `
-    <section class="verdict-top reveal in" id="verdict-top">
-      <p class="verdict-kicker muted">Independent policy check · ${escapeHtml(d.case?.label || d.label || "Air pollution")}</p>
-      <div class="verdict-word v-${st}">${escapeHtml(headlineFor(d))}</div>
-      <p class="verdict-plain">${escapeHtml(st === "CANT_TELL" ? "The available data cannot reliably determine whether this policy caused an additional NO₂ reduction. See the estimates and checks for each monitor type below." : (d.verdict.statement || ""))}</p>
-      <p class="verdict-claim tnum muted">Policy start ${fmtDate(d.event_date)} · ${d.post_months} month window · NO₂ · ground monitors + ERA5</p>
-      <div class="air-hero-number v-${st}"><span>${escapeHtml(effect)}</span></div>
-      <div class="big-sub">${escapeHtml(SIGNAL_LABEL[lead] || lead)} against the matched no-policy trajectory</div>
-      ${Number.isFinite(sig.point) ? `<div class="big-sub tnum muted">${fmtSigned(lead, sig.point)} absolute gap · 90% interval ${fmtSigned(lead, sig.lo)} to ${fmtSigned(lead, sig.hi)}</div>` : ""}
-    </section>
-    <details class="dtl air-verdict-reasons"><summary>Why this verdict?</summary><div class="dtl-body"><p>${escapeHtml(d.verdict.statement || "")}</p></div></details>`;
-}
-
-function airPlaceboP(sig, key) {
-  return sig.placebo_n > 0 && Number.isFinite(sig[key]) ? sig[key].toFixed(3) : "—";
-}
-
-function airSensitivityStatus(check) {
-  if (!check || !check.applicable) return "not applicable";
-  if (check.reason?.includes("not estimable")) return "not estimable";
-  return check.robust ? "robust" : "not robust";
-}
-
-function renderAirCharts(d) {
-  return airSignalRows(d).map(([signal, sig], i) => {
-    const chart = d.charts[signal];
-    if (!chart) return "";
-    return `
-      <section class="act reveal air-signal" id="air-signal-${signal}">
-        <div class="label">${escapeHtml(airStationTypeLabel(signal))}</div>
-        <div class="air-result-grid">
-          <div><div class="air-effect tnum">${fmtAirPct(sig.relative_pct)}</div><div class="muted small">relative NO₂ effect</div></div>
-          <div><div class="air-effect tnum">${fmtSigned(signal, sig.point)}</div><div class="muted small">absolute gap</div></div>
-          <div><div class="air-effect tnum">${airPlaceboP(sig, "placebo_p")}</div><div class="muted small">placebo fit-ratio p-value</div></div>
-          <div><div class="air-effect tnum">${airPlaceboP(sig, "placebo_p_effect")}</div><div class="muted small">placebo effect-size p-value</div></div>
-          <div><div class="air-interval tnum">${fmtSigned(signal, sig.lo)} to ${fmtSigned(signal, sig.hi)}</div><div class="muted small">90% confidence interval</div></div>
-          <div><div class="air-effect tnum">${sig.treated_station_count ?? "—"} / ${sig.n_donors ?? "—"}</div><div class="muted small">London / control monitors</div></div>
-        </div>
-        <div class="chart-wrap air-main-chart" id="air-main-chart-${signal}"></div>
-        <div class="chart-legend">
-          <span><span class="swatch" style="border-color:var(--treated)"></span>London monitors</span>
-          <span><span class="swatch dashed" style="border-color:var(--counter)"></span>Matched no-policy trajectory</span>
-          ${chart.placebo_band?.[0]?.some((v, j) => Number.isFinite(v) && Number.isFinite(chart.placebo_band?.[1]?.[j])) ? '<span><span class="swatch band"></span>Placebo range</span>' : '<span>Placebo range unavailable</span>'}
-        </div>
-        <div class="gap-block"><div class="chart-wrap" id="air-gap-chart-${signal}"></div><div class="chart-caption">Weather-normalised London NO₂ minus the matched no-policy trajectory. Zero means no additional effect.</div></div>
-        <div class="strip-wrap air-placebo-strip" id="air-placebo-${signal}"></div>
-        <p class="sure-line"><span class="sure-tag">Design</span>${sig.treated_station_count} of ${sig.treated_station_requested} requested London ${sig.site_type} monitors survived fixed-cohort coverage rules; ${sig.n_donors} same-type controls were selected. ${sig.placebo_n > 0 ? `${sig.placebo_n} exact-size placebo cohorts reran control selection and ridge tuning from scratch.` : "No exact-size placebo cohort could be formed, so this stratum has no placebo test and no placebo p-value."}</p>
-        <p class="sure-line second"><span class="sure-tag">Stress checks</span>Pre-trend: ${sig.pretrend == null || sig.pretrend.applicable === false ? "not run" : (sig.pretrend.flagged ? "flagged" : "clear")} · leave-one-London-monitor-out: ${airSensitivityStatus(sig.treated_jackknife)} · influential-control removal: ${airSensitivityStatus(sig.donor_sensitivity)} · interval search: ${!Number.isFinite(sig.lo) || !Number.isFinite(sig.hi) ? "not available" : (sig.conformal_boundary_hit || sig.conformal_empty ? "unresolved" : "resolved")}.</p>
-      </section>`;
-  }).join("");
-}
-
-function renderAirResearch(d) {
-  const rows = d.research_comparison || [];
-  if (!rows.length) return "";
-  return `
-    <section class="act reveal" id="air-research">
-      <div class="label">Now reveal the published answer</div>
-      <p class="muted">These papers are answer keys only. Their estimates are attached after Otherwise has finished fitting the counterfactual.</p>
-      <div class="air-research-list">${rows.map((r) => {
-        const ours = Number.isFinite(r.otherwise_pct)
-          ? `${fmtAirPct(r.otherwise_pct)} (90% ${fmtAirPct(r.otherwise_pct_interval?.[0])} to ${fmtAirPct(r.otherwise_pct_interval?.[1])})`
-          : "No matching Otherwise stratum in this run";
-        const pub = Number.isFinite(r.point_pct) ? fmtAirPct(r.point_pct) : r.finding;
-        return `<article class="air-research-card">
-          <div class="small muted">${escapeHtml(r.stratum ? airStationTypeLabel(r.stratum === "traffic" ? "NO2_TRAFFIC" : "NO2_BACKGROUND") : "Published study")}</div>
-          <div><strong>Otherwise:</strong> <span class="tnum">${escapeHtml(ours)}</span></div>
-          <div><strong>Published:</strong> <span class="tnum">${escapeHtml(pub)}</span></div>
-          ${Number.isFinite(r.point_pct) && r.finding ? `<p class="small">${escapeHtml(r.finding)}</p>` : ""}
-          ${r.comparison ? `<p class="small muted">${escapeHtml(r.comparison)}</p>` : ""}
-          <a href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.citation)}</a>
-        </article>`;
-      }).join("")}</div>
-    </section>`;
-}
-
-function renderAirReceipts(d) {
-  const counts = (d.data_summary && d.data_summary.receipts) || {};
-  const countRows = Object.entries(counts).sort((a,b) => b[1]-a[1]);
-  const examples = (d.receipts || []).slice(0, 80);
-  return `
-    <p class="receipts-summary tnum">${d.data_summary?.treated_stations ?? 0} usable London monitors · ${d.data_summary?.control_stations ?? 0} usable UK control monitors · hourly → daily (≥19 h; >75%) → weekly (≥4 d).</p>
-    ${countRows.length ? `<p class="small muted">Dropped / flagged: ${countRows.map(([k,v]) => `${escapeHtml(k)} ${v}`).join(" · ")}</p>` : ""}
-    ${examples.length ? `<table class="receipts-table"><thead><tr><th>Date</th><th>Sensor</th><th>Reason</th><th>Detail</th></tr></thead><tbody>${examples.map((r) => `<tr><td class="tnum">${escapeHtml(r.date || "")}</td><td>${escapeHtml(r.sensor || "")}</td><td>${escapeHtml(r.reason || "")}</td><td>${escapeHtml(r.detail || "")}</td></tr>`).join("")}</tbody></table>` : '<p class="small muted">No dropped-observation receipts in this run.</p>'}`;
-}
-
-function renderAirDetails(d) {
-  const limits = (d.limits || []).filter(Boolean);
-  const signals = airSignalRows(d);
-  return `
-    <section class="details-stack" id="details">
-      <details class="dtl" id="dtl-numbers"><summary>The numbers</summary><div class="dtl-body">
-        <table class="numbers tnum"><thead><tr><th>Monitor type</th><th>Effect</th><th>90% interval</th><th>Relative</th><th>p fit</th><th>p effect</th><th>Pre / post weeks</th></tr></thead><tbody>
-        ${signals.map(([k,s]) => `<tr><td>${escapeHtml(airStationTypeLabel(k))}</td><td>${fmtSigned(k,s.point)}</td><td>${fmtSigned(k,s.lo)} to ${fmtSigned(k,s.hi)}</td><td>${fmtAirPct(s.relative_pct)}</td><td>${airPlaceboP(s, "placebo_p")}</td><td>${airPlaceboP(s, "placebo_p_effect")}</td><td>${s.n_pre} / ${s.n_post}</td></tr>`).join("")}
-        </tbody></table>
-        <p class="statement" style="margin-top:14px">${escapeHtml(d.verdict.statement || "")}</p>
-      </div></details>
-      <details class="dtl" id="dtl-controls"><summary>London and control monitors</summary><div class="dtl-body"><div id="control-map" aria-label="Map of London and matched UK air quality monitors"></div><div class="map-caption">Black points are London monitors in the registered treated geography. Control monitors are same-type DEFRA AURN sites at least ${d.controls?.spillover_exclusion_km ?? 60} km from central London; matching uses pre-policy data only. ${(d.controls?.policy_exclusions || []).length} candidate monitors were screened out because a known local CAZ/LEZ/ZEZ launched inside this analysis window.</div></div></details>
-      <details class="dtl" id="dtl-receipts"><summary>Receipts: what was thrown out and why</summary><div class="dtl-body">${renderAirReceipts(d)}</div></details>
-      <details class="dtl" id="dtl-method"><summary>Method and failure modes</summary><div class="dtl-body">
-        <p><strong>${escapeHtml(d.method?.estimator || "Augmented synthetic control")}</strong></p>
-        <p><strong>Estimand:</strong> ${escapeHtml(signals[0]?.[1]?.estimand || "Incremental post-policy change against a matched no-policy trajectory.")}</p>
-        <p>Registered baseline begins ${escapeHtml(d.method?.registered_analysis_start || d.window?.[0] || "—")}. NO₂ is weather-normalised with ERA5 using a ridge model trained only before the policy and season-matched pre-policy reference weather. Traffic/roadside and urban-background monitors are never pooled.</p>
-        <p>${escapeHtml(d.method?.placebo || "")}</p>
-        <p>${escapeHtml(d.method?.interval || "")}</p>
-        ${signals.map(([k, sig]) => [ ["Leave-one-London-monitor-out", sig.treated_jackknife], ["Influential-control removal", sig.donor_sensitivity] ].filter(([, check]) => check?.reason).map(([name, check]) => `<p><strong>${escapeHtml(airStationTypeLabel(k))} · ${name}:</strong> ${escapeHtml(check.reason)}</p>`).join("")).join("")}
-        <p><strong>Answer-key rule:</strong> ${escapeHtml(d.method?.answer_key_leakage || "Published findings are attached only after estimation.")}</p>
-        ${limits.length ? `<div class="label" style="margin-top:18px">Known limits</div><ul class="why-list">${limits.map((x)=>`<li>${escapeHtml(x)}</li>`).join("")}</ul>` : ""}
-      </div></details>
-    </section>`;
-}
-
-function initAirControlMap(d) {
-  const el = document.getElementById("control-map");
-  if (!el || !window.L) return;
-  const map = L.map(el, { scrollWheelZoom: false }).setView([54.2, -2.5], 5);
-  L.tileLayer(LIGHT_TILES, { attribution: LIGHT_ATTR, maxZoom: 19 }).addTo(map);
-  const bounds = L.latLngBounds([]);
-  if (d.area && d.area.geojson) {
-    const zone = L.geoJSON(d.area.geojson, { style: { color: "#161616", weight: 2, fillOpacity: 0.03 } }).addTo(map);
-    bounds.extend(zone.getBounds());
-  }
-  (d.stations?.treated || []).forEach((s) => {
-    if (!Number.isFinite(s.lat) || !Number.isFinite(s.lon)) return;
-    const m = L.circleMarker([s.lat,s.lon], { radius:5, color:"#161616", weight:1.5, fillColor:"#f6f4ee", fillOpacity:1 }).addTo(map);
-    m.bindTooltip(`${s.name || s.code} · London ${s.site_type || "monitor"}`);
-    bounds.extend([s.lat,s.lon]);
-  });
-  const seen = new Set();
-  Object.entries(d.donors || {}).forEach(([signal, info]) => {
-    (info.stations || []).forEach((s) => {
-      const key = s.code || `${s.lat}:${s.lon}`;
-      if (seen.has(key) || !Number.isFinite(s.lat) || !Number.isFinite(s.lon)) return;
-      seen.add(key);
-      const m = L.circleMarker([s.lat,s.lon], { radius:4, color:"#777", weight:1, fillColor:"#777", fillOpacity:0.45 }).addTo(map);
-      m.bindTooltip(`${s.name || s.code} · control ${s.site_type || "monitor"}`);
-      bounds.extend([s.lat,s.lon]);
-    });
-  });
-  if (bounds.isValid()) map.fitBounds(bounds, { padding:[25,25], maxZoom:10 });
-  setTimeout(() => map.invalidateSize({ animate:false }), 100);
-}
-
-function renderAir(d) {
-  document.body.classList.add("air-evidence");
-  document.title = (d.label ? `${d.label} — ` : "") + "Otherwise";
-  document.getElementById("copy-link-btn").style.display = "inline-block";
-  contentEl.innerHTML = renderAirTop(d) + renderAirCharts(d) + renderAirResearch(d) + renderAirDetails(d);
-
-  const chartObjs = [];
-  airSignalRows(d).forEach(([signal, sig]) => {
-    const chart = d.charts[signal];
-    if (!chart) return;
-    const obj = drawTrajectoryChart(document.getElementById(`air-main-chart-${signal}`), chart, { eventDate:d.event_date, signal, animate:true });
-    chartObjs.push(obj);
-    drawGapChart(document.getElementById(`air-gap-chart-${signal}`), chart, { eventDate:d.event_date, signal });
-    const strip = document.getElementById(`air-placebo-${signal}`);
-    if (strip) strip.innerHTML = stripPlotSVG(strip.clientWidth || 520, chart.placebo_effects || [], sig.point, VERDICT_VAR[d.verdict.status], signal);
-  });
-  initReveal(() => {});
-  chartObjs.forEach((x) => x.reveal());
-  let mapDone = false;
-  const dc = document.getElementById("dtl-controls");
-  if (dc) dc.addEventListener("toggle", () => { if (dc.open && !mapDone) { mapDone=true; setTimeout(() => initAirControlMap(d), 120); } });
-  initPill(d);
-  initAnalystLayer(d);
-  wireCopyLink(document.getElementById("copy-link-btn"));
-  initHowItWorksDrawer();
-  const footer = document.getElementById("site-footer");
-  if (footer) footer.innerHTML = `<span>NO₂: London Air Quality Network + DEFRA AURN. Weather: ERA5 reanalysis. Policy boundary: TfL / Greater London Authority.</span><span><a href="/track-record">Track record</a> · <a href="https://github.com/Mohib314159/carbon-twin" target="_blank" rel="noopener">Source</a></span>`;
-}
-
 function render(d) {
-  if (d.domain === "air") return renderAir(d);
   document.title = (d.label ? `${d.label} — ` : "") + "Otherwise";
   document.getElementById("copy-link-btn").style.display = "inline-block";
 

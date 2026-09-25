@@ -27,13 +27,13 @@ function renderRow(r) {
     : "—";
   return `
     <tr>
-      <td><a href="/v/${encodeURIComponent(r.id)}">${escapeHtml(r.label || r.id)}</a></td>
-      <td>${escapeHtml(CHANGE_TYPE_LABEL[r.type] || r.type || "—")}</td>
-      <td>${escapeHtml(r.expected || "—")}</td>
-      <td class="verdict-cell v-${r.status}">${statusLabel}</td>
-      <td class="tnum">${effect}</td>
-      <td>${escapeHtml(r.signal ? (SIGNAL_LABEL[r.signal] || r.signal) : "—")}</td>
-      <td>${r.source ? `<a href="${escapeHtml(r.source)}" target="_blank" rel="noopener">source</a>` : "—"}</td>
+      <td data-label="Site"><a href="/v/${encodeURIComponent(r.id)}">${escapeHtml(r.label || r.id)}</a></td>
+      <td data-label="Type">${escapeHtml(CHANGE_TYPE_LABEL[r.type] || r.type || "—")}</td>
+      <td data-label="Expected">${escapeHtml(r.expected || "—")}</td>
+      <td data-label="Verdict" class="verdict-cell v-${r.status}">${statusLabel}</td>
+      <td data-label="Effect" class="tnum">${effect}</td>
+      <td data-label="Signal">${escapeHtml(r.signal ? (SIGNAL_LABEL[r.signal] || r.signal) : "—")}</td>
+      <td data-label="Evidence">${r.source ? `<a href="${escapeHtml(r.source)}" target="_blank" rel="noopener">Open source ↗</a>` : "—"}</td>
     </tr>`;
 }
 
@@ -61,7 +61,7 @@ async function boot() {
         <div class="summary-line tnum">${summaryLine(data.summary)}</div>
       </section>
       <div class="table-wrap">
-        <table class="track-table">
+        <table class="track-table track-record-table">
           <thead>
             <tr><th>Site</th><th>Type</th><th>Expected</th><th>Verdict</th><th>Effect</th><th>Signal</th><th>Source</th></tr>
           </thead>
@@ -182,46 +182,4 @@ async function renderBlind() {
   contentEl.appendChild(section);
 }
 
-boot().finally(async () => { await renderBlind(); await renderAirValidation(); });
-
-// ---- air-policy known answers ----------------------------------------------
-// This section never turns the published literature into a score unless a real
-// Otherwise run exists. Pending cases are labelled pending rather than given a
-// synthetic "expected" row.
-function airPct(v) {
-  if (!Number.isFinite(v)) return "—";
-  if (Math.abs(v) < .05) return "0.0%";
-  return `${v > 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}%`;
-}
-
-function airSignalCell(sig) {
-  if (!sig) return "—";
-  return `${airPct(sig.relative_pct)} <span class="muted">(${airPct(sig.relative_lo_pct)} to ${airPct(sig.relative_hi_pct)})</span>`;
-}
-
-async function renderAirValidation() {
-  let data;
-  try { data = await apiGet("/api/air/validation"); } catch (_) { return; }
-  const runs = data.runs || [];
-  const byId = Object.fromEntries(runs.map((r) => [r.case_id, r]));
-  const cases = data.cases || [];
-  if (!cases.length) return;
-  const section = document.createElement("section");
-  section.className = "blind";
-  section.id = "air-validation";
-  section.innerHTML = `
-    <h2>Air-policy replication</h2>
-    <p class="blind-sub">Pre-registered ULEZ tests. Otherwise estimates NO₂ first, using LAQN treated monitors, non-London DEFRA AURN controls, pre-policy-only ERA5 weather normalisation, augmented synthetic control and symmetric cohort placebos. Published estimates are attached only afterwards.</p>
-    <div class="table-wrap"><table class="track-table"><thead><tr><th>Case</th><th>Otherwise</th><th>Traffic</th><th>Background</th><th>Published answer key</th></tr></thead><tbody>
-      ${cases.map((c) => {
-        const r = byId[c.id];
-        const pubs = (c.published || []).map((p) => `<a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">${escapeHtml(p.citation)}</a>: ${escapeHtml(p.finding)}`).join("<br>") || "No fixed published point estimate registered";
-        if (!r) return `<tr><td>${escapeHtml(c.label)}</td><td class="muted">not run yet</td><td>—</td><td>—</td><td>${pubs}</td></tr>`;
-        const tr = r.signals && r.signals.NO2_TRAFFIC;
-        const bg = r.signals && r.signals.NO2_BACKGROUND;
-        return `<tr><td><a href="/v/${encodeURIComponent(r.run_id)}">${escapeHtml(c.label)}</a></td><td class="verdict-cell v-${r.verdict.status}">${escapeHtml(VERDICT_LABEL[r.verdict.status] || r.verdict.status)}</td><td class="tnum">${airSignalCell(tr)}</td><td class="tnum">${airSignalCell(bg)}</td><td>${pubs}</td></tr>`;
-      }).join("")}
-    </tbody></table></div>
-    <p class="protocol">The table stays visibly pending until <code>python -m scripts.air_known_answers</code> has run on live public data. That is intentional: no benchmark number is invented to make the page look complete.</p>`;
-  contentEl.appendChild(section);
-}
+boot().finally(renderBlind);

@@ -14,5 +14,3 @@ web/screenshots/
 
 # per-agent git worktrees created by Claude Code sessions
 .claude/worktrees/
-
-data/air_cache/

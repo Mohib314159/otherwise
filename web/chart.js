@@ -6,7 +6,7 @@
 //   over ~1.1 s. Pass { animate: false } to draw everything immediately
 //   (resize redraws, reduced motion).
 // drawGapChart(container, chart, opts)
-import { fmtSignalValue, fmtDate, AIR_SIGNALS } from "./common.js";
+import { fmtSignalValue, fmtDate } from "./common.js";
 
 const SVGNS = "http://www.w3.org/2000/svg";
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -123,34 +123,18 @@ function nearestIndex(times, t) {
 
 function linePath(times, values, x, y) {
   let d = "";
-  let connected = false;
   for (let i = 0; i < times.length; i++) {
-    if (!Number.isFinite(values[i])) { connected = false; continue; }
-    d += (connected ? " L" : "M") + `${x(times[i])},${y(values[i])}`;
-    connected = true;
+    if (!Number.isFinite(values[i])) continue;
+    d += (d ? " L" : "M") + `${x(times[i])},${y(values[i])}`;
   }
   return d;
 }
 
 function bandPathD(times, lo, hi, x, y) {
-  let d = "";
-  let start = 0;
-  while (start < times.length) {
-    if (!Number.isFinite(lo[start]) || !Number.isFinite(hi[start])) { start++; continue; }
-    let end = start + 1;
-    while (end < times.length && Number.isFinite(lo[end]) && Number.isFinite(hi[end])) end++;
-    d += `M${x(times[start])},${y(hi[start])}`;
-    for (let i = start + 1; i < end; i++) d += ` L${x(times[i])},${y(hi[i])}`;
-    for (let i = end - 1; i >= start; i--) d += ` L${x(times[i])},${y(lo[i])}`;
-    d += " Z";
-    start = end;
-  }
-  return d;
-}
-
-function addBandToCounterfactual(band, counterfactual) {
-  return band.map((value, i) => Number.isFinite(value) && Number.isFinite(counterfactual[i])
-    ? counterfactual[i] + value : null);
+  let d = `M${x(times[0])},${y(hi[0])}`;
+  for (let i = 1; i < times.length; i++) d += ` L${x(times[i])},${y(hi[i])}`;
+  for (let i = times.length - 1; i >= 0; i--) d += ` L${x(times[i])},${y(lo[i])}`;
+  return d + " Z";
 }
 
 /** Shared frame: post-event tint, hairline y grid, x/y axis type at 12px. */
@@ -202,7 +186,7 @@ function attachHover(svg, hitRect, { times, x, width, tMin, tMax, margin }, onIn
 export function drawTrajectoryChart(container, chart, { eventDate, signal, animate = true }) {
   const width = Math.max(container.clientWidth || 640, 280);
   const height = width < 640 ? 260 : 360;
-  const margin = { top: 24, right: 16, bottom: 34, left: AIR_SIGNALS.has(signal) ? 98 : 60 };
+  const margin = { top: 24, right: 16, bottom: 34, left: 60 };
   container.innerHTML = "";
   const wrap = container;
 
@@ -211,8 +195,8 @@ export function drawTrajectoryChart(container, chart, { eventDate, signal, anima
   const tMin = Math.min(times[0], eventT);
   const tMax = Math.max(times[times.length - 1], eventT);
 
-  const bandLo = addBandToCounterfactual(chart.placebo_band[0], chart.counterfactual);
-  const bandHi = addBandToCounterfactual(chart.placebo_band[1], chart.counterfactual);
+  const bandLo = chart.placebo_band[0].map((v, i) => chart.counterfactual[i] + v);
+  const bandHi = chart.placebo_band[1].map((v, i) => chart.counterfactual[i] + v);
   const allY = [...chart.treated, ...chart.counterfactual, ...bandLo, ...bandHi].filter((v) => Number.isFinite(v));
   let yMin = Math.min(...allY), yMax = Math.max(...allY);
   const pad = (yMax - yMin) * 0.08 || 0.05;
@@ -301,7 +285,7 @@ export function drawTrajectoryChart(container, chart, { eventDate, signal, anima
 export function drawGapChart(container, chart, { eventDate, signal }) {
   const width = Math.max(container.clientWidth || 640, 280);
   const height = width < 640 ? 200 : 240;
-  const margin = { top: 20, right: 16, bottom: 34, left: AIR_SIGNALS.has(signal) ? 98 : 60 };
+  const margin = { top: 20, right: 16, bottom: 34, left: 60 };
   container.innerHTML = "";
   const wrap = container;
 

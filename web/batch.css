@@ -58,3 +58,49 @@ textarea:focus { outline: 2px solid var(--counter); outline-offset: 1px; }
 td.status-cell.stage-error { color: var(--notreal); }
 td.links-cell a { margin-right: 10px; font-size: 13px; }
 td.links-cell .muted { font-size: 13px; }
+
+.batch-schema-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.batch-schema-note span { margin-right: 3px; }
+.batch-schema-note code { white-space: nowrap; }
+.batch-source-grid { display: grid; grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr); gap: 0; align-items: stretch; }
+.batch-source { margin: 0; min-width: 0; }
+.batch-source-or { display: grid; place-items: center; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+.batch-source-or span { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--rule); border-radius: 50%; background: var(--panel); }
+.upload-drop {
+  position: relative;
+  display: flex;
+  min-height: 170px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 9px;
+  padding: 22px;
+  border: 1px dashed #bfc0b9;
+  border-radius: 12px;
+  background: #f9f8f3;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+.upload-drop:hover, .upload-drop.is-dragover { border-color: #75796e; background: #fff; transform: translateY(-1px); }
+.upload-drop input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.upload-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: #d9ff71; color: #171a17; }
+.upload-icon svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.upload-copy { display: grid; gap: 3px; }
+.upload-copy strong { font-size: 13px; font-weight: 650; }
+.upload-copy small, .upload-file { color: var(--muted); font-size: 11px; }
+.upload-file { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.batch-source textarea { min-height: 170px; height: 170px; }
+@media (max-width: 760px) {
+  .batch-source-grid { grid-template-columns: 1fr; gap: 12px; }
+  .batch-source-or { height: 24px; }
+  .upload-drop, .batch-source textarea { min-height: 144px; height: 144px; }
+}

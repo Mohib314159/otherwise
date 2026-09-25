@@ -86,9 +86,6 @@ def test_a_wedged_job_is_cancelled_at_the_next_checkpoint(monkeypatch):
     from src.app import server as srv
 
     monkeypatch.setattr(srv, "JOB_TIMEOUT_S", 0.0)
-    # Equal clock readings still meet a zero-length deadline (Windows can
-    # execute all checkpoints within one wall-clock tick).
-    monkeypatch.setattr(srv.time, "monotonic", lambda: 100.0)
 
     calls = {"n": 0}
 

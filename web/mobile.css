@@ -1,221 +1,210 @@
-/* Otherwise — mobile layout (phones, <=640px).
-   Everything in this file lives inside this one media query on purpose:
-   it must be structurally impossible for a rule here to apply at
-   desktop widths. See scripts/desktop_screenshots.py for the mechanical
-   proof that desktop is unaffected.
+/* Otherwise — phone product, not a compressed desktop.
+   The map stays full-screen. The landing hero and investigation flow become
+   deliberate bottom surfaces with iOS safe-area support. */
 
-   Landing page: a full-screen map behind a Google-Maps-style draggable
-   bottom sheet (behaviour lives in mobile.js). Verdict/track/batch pages:
-   targeted readability, tap-target and no-horizontal-scroll fixes only —
-   no map, no sheet, no redesign. */
 @media (max-width: 640px) {
+  :root { --phone-gutter: 12px; }
 
-  /* ---------------------------------------------------------------------
-     Shared: no iOS zoom-on-focus, comfortable tap targets everywhere.
-     --------------------------------------------------------------------- */
-  input[type="text"],
-  input[type="date"],
-  select,
-  textarea {
-    font-size: 16px;
-  }
+  input[type="text"], input[type="date"], select, textarea { font-size: 16px; }
+  .btn, .btn-quiet { min-height: 44px; }
 
-  .btn,
-  .btn-quiet {
-    min-height: 44px;
-    padding-top: 12px;
-    padding-bottom: 12px;
-  }
-
-  /* =======================================================================
-     LANDING PAGE — full-screen map + bottom sheet
-     ======================================================================= */
-
-  /* Map stays edge-to-edge and only the sheet scrolls -- but ONLY on the
-     landing page. Unscoped, this locked every page at phone width: the verdict,
-     track-record and batch pages could not be scrolled at all below the first
-     screen (scrollHeight == clientHeight, measured in Chromium at 390 and
-     360 px). The landing page carries the class; every other page scrolls
-     normally, and a browser without :has() support simply never applies the
-     lock, which is the safe direction to fail. */
+  /* landing ------------------------------------------------------------- */
   html:has(body.page-landing), body.page-landing { height: 100%; overflow: hidden; }
-
   body.page-landing #map { position: fixed; inset: 0; }
-
-  #side-panel {
-    top: auto; left: 0; right: 0; bottom: 0;
-    width: 100%; max-width: 100%;
-    height: 92vh; max-height: 92vh;
-    border-radius: 16px 16px 0 0;
-    border-left: none; border-right: none; border-bottom: none;
-    box-shadow: 0 -6px 28px rgba(22, 22, 22, 0.16);
-    padding: 4px 20px 24px;
-    overflow-y: hidden; /* only the "full" snap point scrolls internally */
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    transform: translateY(var(--sheet-d, 0px));
-    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  body.page-landing .map-wash {
+    background:
+      linear-gradient(180deg, rgba(6,8,7,.4) 0, transparent 22%),
+      linear-gradient(0deg, rgba(6,8,7,.68) 0, rgba(6,8,7,.12) 50%, transparent 70%);
   }
-  /* while dragging, mobile.js adds this to kill the transition so the
-     sheet tracks the finger 1:1 with no lag */
-  #side-panel.sheet-dragging { transition: none; }
-  #side-panel.sheet-full { overflow-y: auto; }
+  body.page-landing .map-grid { opacity: .05; background-size: 48px 48px; }
 
+  .landing-nav {
+    top: max(10px, env(safe-area-inset-top)); left: var(--phone-gutter); right: var(--phone-gutter);
+  }
+  .brand { font-size: 15px; }
+  .brand-mark { width: 23px; height: 23px; }
+  .landing-nav-links { padding: 4px; }
+  .landing-nav-links > a, .landing-nav-links .nav-link { display: none; }
+  .nav-install { min-height: 36px; padding: 0 12px; font-size: 11px; }
+
+  .map-style {
+    top: max(60px, calc(env(safe-area-inset-top) + 50px)); right: var(--phone-gutter);
+    min-height: 38px; padding-inline: 11px;
+  }
+
+  .page-landing .leaflet-control-zoom { margin-top: max(62px, calc(env(safe-area-inset-top) + 52px)) !important; margin-left: 12px !important; }
+  .page-landing .leaflet-control-attribution { font-size: 7px !important; max-width: 70vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .hero-panel {
+    left: var(--phone-gutter); right: var(--phone-gutter); bottom: max(12px, env(safe-area-inset-bottom)); top: auto;
+    transform: none; width: auto; padding: 19px 18px 16px; border-radius: 22px;
+    background: rgba(11,13,12,.78); border: 1px solid rgba(255,255,255,.16);
+    backdrop-filter: blur(22px) saturate(115%); box-shadow: 0 20px 60px rgba(0,0,0,.33);
+  }
+  .hero-eyebrow { margin-bottom: 10px; font-size: 9px; }
+  .hero-panel h1 { font-size: clamp(41px, 12vw, 52px); line-height: .92; letter-spacing: -.04em; }
+  .hero-copy { width: 100%; margin-top: 13px; font-size: 13px; line-height: 1.45; color: rgba(255,255,255,.72); }
+  .counterfactual-demo { display: none; }
+  .hero-actions { margin-top: 16px; display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .primary-action, .secondary-action { min-height: 47px; font-size: 12px; padding-inline: 15px; }
+  .secondary-action { padding-inline: 13px; }
+  .hero-proof { margin-top: 11px; gap: 5px; }
+  .hero-proof span { font-size: 8.5px; padding: 4px 7px; }
+  body.is-workbench .hero-panel { transform: translateY(20px); }
+
+  /* fixed, non-draggable investigation surface: one decision at a time */
+  .workbench {
+    --wb-pad: 17px;
+    left: var(--phone-gutter); right: var(--phone-gutter); bottom: max(10px, env(safe-area-inset-bottom)); top: auto;
+    width: auto; max-width: none; max-height: min(69vh, 590px); min-height: 270px;
+    border-radius: 23px; padding: 5px var(--wb-pad) calc(14px + env(safe-area-inset-bottom));
+    transform: translateY(24px) scale(.985); transform-origin: center bottom;
+    overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  }
+  body.is-workbench .workbench { transform: none; }
   .sheet-handle {
-    width: 100%;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    touch-action: none;
-    cursor: grab;
+    display: block; width: 38px; height: 4px; border-radius: 99px; background: #d1d0c9; margin: 8px auto 7px;
   }
-  .sheet-handle::before {
-    content: "";
-    width: 36px;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--rule);
-  }
-  #side-panel.sheet-dragging .sheet-handle { cursor: grabbing; }
+  .workbench-head { grid-template-columns: 34px 1fr auto; padding: 4px 0 12px; }
+  .workbench-head h2 { font-size: 18px; }
+  .step-rail { margin-bottom: 16px; }
+  .search-box { height: 50px; }
+  .draw-action { min-height: 66px; }
+  .workflow-note { margin-bottom: 2px; }
+  .area-summary { margin-bottom: 15px; }
+  .form-grid-2 { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .workbench input[type="text"], .workbench input[type="date"], .workbench select { font-size: 16px; min-height: 46px; }
+  .what-next { margin-bottom: 11px; }
+  .submit-action { min-height: 50px; }
+  .workbench-footer { margin-top: 14px; }
 
-  /* the wordmark + tagline double as drag handles too ("the sheet header") */
-  #side-panel > h1,
-  #side-panel > .tagline {
-    touch-action: none;
-    cursor: grab;
+  body.is-drawing .workbench {
+    opacity: .18; transform: translateY(calc(100% - 82px)) scale(.98); pointer-events: none;
   }
+  .draw-coach {
+    top: auto; bottom: max(16px, env(safe-area-inset-bottom)); left: var(--phone-gutter); right: var(--phone-gutter);
+    min-width: 0; max-width: none; width: auto; transform: translateY(12px);
+    grid-template-columns: 30px 1fr auto; border-radius: 18px; padding: 11px 11px;
+  }
+  body.is-drawing .draw-coach { transform: none; }
+  .draw-coach strong { font-size: 12px; }
+  .draw-coach span:not(.draw-coach-icon) { font-size: 9px; line-height: 1.35; }
 
-  /* peek: only the wordmark and the search row should show — everything
-     else is still in the DOM (just clipped/hidden) so it reappears the
-     moment the sheet rises to half or full. */
-  #side-panel.sheet-peek > .tagline,
-  #side-panel.sheet-peek > .intro-line,
-  #side-panel.sheet-peek > .panel-section:first-of-type,
-  #side-panel.sheet-peek > .panel-footer,
-  #side-panel.sheet-peek .panel-section > .label,
-  #side-panel.sheet-peek .showcase-note,
-  #side-panel.sheet-peek .place-search-note,
-  #side-panel.sheet-peek .place-search-error,
-  #side-panel.sheet-peek #draw-block {
-    display: none;
+  .case-rail {
+    right: var(--phone-gutter); left: var(--phone-gutter); bottom: max(12px, env(safe-area-inset-bottom)); width: auto;
+    transform: translateY(calc(100% + 30px)); opacity: 0; pointer-events: none;
+    transition: transform .34s cubic-bezier(.2,.8,.2,1), opacity .25s ease;
   }
-  /* the "Your own area" section becomes the first visible one once the
-     showcase section above it is hidden — drop its own top spacing/rule
-     so the search row sits right under the wordmark within peek's ~120px */
-  #side-panel.sheet-peek .panel-section:not(:first-of-type) {
-    margin-top: 6px;
-    padding-top: 0;
-    border-top: none;
-  }
-  #side-panel.sheet-peek > h1 {
-    margin-bottom: 2px;
-  }
+  body.show-cases .case-rail { transform: none; opacity: 1; pointer-events: auto; }
+  body.show-cases .hero-panel { opacity: .18; transform: translateY(18px); pointer-events: none; }
+  .case-rail-head { align-items: center; margin-bottom: 8px; }
+  .case-rail-head > div { display: block; }
+  .case-rail-head strong { display: block; margin-top: 2px; font-size: 12px; }
+  .case-list { grid-auto-columns: 74%; gap: 8px; }
+  .sc-card, .sc-body { min-height: 142px; }
+  .sc-label { font-size: 13px; }
+  .sc-meta { font-size: 9px; }
+  .sc-effect { font-size: 9px; }
 
-  /* the satellite toggle and Leaflet's own bottom-anchored controls float
-     just above the sheet's current visible edge, wherever that is —
-     mobile.js keeps --sheet-visible in sync while dragging and snapping */
-  .map-toggle {
-    top: auto;
-    left: auto;
-    right: 16px;
-    bottom: calc(var(--sheet-visible, 120px) + 16px);
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    transition: bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  body.sheet-dragging .map-toggle { transition: none; }
+  /* in standalone mode, give the app a little more breathing room */
+  body.pwa-standalone .landing-nav { top: max(12px, env(safe-area-inset-top)); }
 
-  .leaflet-bottom {
-    bottom: calc(var(--sheet-visible, 120px) + 10px) !important;
-    transition: bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  body.sheet-dragging .leaflet-bottom { transition: none; }
+  /* verdict ------------------------------------------------------------- */
+  .container { padding-left: 14px; padding-right: 14px; }
+  .topbar { padding: max(14px, env(safe-area-inset-top)) 0 13px; }
+  .topbar .wordmark { font-family: "Instrument Serif", Georgia, serif; font-size: 23px; font-weight: 400; }
+  .topbar-right { gap: 7px; font-size: 12px; }
+  .topbar-right a { display: none; }
+  .topbar-right .btn { min-height: 36px; padding: 7px 10px; font-size: 11px; border-radius: 9px; }
 
-  /* tap targets */
-  #draw-btn, #place-search-btn, #submit-btn {
-    min-height: 44px;
-  }
-  .sc-card {
-    min-height: 44px;
-    padding: 12px 0;
-  }
-  .panel-footer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0 16px;
-    align-items: center;
-  }
-  .panel-footer a {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 10px 2px;
-    margin: -10px 0;
-  }
-  .panel-footer .attribution {
-    flex-basis: 100%;
-    margin: 6px 0 0;
-  }
+  .verdict-top { padding: 28px 0 26px; }
+  .verdict-top .verdict-word { font-size: clamp(46px, 14vw, 58px); line-height: .93; letter-spacing: -.04em; }
+  .verdict-kicker { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+  .verdict-plain { margin-top: 12px; font-size: 16px; line-height: 1.48; max-width: 35ch; }
+  .verdict-claim { margin-top: 12px; font-size: 11px; }
+  .quick-note { font-size: 11px; line-height: 1.5; }
+  .quick-mark { font-size: 9px; }
+  .verdict-pill { top: max(8px, env(safe-area-inset-top)) !important; border-radius: 999px !important; }
 
-  /* =======================================================================
-     VERDICT PAGE — single column, legible, nothing overflows sideways.
-     No map-first layout is invented here: the page has no full-screen
-     navigational map (only a small inline "control cells" locator map
-     inside a collapsed details panel), so it gets no bottom sheet.
-     ======================================================================= */
+  .act { padding: 30px 0 34px; }
+  .act:first-child { padding-top: 22px; }
+  .act .label { margin-bottom: 12px; font-size: 10px; }
+  .act-lede { font-size: 13px; line-height: 1.5; }
+  .act1-grid { gap: 18px !important; }
+  .act1-aside .big-number { font-size: clamp(52px, 17vw, 68px); letter-spacing: -.04em; }
+  .act1-aside .big-sub, .what-num { max-width: none; }
+  .act1-lede { font-size: 11px !important; line-height: 1.5; }
 
-  .verdict-top { padding: 32px 0 28px; }
-  .verdict-top .verdict-word { font-size: 44px; }
-  .verdict-plain { font-size: 17px; }
-  .verdict-kicker { font-size: 13px; }
-  .quick-note { font-size: 13px; }
-  .act1-aside .big-number { font-size: 56px; }
-  .verdict-pill { top: 10px !important; }
+  .compare, .compare-single { aspect-ratio: 4 / 5; border-radius: 14px !important; }
+  .compare-handle { width: 38px !important; height: 38px !important; box-shadow: 0 5px 20px rgba(0,0,0,.28) !important; }
+  .compare-tag { top: 10px !important; font-size: 9px !important; border-radius: 999px !important; backdrop-filter: blur(10px); }
+  .compare-tag.before { left: 10px !important; }
+  .compare-tag.after { right: 10px !important; }
+  .compare-toggle { bottom: 10px !important; right: 10px !important; min-height: 36px !important; border-radius: 999px !important; }
+  .compare-coach { bottom: 11px !important; left: 50% !important; transform: translateX(-50%); }
+  .compare-presets { display: grid !important; grid-template-columns: repeat(3,1fr); gap: 6px; margin-top: 8px; }
+  .compare-preset { min-height: 40px; border-radius: 10px !important; font-size: 10px !important; }
 
-  /* hero sub-lines and the number's definition use the full column on a phone */
-  .act1-aside .big-sub,
-  .what-num { max-width: none; }
-  .sure-line { font-size: 16px; }
-  .sure-line.second { font-size: 14px; }
-
-  .compare, .compare-single { aspect-ratio: 4 / 5; }
-  .compare-handle { width: 36px; height: 36px; }
+  .lapse { margin-top: 16px !important; }
+  .lapse-head { align-items: flex-start !important; }
+  .lapse-hint { max-width: 55%; text-align: right; font-size: 9px !important; }
 
   .numbers { table-layout: fixed; }
-  .numbers th {
-    width: 42%;
-    white-space: normal;
-    padding-right: 8px;
-  }
-
+  .numbers th { width: 42%; white-space: normal; padding-right: 8px; }
+  .sure-line { font-size: 14px; line-height: 1.5; }
+  .sure-line.second { font-size: 12px; }
   .dtl-body { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   table.receipts-table { min-width: 480px; }
   #control-map { height: 220px; }
+  .fake-dates li, .fake-list li { flex-direction: column; align-items: flex-start; gap: 2px; }
 
-  .fake-dates li, .fake-list li {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-  }
-
-  /* =======================================================================
-     TRACK RECORD + BATCH — minimum viable: readable, tappable, tables
-     scroll inside their own container instead of widening the page.
-     ======================================================================= */
-
-  .page-head { padding: 28px 0 4px; }
+  /* track + batch ------------------------------------------------------- */
+  .page-head { padding: 26px 0 4px; }
   .page-head h1 { font-size: 24px; }
-
-  .table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .table-wrap table { min-width: 620px; }
-
   .defaults-grid { grid-template-columns: 1fr; }
   .batch-form { max-width: 100%; }
+}
 
-  .topbar-right { gap: 12px; }
+@media (max-width: 370px) {
+  .hero-panel { padding: 16px 15px 14px; }
+  .hero-panel h1 { font-size: 39px; }
+  .hero-copy { font-size: 12px; }
+  .hero-proof span:last-child { display: none; }
+  .workbench { --wb-pad: 14px; }
+  .form-grid-2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .case-close { display: grid; place-items: center; }
+  .case-rail-head .case-rail-actions { display: flex; align-items: center; gap: 8px; }
+}
+
+@media (max-width: 640px) {
+  /* Track record becomes evidence cards instead of a sideways spreadsheet. */
+  .track-record-table { min-width: 0 !important; width: 100%; border-collapse: separate; }
+  .track-record-table thead { display: none; }
+  .track-record-table tbody { display: grid; gap: 9px; }
+  .track-record-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; padding: 14px; border: 1px solid var(--rule); border-radius: 14px; background: var(--panel); }
+  .track-record-table td { display: grid; grid-template-columns: 68px 1fr; align-items: baseline; gap: 8px; border: 0 !important; padding: 6px 0 !important; min-width: 0; font-size: 11px; line-height: 1.4; }
+  .track-record-table td::before { content: attr(data-label); color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .07em; }
+  .track-record-table td:first-child { grid-column: 1 / -1; display: block; padding: 0 0 10px !important; margin-bottom: 2px; border-bottom: 1px solid var(--rule) !important; }
+  .track-record-table td:first-child::before { display: none; }
+  .track-record-table td:first-child a { font-size: 15px; font-weight: 600; letter-spacing: -.015em; text-decoration: none; }
+  .track-record-table td[data-label="Effect"], .track-record-table td[data-label="Evidence"] { grid-column: 1 / -1; }
+  .track-record-table td[data-label="Evidence"] a { font-size: 11px; }
+  .track-record-table .verdict-cell { font-weight: 650; }
+  .table-wrap:has(.track-record-table) { overflow: visible; }
+  .page-head .summary-line { margin-top: 14px; padding: 9px 11px; border-radius: 10px; background: var(--panel); border: 1px solid var(--rule); font-size: 11px; }
+
+  /* Batch is a native-feeling utility sheet on a phone. */
+  .batch-form { margin-top: 16px !important; padding: 15px !important; border-radius: 15px !important; }
+  .batch-form textarea { min-height: 126px; border-radius: 10px; }
+  .batch-form #submit-btn { width: 100%; min-height: 48px; border-radius: 11px; }
+  .batch-result-head { align-items: flex-start; flex-direction: column; }
+}
+
+@media (max-width: 640px) {
+  .step-rail span b, .step-rail span em { display: none; }
 }

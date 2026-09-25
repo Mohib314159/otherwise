@@ -139,7 +139,7 @@ def pick_cache(root: str = "data/cache") -> str:
                 n_good = int((np.mean(np.isfinite(z["NDVI"][:, 1:]), axis=0) >= 0.75).sum())
         key = (n_cells, n_good)
         if best_key is None or key > best_key:
-            best, best_key = os.path.normpath(d), key
+            best, best_key = d.rstrip("/"), key
     if best is None:
         raise FileNotFoundError(f"no cache directories under {root}")
     return best

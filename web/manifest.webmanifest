@@ -1,0 +1,22 @@
+{
+  "name": "Otherwise — Satellite Change Verification",
+  "short_name": "Otherwise",
+  "description": "Draw a place, name an event, and compare what happened there with matched places that behaved the same before it.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0d0c",
+  "theme_color": "#0b0d0c",
+  "categories": ["utilities", "education", "productivity"],
+  "icons": [
+    {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "/static/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ],
+  "shortcuts": [
+    {"name": "New check", "short_name": "New check", "url": "/#new"},
+    {"name": "Track record", "short_name": "Track record", "url": "/track-record"}
+  ]
+}

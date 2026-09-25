@@ -2,10 +2,6 @@
 
 Read this together with SPEC.md, CLAUDE.md and DECISIONS.md. Everything in those still applies (honesty rules, no invented numbers, merge and push after each step, log decisions in DECISIONS.md, never touch `DONOTREAD/`).
 
-## Implementation status — 25 Sep 2026
-
-Part B's ground-NO₂ pipeline exists in code (`src/app/air/`, protocol `air-ground-no2-v2.3.1`) but is **not validated and not public**: it is off on the live site (`APP_AIR_ENABLED=0`), both registered ULEZ runs ended CAN'T TELL without a usable estimate (LAQN timeouts; too few controls and no placebo cohorts), and rule 3 below (known-answer tests + null power test before users see it) is not yet met. Part A (the plugin refactor) has not been done; air was built alongside land. Sentinel-5P, OpenAQ, richer donor covariates and Ratcliffe are not started. See `DECISIONS.md` for the review of the air method.
-
 ## The idea in one line
 Researchers spend months answering "did this policy or event actually make a difference?", one question at a time. Otherwise answers it in minutes, for any place, with the evidence shown and its own accuracy published — first for land (done), now for **air pollution**, then UK open data, urban heat and night lights.
 

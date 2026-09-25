@@ -1,7 +1,5 @@
 # Method
 
-> This document is the **land-change** method. The second signal family, ground-level NO₂ / ULEZ policy evaluation, is documented separately in [`AIR_METHOD.md`](AIR_METHOD.md).
-
 What Otherwise computes, for readers checking the reasoning rather than
 taking the verdict on trust. Every number below is a constant in the source
 (file cited in parentheses) or a result recorded in `DECISIONS.md`; nothing

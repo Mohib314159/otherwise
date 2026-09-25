@@ -36,7 +36,7 @@ def _fmt(v, signal):
 
 
 def build() -> str:
-    with open(os.path.join(SHOWCASE, "index.json"), encoding="utf-8") as f:
+    with open(os.path.join(SHOWCASE, "index.json")) as f:
         index = json.load(f)
     rows = ["| Site | Type | Expected | Verdict | Mode | Lead signal | Effect (90% interval) | Placebo p |",
             "|---|---|---|---|---|---|---|---|"]
@@ -45,7 +45,7 @@ def build() -> str:
         p = os.path.join(SHOWCASE, f"{e['id']}.json")
         if not os.path.exists(p):
             continue
-        with open(p, encoding="utf-8") as f:
+        with open(p) as f:
             r = json.load(f)
         lead = r["verdict"]["lead_signal"]
         s = (r.get("signals") or {}).get(lead) or {}
@@ -87,7 +87,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true")
     a = ap.parse_args()
-    with open(DOC, encoding="utf-8") as f:
+    with open(DOC) as f:
         doc = f.read()
     block = build()
     if BEGIN in doc and END in doc:
@@ -102,7 +102,7 @@ def main() -> int:
             return 1
         print(f"{DOC} known-answer table is up to date")
         return 0
-    with open(DOC, "w", encoding="utf-8") as f:
+    with open(DOC, "w") as f:
         f.write(new)
     print(f"rewrote the known-answer table in {DOC}")
     return 0
