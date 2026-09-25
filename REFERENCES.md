@@ -96,3 +96,12 @@ literature shows, unexplored.
 - **Method peers.** Most soil-carbon MRV uses hybrid soil-sampling + biogeochemical
   modelling (DayCent-CR, RothC) + ML (Indigo Ag; ESA SatMRV; InSoil). Causal
   inference / synthetic control is rare here — our methodological angle.
+
+## Air-pollution policy evaluation (Otherwise v2)
+
+- **Ma, Graham & Stettler (2021), Environmental Research Letters.** *Has the Ultra Low Emission Zone in London improved air quality?* DOI 10.1088/1748-9326/ac30c1. An early meteorology-normalised ULEZ evaluation; registered as an answer key for the central 2019 case.
+- **Tong et al. (2025), npj Clean Air.** *Further improvement in London’s air quality demands more than the Ultra Low Emission Zone policy.* https://www.nature.com/articles/s44407-025-00030-9 — weather normalisation + augmented synthetic control using non-London UK monitor controls. This is the closest methodological external benchmark for Otherwise's ULEZ analysis. Published effect sizes are stored as post-estimation answer-key metadata only.
+- **London Air Quality Network / Imperial ERG API.** Treated London ground-NO₂ observations and station metadata.
+- **DEFRA UK-AIR AURN.** National control-station metadata and hourly/annual NO₂ observations.
+- **ERA5 reanalysis.** Meteorological confounders used by the pre-policy-only weather-normalisation stage.
+- **Sentinel-5P/TROPOMI NO₂ Product User Manual.** Tropospheric column product and QA guidance; `qa_value > 0.75` is the recommended filter for most users. TROPOMI is a planned independent cross-sensor layer, not part of the ground-NO₂ v2.2 estimate.

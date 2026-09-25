@@ -1,0 +1,62 @@
+/* Adapt the supplied flagship shell to both registered air and land checks.
+   Keep the original map controls and mobile bottom-sheet behavior intact. */
+:focus-visible { outline: 3px solid #52821d; outline-offset: 3px; }
+.air-result-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.air-result-grid > div { min-width: 0; padding: 18px; border: 1px solid var(--rule); border-radius: 14px; background: #f7f7f1; }
+.air-effect { font-size: clamp(26px, 3vw, 38px); overflow-wrap: anywhere; }
+.air-interval { font-size: 20px; line-height: 1.25; }
+.air-result-grid .small { margin-top: 9px; }
+.air-research-card { border-radius: 14px; padding: 20px; }
+.air-research-card a, .receipts-table td { overflow-wrap: anywhere; }
+.air-evidence .dtl-body { overflow-x: auto; }
+.air-evidence .numbers { min-width: 760px; table-layout: auto; }
+.air-evidence .numbers th { width: auto; }
+.air-evidence .verdict-top .big-sub { color: #e2e4d9; }
+.air-evidence .verdict-top .big-sub.muted { color: #c3c8b9; }
+
+@media (min-width: 641px) {
+  .page-landing .side-panel { top: 24px; left: 24px; width: 420px; max-height: calc(100vh - 48px); padding: 26px; border-radius: 22px; background: rgba(251,250,246,.97); border-color: rgba(20,24,20,.12); box-shadow: 0 22px 70px rgba(17,20,17,.16); }
+  .page-landing .side-panel h1 { font-size: 22px; letter-spacing: -.04em; }
+  .page-landing .tagline { font-family: 'Instrument Serif', Georgia, serif; font-size: 30px; line-height: 1.1; margin-top: 12px; color: #22291c; }
+  .page-landing .intro-line { font-size: 12px; line-height: 1.6; }
+  .page-landing .domain-picker { padding: 4px; background: #e9ebe1; border-radius: 13px; gap: 4px; }
+  .page-landing .domain-tab { border: none; border-radius: 10px; min-height: 42px; font-weight: 600; }
+  .page-landing .domain-tab.active { background: #17200d; color: #d9ff71; box-shadow: 0 2px 7px rgba(0,0,0,.1); }
+  .page-landing select, .page-landing input { border-radius: 10px; min-height: 42px; }
+  .page-landing .btn { border-radius: 10px; min-height: 42px; }
+  .page-landing .map-toggle { top: 24px; right: 24px; border-radius: 999px; padding: 11px 18px; box-shadow: 0 3px 16px rgba(0,0,0,.1); }
+  .page-landing .panel-section { margin-top: 20px; }
+  .air-evidence .air-hero-number { margin-top: 25px; font-size: clamp(62px, 7vw, 98px); }
+}
+
+@media (min-width: 641px) and (max-width: 1000px) {
+  /* Flagship's wide-screen land columns need to collapse on tablets. */
+  .page-verdict .act1-grid, .page-verdict #act-3 .sure-row { grid-template-columns: 1fr; }
+  .page-verdict .verdict-top { padding: 30px; }
+  .page-verdict .container { padding: 0 22px; }
+}
+
+@media (max-width: 640px) {
+  .page-verdict { background: #f2f1eb; }
+  .page-verdict .topbar { gap: 12px; }
+  .air-evidence .verdict-top { margin: 12px -4px 18px; padding: 24px 20px; border-radius: 20px; background: #101310; color: #f8f8f2; }
+  .air-evidence .verdict-kicker, .air-evidence .verdict-claim { color: #bbc1b2; }
+  .air-evidence .verdict-top .v-REAL { color: #d9ff71; }
+  .air-evidence .verdict-top .v-NOT_REAL { color: #ff9c94; }
+  .air-evidence .verdict-top .v-CANT_TELL { color: #ffd771; }
+  .air-evidence .air-hero-number { font-size: 60px; margin-top: 24px; }
+  .air-evidence .act { margin: 14px -4px; padding: 22px 16px; border: 1px solid var(--rule); border-radius: 18px; background: #fff; }
+  .air-result-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .air-result-grid > div { padding: 12px; border-radius: 10px; }
+  .air-effect { font-size: 25px; }
+  .air-interval { font-size: 16px; }
+  .air-result-grid .small { font-size: 11px; line-height: 1.35; }
+  .air-research-list { grid-template-columns: 1fr; }
+  .air-evidence .chart-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+}
+
+.page-landing[data-domain="air"] #land-showcase { display: none; }

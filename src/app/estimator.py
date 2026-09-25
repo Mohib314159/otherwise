@@ -155,34 +155,60 @@ class Conformal:
     p_zero: float                  # p-value for "no effect"
     grid: np.ndarray
     pvals: np.ndarray
+    boundary_hit: bool = False     # accepted set reaches numerical search boundary
+    accepted_empty: bool = False   # no theta accepted on the searched grid
 
 
 def conformal_interval(y, D, pre, lam: float, point: float, scale: float,
-                       alpha: float = 0.10, n_grid: int = 41, span: float = 4.0) -> Conformal:
-    """Invert the conformal test over a grid of theta0 around the point estimate.
+                       alpha: float = 0.10, n_grid: int = 41, span: float = 4.0,
+                       max_half: float | None = None, ensure_zero: bool = False,
+                       max_widen: int = 4) -> Conformal:
+    """Invert the conformal test over a grid of candidate average effects.
 
-    `scale` sets the grid width (use the pre-period RMSE times a few).
+    Defaults preserve the original land/radar behaviour.  Domains with larger
+    physical units (for example NO₂ in µg/m³) can provide ``max_half`` and
+    ``ensure_zero=True`` so the numerical search does not silently truncate a
+    scientifically plausible interval. ``boundary_hit`` is returned explicitly
+    so a caller can abstain rather than mistake a search ceiling for evidence.
     """
     half = max(span * scale, 1e-3)
-    max_half = 1.0 if scale < 0.3 else 10.0   # index units, or dB: beyond this the interval carries no information
-    for _ in range(4):                      # widen if the grid missed the accepted set
-        grid = np.linspace(point - half, point + half, n_grid)
-        pv = np.array([conformal_p(y, D, pre, th, lam) for th in grid])
+    if ensure_zero:
+        # The grid must span the no-effect value with some margin.
+        half = max(half, abs(float(point)) + max(float(scale), 0.5))
+    if max_half is None:
+        max_half = 1.0 if scale < 0.3 else 10.0
+    max_half = max(float(max_half), half)
+
+    acc = np.array([], dtype=float)
+    grid = np.linspace(point - half, point + half, n_grid)
+    pv = np.array([conformal_p(y, D, pre, th, lam) for th in grid])
+    boundary_hit = False
+    for _ in range(max(1, int(max_widen))):
         acc = grid[pv > alpha]
-        if acc.size and (acc.min() > grid[0] and acc.max() < grid[-1]):
-            break
-        if half >= max_half:
+        if acc.size:
+            eps = max(abs(grid[1] - grid[0]), 1e-12) * 0.51
+            left = acc.min() <= grid[0] + eps
+            right = acc.max() >= grid[-1] - eps
+            boundary_hit = bool(left or right)
+            if not boundary_hit:
+                break
+        else:
+            boundary_hit = False
+        if half >= max_half - 1e-12:
             break
         half = min(half * 3.0, max_half)
-    if acc.size == 0:
+        grid = np.linspace(point - half, point + half, n_grid)
+        pv = np.array([conformal_p(y, D, pre, th, lam) for th in grid])
+
+    accepted_empty = bool(acc.size == 0)
+    if accepted_empty:
         lo = hi = point
     else:
         lo, hi = float(acc.min()), float(acc.max())
-        # widen by half a grid step: the true boundary lies between grid points
         step = grid[1] - grid[0]
         lo, hi = lo - step / 2, hi + step / 2
     p0 = conformal_p(y, D, pre, 0.0, lam)
-    return Conformal(point, lo, hi, alpha, p0, grid, pv)
+    return Conformal(point, lo, hi, alpha, p0, grid, pv, boundary_hit, accepted_empty)
 
 
 # ---------------------------------------------------------------------------

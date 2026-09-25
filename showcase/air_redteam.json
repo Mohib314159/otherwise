@@ -1,0 +1,219 @@
+{
+  "protocol": "air-ground-no2-v2.3",
+  "scope": "synthetic adversarial regression checks; not ULEZ validation",
+  "known_identification_limit": "coincident_local_shock",
+  "passes": 6,
+  "checks": 6,
+  "failures": [],
+  "runs": [
+    {
+      "attack": "null",
+      "status": "CANT_TELL",
+      "point": 0.075,
+      "details": {
+        "pretrend": {
+          "applicable": true,
+          "weeks": 13,
+          "start": "2019-01-13",
+          "end": "2019-04-07",
+          "effect": 0.0899323894388398,
+          "threshold": -1.0,
+          "flagged": false
+        },
+        "jackknife": {
+          "applicable": true,
+          "robust": false,
+          "effects": {
+            "T0": -0.028646693169094944,
+            "T1": 0.0649723377510528,
+            "T2": 0.18525924675494237
+          },
+          "least_supportive_effect": -0.028646693169094944,
+          "max_abs_shift": 0.11035816520435578,
+          "threshold": 0.5
+        },
+        "placebo_p": 0.6341463414634146,
+        "placebo_p_effect": 0.34146341463414637
+      }
+    },
+    {
+      "attack": "true_minus6",
+      "status": "REAL",
+      "point": -5.925,
+      "details": {
+        "pretrend": {
+          "applicable": true,
+          "weeks": 13,
+          "start": "2019-01-13",
+          "end": "2019-04-07",
+          "effect": 0.0899323894388398,
+          "threshold": -1.0,
+          "flagged": false
+        },
+        "jackknife": {
+          "applicable": true,
+          "robust": true,
+          "effects": {
+            "T0": -6.028646693169095,
+            "T1": -5.935027662248947,
+            "T2": -5.814740753245058
+          },
+          "least_supportive_effect": -5.814740753245058,
+          "max_abs_shift": 0.11035816520435748,
+          "threshold": -1.4812747296123538
+        },
+        "placebo_p": 0.024390243902439025,
+        "placebo_p_effect": 0.024390243902439025
+      }
+    },
+    {
+      "attack": "monitor_dropout",
+      "status": "CANT_TELL",
+      "point": -0.029,
+      "details": {
+        "pretrend": {
+          "applicable": true,
+          "weeks": 13,
+          "start": "2019-01-13",
+          "end": "2019-04-07",
+          "effect": -0.020141766939092285,
+          "threshold": -1.0,
+          "flagged": false
+        },
+        "jackknife": {
+          "applicable": true,
+          "robust": false,
+          "effects": {
+            "T1": -0.13937446709672668,
+            "T2": 0.06797187774315351
+          },
+          "least_supportive_effect": 0.06797187774315351,
+          "max_abs_shift": 0.11054442666031261,
+          "threshold": -0.5
+        },
+        "placebo_p": 0.5609756097560976,
+        "placebo_p_effect": 0.3902439024390244
+      }
+    },
+    {
+      "attack": "one_station_drives",
+      "status": "CANT_TELL",
+      "point": -5.925,
+      "details": {
+        "pretrend": {
+          "applicable": true,
+          "weeks": 13,
+          "start": "2019-01-13",
+          "end": "2019-04-07",
+          "effect": 0.0899323894388398,
+          "threshold": -1.0,
+          "flagged": false
+        },
+        "jackknife": {
+          "applicable": true,
+          "robust": false,
+          "effects": {
+            "T0": -0.028646693169094944,
+            "T1": -8.935027662248947,
+            "T2": -8.814740753245058
+          },
+          "least_supportive_effect": -0.028646693169094944,
+          "max_abs_shift": 5.896452225280321,
+          "threshold": -1.4812747296123538
+        },
+        "placebo_p": 0.024390243902439025,
+        "placebo_p_effect": 0.024390243902439025
+      }
+    },
+    {
+      "attack": "preexisting_decline",
+      "status": "CANT_TELL",
+      "point": -10.203,
+      "details": {
+        "pretrend": {
+          "applicable": true,
+          "weeks": 13,
+          "start": "2019-01-13",
+          "end": "2019-04-07",
+          "effect": -3.210067610561162,
+          "threshold": -1.0,
+          "flagged": true
+        },
+        "jackknife": {
+          "applicable": true,
+          "robust": true,
+          "effects": {
+            "T0": -10.257766311434457,
+            "T1": -10.195408021720223,
+            "T2": -10.118928357183007
+          },
+          "least_supportive_effect": -10.118928357183007,
+          "max_abs_shift": 0.08414032363336865,
+          "threshold": -2.550767170204094
+        },
+        "placebo_p": 0.024390243902439025,
+        "placebo_p_effect": 0.024390243902439025
+      }
+    },
+    {
+      "attack": "national_common_shock",
+      "status": "CANT_TELL",
+      "point": 0.075,
+      "details": {
+        "pretrend": {
+          "applicable": true,
+          "weeks": 13,
+          "start": "2019-01-13",
+          "end": "2019-04-07",
+          "effect": 0.0899323894388398,
+          "threshold": -1.0,
+          "flagged": false
+        },
+        "jackknife": {
+          "applicable": true,
+          "robust": false,
+          "effects": {
+            "T0": -0.028646693169096037,
+            "T1": 0.06497233775105062,
+            "T2": 0.18525924675493963
+          },
+          "least_supportive_effect": -0.028646693169096037,
+          "max_abs_shift": 0.11035816520435632,
+          "threshold": 0.5
+        },
+        "placebo_p": 0.6341463414634146,
+        "placebo_p_effect": 0.34146341463414637
+      }
+    },
+    {
+      "attack": "coincident_local_shock",
+      "status": "REAL",
+      "point": -5.925,
+      "details": {
+        "pretrend": {
+          "applicable": true,
+          "weeks": 13,
+          "start": "2019-01-13",
+          "end": "2019-04-07",
+          "effect": 0.0899323894388398,
+          "threshold": -1.0,
+          "flagged": false
+        },
+        "jackknife": {
+          "applicable": true,
+          "robust": true,
+          "effects": {
+            "T0": -6.028646693169095,
+            "T1": -5.935027662248947,
+            "T2": -5.814740753245058
+          },
+          "least_supportive_effect": -5.814740753245058,
+          "max_abs_shift": 0.11035816520435748,
+          "threshold": -1.4812747296123538
+        },
+        "placebo_p": 0.024390243902439025,
+        "placebo_p_effect": 0.024390243902439025
+      }
+    }
+  ]
+}

@@ -56,6 +56,9 @@
   .map-toggle:hover { border-color: var(--ink); }
   .map-toggle.active { background: var(--ink); color: var(--paper); }
 
+  .domain-picker { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:16px; }
+  .domain-tab { border:1px solid var(--rule); background:transparent; color:var(--muted); padding:8px 10px; border-radius:4px; cursor:pointer; font:inherit; font-size:13px; }
+  .domain-tab.active { background:var(--ink); color:var(--paper); border-color:var(--ink); }
   .panel-footer { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--muted); }
   .panel-footer a { color: var(--muted); margin-right: 10px; }
   .panel-footer a:hover { color: var(--ink); }
@@ -64,6 +67,9 @@
 <!-- placed after the block above so it wins the cascade at equal specificity
      against those unconditional rules (e.g. .map-toggle's desktop top/right) -->
 <link rel="stylesheet" href="/static/mobile.css">
+<link rel="stylesheet" href="/static/desktop.css?v=air-20260922">
+<link rel="stylesheet" href="/static/evidence.css?v=air-20260922">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 </head>
 <body class="page-landing">
 <div id="map" role="application" aria-label="Map"></div>
@@ -73,16 +79,21 @@
   <div class="sheet-handle" id="sheet-handle" aria-hidden="true"></div>
   <h1>Otherwise</h1>
   <div class="tagline muted">Did it change more than it would have anyway?</div>
-  <p class="intro-line">Draw an area, name the event and its date. Sentinel-1 and Sentinel-2 are compared against matched control areas that did not get the event.</p>
+  <p class="intro-line" id="domain-intro">Draw an area, name the event and its date. Sentinel-1 and Sentinel-2 are compared against matched control areas that did not get the event.</p>
 
-  <div class="panel-section">
+  <div class="domain-picker" id="domain-picker" role="tablist" aria-label="Signal family" style="display:none;">
+    <button class="domain-tab active" id="domain-land" type="button" role="tab" aria-selected="true">Land change</button>
+    <button class="domain-tab" id="domain-air" type="button" role="tab" aria-selected="false">Air pollution</button>
+  </div>
+
+  <div class="panel-section" id="land-showcase">
     <div class="label">Showcase</div>
     <p class="showcase-note">Real cases with documented sources. Sources and confirmation status are on the Track record page.</p>
     <div id="showcase-list" class="stack" style="margin-top:8px;"></div>
     <div id="showcase-empty" class="muted small" style="display:none;">No showcase runs yet.</div>
   </div>
 
-  <div class="panel-section">
+  <div class="panel-section" id="land-analysis-panel">
     <div class="label">Your own area</div>
     <div class="place-search">
       <div class="place-search-row">
@@ -146,6 +157,37 @@
            can honestly be said. -->
       <div class="progress-note">A live run reads every Sentinel scene over the area for three years before the event, so it takes tens of minutes and can take hours. It is also a quick check: the control areas are read more coarsely than in the published examples. You can close the tab &mdash; the run carries on, and its page is ready at the link below once it finishes.</div>
       <div class="progress-link" id="progress-link"></div>
+    </div>
+  </div>
+
+  <div class="panel-section" id="air-analysis-panel" style="display:none;">
+    <div class="label">Air policy lab</div>
+    <p class="showcase-note">Ground NO₂ from London Air Quality Network is weather-normalised with ERA5, then compared with same-type DEFRA AURN monitors in other UK cities. Published ULEZ findings are attached only after estimation.</p>
+    <form id="air-run-form" style="margin-top:12px;">
+      <div class="field-row">
+        <label class="field" for="air-case">Policy / event</label>
+        <select id="air-case" name="case_id"></select>
+      </div>
+      <p class="draw-hint" id="air-case-description"></p>
+      <div class="field-row">
+        <label class="field" for="air-post-months">Look how long after?</label>
+        <select id="air-post-months" name="post_months">
+          <option value="1">1 month</option><option value="3" selected>3 months</option>
+          <option value="6">6 months</option><option value="12">12 months</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <label class="field" for="air-label">Label <span class="muted">(optional)</span></label>
+        <input type="text" id="air-label" maxlength="120" placeholder="e.g. Independent ULEZ replication">
+      </div>
+      <button class="btn" id="air-submit-btn" type="submit" style="width:100%;">Test the policy</button>
+      <div id="air-run-error" style="color:var(--notreal);font-size:13px;margin-top:10px;display:none;"></div>
+    </form>
+    <div id="air-progress-block" style="display:none;margin-top:14px;">
+      <div class="progress-wrap"><div class="progress-bar-track"><div class="progress-bar-fill" id="air-progress-fill"></div></div></div>
+      <div class="progress-stage" id="air-progress-stage">Starting…</div>
+      <div class="progress-note">This is a research-grade run: it downloads years of hourly monitor data and ERA5 weather, then re-fits matched counterfactuals and symmetric placebos. The resulting verdict gets a permanent URL.</div>
+      <div class="progress-link" id="air-progress-link"></div>
     </div>
   </div>
 

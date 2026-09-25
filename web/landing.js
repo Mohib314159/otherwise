@@ -133,6 +133,197 @@ function escapeHtml(s) {
 
 loadShowcase();
 
+// ---- signal family tabs / air-policy lab -----------------------------------
+
+const domainLandBtn = document.getElementById("domain-land");
+const domainAirBtn = document.getElementById("domain-air");
+const landPanel = document.getElementById("land-analysis-panel");
+const airPanel = document.getElementById("air-analysis-panel");
+const domainIntro = document.getElementById("domain-intro");
+
+function setDomain(domain) {
+  const air = domain === "air";
+  document.body.dataset.domain = domain;
+  domainLandBtn.classList.toggle("active", !air);
+  domainAirBtn.classList.toggle("active", air);
+  domainLandBtn.setAttribute("aria-selected", String(!air));
+  domainAirBtn.setAttribute("aria-selected", String(air));
+  landPanel.style.display = air ? "none" : "block";
+  airPanel.style.display = air ? "block" : "none";
+  if (!air && airBoundaryLayer) { map.removeLayer(airBoundaryLayer); airBoundaryLayer = null; }
+  if (air) renderAirCase();
+  domainIntro.textContent = air
+    ? "Choose a policy. Otherwise weather-normalises ground NO₂, builds a same-type no-policy counterfactual from monitors in other UK cities, and reruns symmetric placebo tests before comparing with published research."
+    : "Draw an area, name the event and its date. Sentinel-1 and Sentinel-2 are compared against matched control areas that did not get the event.";
+  // Air does not need a hand-drawn polygon; keeping the map visible preserves
+  // the showcase and makes the switch reversible without losing map state.
+}
+
+domainLandBtn.addEventListener("click", () => setDomain("land"));
+domainAirBtn.addEventListener("click", () => setDomain("air"));
+
+const airForm = document.getElementById("air-run-form");
+const airCaseSelect = document.getElementById("air-case");
+const airCaseDescription = document.getElementById("air-case-description");
+const airPostMonths = document.getElementById("air-post-months");
+const airLabel = document.getElementById("air-label");
+const airSubmit = document.getElementById("air-submit-btn");
+const airError = document.getElementById("air-run-error");
+const airProgress = document.getElementById("air-progress-block");
+const airProgressFill = document.getElementById("air-progress-fill");
+const airProgressStage = document.getElementById("air-progress-stage");
+const airProgressLink = document.getElementById("air-progress-link");
+let airCases = [];
+let airPollTimer = null;
+let airBoundaryLayer = null;
+
+function airCaseById(id) { return airCases.find((c) => c.id === id); }
+
+async function renderAirCase() {
+  const c = airCaseById(airCaseSelect.value);
+  if (!c) return;
+  const notes = (c.notes || []).join(" ");
+  const exploratory = c.force_cant_tell ? " Exploratory only: this registered case cannot return a decisive headline." : "";
+  airCaseDescription.textContent = `${c.label} · ${fmtDate(c.event_date)}. ${c.description || ""}${exploratory}${notes ? " " + notes : ""}`;
+  if (c.default_post_months && !airPostMonths.dataset.touched) {
+    airPostMonths.value = String(c.default_post_months);
+  }
+  // Loading the case catalogue must not move the land map or place a London
+  // boundary over a user's drawn area. Only the active air tab owns this layer.
+  if (domainAirBtn.getAttribute("aria-selected") !== "true") return;
+  if (airBoundaryLayer) { map.removeLayer(airBoundaryLayer); airBoundaryLayer = null; }
+  map.setView([51.5074, -0.1278], c.id === "ulez-central-2019" ? 11 : 9);
+  try {
+    const boundary = await apiGet(`/api/air/cases/${encodeURIComponent(c.id)}/boundary`);
+    if (domainAirBtn.getAttribute("aria-selected") !== "true" || airCaseSelect.value !== c.id) return;
+    const feats = boundary && boundary.type === "FeatureCollection" ? boundary.features : (boundary && boundary.geometry ? [boundary] : []);
+    if (feats.length) {
+      airBoundaryLayer = L.geoJSON(boundary, { style: { color:"#161616", weight:2.2, fillColor:"#161616", fillOpacity:.05 } }).addTo(map);
+      airBoundaryLayer.bindTooltip(c.label, { sticky:true, className:"area-label" });
+      map.fitBounds(airBoundaryLayer.getBounds(), { padding:[32,32] });
+    }
+  } catch (_) {
+    // Boundary display is a convenience only; inability to render it must not
+    // prevent the actual server-side run from using the official geometry.
+  }
+}
+
+airPostMonths.addEventListener("change", () => { airPostMonths.dataset.touched = "1"; });
+airCaseSelect.addEventListener("change", renderAirCase);
+
+async function loadAirCases() {
+  try {
+    const payload = await apiGet("/api/air/cases");
+    airCases = Array.isArray(payload) ? payload : (payload.cases || []);
+    airCaseSelect.innerHTML = airCases
+      .filter((c) => c.supported !== false)
+      .map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.label)}</option>`)
+      .join("");
+    renderAirCase();
+    // The tab only appears when the server has air enabled (APP_AIR_ENABLED=1);
+    // otherwise /api/air/cases is a 404 and the page stays land-only.
+    if (airCases.length) document.getElementById("domain-picker").style.display = "";
+  } catch (err) {
+    airCaseSelect.innerHTML = '<option value="">Air cases unavailable</option>';
+    airSubmit.disabled = true;
+    airCaseDescription.textContent = "Could not load the pre-registered air-policy cases.";
+  }
+}
+
+function airStageSentence(job) {
+  const stage = job.stage || "";
+  if (job.status === "queued") return `Waiting for a free slot (${job.queue_position || 0} ahead)`;
+  if (stage.includes("boundary")) return "Reading the official ULEZ boundary";
+  if (stage.includes("London monitor metadata")) return "Finding London NO₂ monitors";
+  if (stage.includes("national control metadata")) return "Finding same-type control monitors outside London";
+  if (stage.includes("London NO2")) return `Weather-normalising London monitors: ${job.done || 0} of ${job.total || 0}`;
+  if (stage.includes("control NO2")) return `Weather-normalising control monitors: ${job.done || 0} of ${job.total || 0}`;
+  if (stage.includes("counterfactual")) return `Fitting ${stage.includes("traffic") ? "traffic" : "background"} counterfactual + symmetric placebos`;
+  if (stage === "done") return "Done";
+  return "Building the independent NO₂ counterfactual…";
+}
+
+function airStageProgress(job) {
+  const stage = job.stage || "";
+  if (job.status === "queued") return 0.03;
+  if (stage.includes("boundary")) return 0.08;
+  if (stage.includes("London monitor metadata")) return 0.14;
+  if (stage.includes("national control metadata")) return 0.20;
+  if (stage.includes("London NO2")) {
+    const f = job.total ? Math.min((job.done || 0) / job.total, 1) : 0;
+    return 0.22 + 0.23 * f;
+  }
+  if (stage.includes("control NO2")) {
+    const f = job.total ? Math.min((job.done || 0) / job.total, 1) : 0;
+    return 0.45 + 0.33 * f;
+  }
+  if (stage.includes("counterfactual")) return stage.includes("background") ? 0.91 : 0.82;
+  if (stage === "done") return 1;
+  return 0.5;
+}
+
+function showAirPermalink(runId) {
+  if (!runId) return;
+  const href = `/v/${encodeURIComponent(runId)}`;
+  airProgressLink.innerHTML = `Permanent result: <a href="${escapeHtml(href)}">${escapeHtml(location.origin + href)}</a>`;
+}
+
+function pollAirJob(jobId, fallbackRunId) {
+  const poll = async () => {
+    let job;
+    try { job = await apiGet(`/api/jobs/${jobId}`); } catch (_) { return; }
+    if (job.status === "error") {
+      clearInterval(airPollTimer); airPollTimer = null;
+      airProgress.style.display = "none";
+      airForm.style.display = "block";
+      airSubmit.disabled = false;
+      airSubmit.textContent = "Test the policy";
+      airError.textContent = job.error || "The air-policy run failed.";
+      airError.style.display = "block";
+      return;
+    }
+    if (job.status === "done") {
+      clearInterval(airPollTimer); airPollTimer = null;
+      location.href = `/v/${job.run_id || fallbackRunId}`;
+      return;
+    }
+    airProgressStage.textContent = airStageSentence(job);
+    airProgressFill.style.width = `${Math.round(airStageProgress(job) * 100)}%`;
+  };
+  poll();
+  airPollTimer = setInterval(poll, 1500);
+}
+
+airForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const c = airCaseById(airCaseSelect.value);
+  if (!c) return;
+  airError.style.display = "none";
+  airSubmit.disabled = true;
+  airSubmit.textContent = "Testing…";
+  try {
+    const resp = await apiPost("/api/run", {
+      domain: "air",
+      case_id: c.id,
+      post_months: Number(airPostMonths.value),
+      label: airLabel.value.trim(),
+    });
+    if (resp.done) { location.href = `/v/${resp.run_id}`; return; }
+    airForm.style.display = "none";
+    airProgress.style.display = "block";
+    airProgressFill.style.width = "3%";
+    showAirPermalink(resp.run_id);
+    pollAirJob(resp.job_id, resp.run_id);
+  } catch (err) {
+    airSubmit.disabled = false;
+    airSubmit.textContent = "Test the policy";
+    airError.textContent = err.detail || err.message || "Something went wrong.";
+    airError.style.display = "block";
+  }
+});
+
+loadAirCases();
+
 // ---- place search ----------------------------------------------------------
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";

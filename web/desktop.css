@@ -1,0 +1,519 @@
+/* Otherwise — desktop flagship pass.
+   Desktop is not a stretched phone layout: it is a calm investigation workspace
+   with a map canvas, a dense-but-readable evidence hierarchy, and product-grade chrome. */
+
+@media (min-width: 641px) {
+  :root {
+    --desk-paper: #f2f1eb;
+    --desk-surface: #fbfaf6;
+    --desk-panel: #ffffff;
+    --desk-ink: #151815;
+    --desk-muted: #6e7069;
+    --desk-rule: rgba(20,24,20,.11);
+    --desk-accent: #d9ff71;
+    --desk-shadow: 0 22px 70px rgba(17,20,17,.10), 0 2px 12px rgba(17,20,17,.05);
+  }
+
+  /* ---------------------------------------------------------------------
+     Shared product shell
+     --------------------------------------------------------------------- */
+  body.page-verdict,
+  body.page-track,
+  body.page-batch {
+    background:
+      radial-gradient(circle at 82% -8%, rgba(217,255,113,.16), transparent 30%),
+      var(--desk-paper);
+    color: var(--desk-ink);
+  }
+
+  body.page-verdict .container,
+  body.page-track .container,
+  body.page-batch .container {
+    max-width: 1380px;
+    padding: 0 34px;
+  }
+
+  body.page-verdict .topbar,
+  body.page-track .topbar,
+  body.page-batch .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 120;
+    min-height: 70px;
+    padding: 14px 0;
+    border-bottom: 0;
+    background: rgba(242,241,235,.82);
+    backdrop-filter: blur(18px) saturate(130%);
+  }
+
+  body.page-verdict .topbar::after,
+  body.page-track .topbar::after,
+  body.page-batch .topbar::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(20,24,20,.12) 12%, rgba(20,24,20,.12) 88%, transparent);
+  }
+
+  .page-verdict .wordmark,
+  .page-track .wordmark,
+  .page-batch .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -.025em;
+  }
+  .page-verdict .wordmark::before,
+  .page-track .wordmark::before,
+  .page-batch .wordmark::before {
+    content: "";
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 1px solid rgba(21,24,21,.34);
+    background:
+      radial-gradient(circle at 68% 55%, var(--desk-accent) 0 2px, transparent 2.5px),
+      linear-gradient(169deg, transparent 42%, rgba(21,24,21,.9) 43% 47%, transparent 48%),
+      linear-gradient(194deg, transparent 55%, rgba(21,24,21,.55) 56% 60%, transparent 61%);
+    box-shadow: inset 0 0 0 4px rgba(255,255,255,.45);
+  }
+
+  .page-verdict .topbar-right,
+  .page-track .topbar-right,
+  .page-batch .topbar-right {
+    gap: 8px;
+    padding: 4px;
+    border: 1px solid rgba(20,24,20,.10);
+    border-radius: 999px;
+    background: rgba(255,255,255,.62);
+    box-shadow: 0 6px 24px rgba(20,24,20,.04);
+  }
+  .page-verdict .topbar-right a,
+  .page-track .topbar-right a,
+  .page-batch .topbar-right a {
+    padding: 7px 11px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 12px;
+    color: #5f625b;
+  }
+  .page-verdict .topbar-right a:hover,
+  .page-track .topbar-right a:hover,
+  .page-batch .topbar-right a:hover {
+    color: var(--desk-ink);
+    background: rgba(20,24,20,.055);
+  }
+  .page-verdict .topbar-right .btn {
+    min-height: 34px;
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 999px;
+    background: #171a17;
+    color: #fff;
+    font-size: 11px;
+  }
+  .page-verdict .topbar-right .btn:hover { background: #292d28; color: #fff; }
+
+  /* Landing adapts the canonical dual-domain controls in evidence.css. */
+
+  /* ---------------------------------------------------------------------
+     Verdict: case file, not a paper
+     --------------------------------------------------------------------- */
+  .page-verdict #content { padding-bottom: 10px; }
+  .page-verdict .verdict-top {
+    position: relative;
+    overflow: hidden;
+    margin: 22px 0 18px;
+    padding: 44px 46px 42px;
+    border-radius: 26px;
+    color: #f8f8f2;
+    background:
+      radial-gradient(circle at 88% 18%, rgba(217,255,113,.14), transparent 26%),
+      radial-gradient(circle at 12% 120%, rgba(57,107,73,.25), transparent 34%),
+      #101310;
+    box-shadow: 0 22px 60px rgba(20,24,20,.14);
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  .page-verdict .verdict-top::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: .12;
+    background-image:
+      linear-gradient(rgba(255,255,255,.28) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.28) 1px, transparent 1px);
+    background-size: 58px 58px;
+    mask-image: radial-gradient(circle at 70% 20%, black, transparent 68%);
+  }
+  .page-verdict .verdict-top > * { position: relative; z-index: 1; }
+  .page-verdict .verdict-kicker {
+    max-width: 720px;
+    color: rgba(255,255,255,.52) !important;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .10em;
+    font-weight: 600;
+  }
+  .page-verdict .verdict-top .verdict-word {
+    margin: 10px 0 14px;
+    font-family: "Instrument Serif", Georgia, serif;
+    font-size: clamp(68px, 6.2vw, 92px);
+    font-weight: 400;
+    line-height: .92;
+    letter-spacing: -.045em;
+  }
+  .page-verdict .verdict-top .v-REAL { color: #d9ff71; }
+  .page-verdict .verdict-top .v-NOT_REAL { color: #ff9c94; }
+  .page-verdict .verdict-top .v-CANT_TELL { color: #ffd771; }
+  .page-verdict .verdict-plain {
+    max-width: 760px;
+    font-size: 18px;
+    line-height: 1.5;
+    color: rgba(255,255,255,.88);
+  }
+  .page-verdict .verdict-claim {
+    margin-top: 18px;
+    color: rgba(255,255,255,.45) !important;
+    font-size: 11px;
+  }
+  .page-verdict .quick-mark {
+    display: inline-flex;
+    margin: 0 0 12px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.15);
+    background: rgba(255,255,255,.07);
+    color: rgba(255,255,255,.76);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+  .page-verdict .quick-note { max-width: 760px; color: rgba(255,255,255,.55) !important; font-size: 11px; }
+
+  .page-verdict .act {
+    margin: 16px 0;
+    padding: 28px 30px 30px;
+    border: 1px solid rgba(20,24,20,.09);
+    border-radius: 22px;
+    background: rgba(255,255,255,.86);
+    box-shadow: 0 9px 34px rgba(20,24,20,.045);
+  }
+  .page-verdict .act:first-child { border-top: 1px solid rgba(20,24,20,.09); padding-top: 28px; }
+  .page-verdict .act .label {
+    margin-bottom: 18px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .13em;
+    color: #777a73;
+  }
+  .page-verdict .act1-grid {
+    grid-template-columns: minmax(0, 1.55fr) minmax(310px, .72fr);
+    gap: 24px;
+    align-items: stretch;
+  }
+  .page-verdict .act1-media .compare,
+  .page-verdict .act1-media .compare-single {
+    aspect-ratio: 16 / 10;
+    border-radius: 17px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 12px 34px rgba(20,24,20,.10);
+  }
+  .page-verdict .compare-tag { border-radius: 999px; backdrop-filter: blur(10px); }
+  .page-verdict .compare-handle {
+    width: 38px; height: 38px;
+    background: rgba(17,20,17,.50);
+    box-shadow: 0 8px 24px rgba(0,0,0,.22);
+  }
+  .page-verdict .compare-coach {
+    border-radius: 999px;
+    background: rgba(17,20,17,.66);
+    backdrop-filter: blur(10px);
+  }
+  .page-verdict .compare-presets {
+    width: fit-content;
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 4px;
+    margin-top: 10px;
+    padding: 4px;
+    border: 1px solid var(--desk-rule);
+    border-radius: 999px;
+    background: #f2f1eb;
+  }
+  .page-verdict .compare-preset {
+    min-width: 70px;
+    border: 0;
+    border-radius: 999px;
+    padding: 7px 11px;
+    background: transparent;
+  }
+  .page-verdict .compare-preset.active { background: #fff; box-shadow: 0 2px 8px rgba(20,24,20,.08); }
+  .page-verdict .act1-aside {
+    min-height: 100%;
+    padding: 24px;
+    border: 1px solid rgba(20,24,20,.08);
+    border-radius: 17px;
+    background:
+      radial-gradient(circle at 100% 0, rgba(217,255,113,.20), transparent 30%),
+      #f5f4ee;
+  }
+  .page-verdict .act1-aside .big-number {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-size: clamp(62px, 5vw, 78px);
+    font-weight: 400;
+    letter-spacing: -.04em;
+  }
+  .page-verdict .act1-aside .big-sub { font-size: 13px; line-height: 1.5; }
+  .page-verdict .act1-lede { margin-top: 18px; font-size: 12px; }
+  .page-verdict .what-num { margin-top: 17px; border-top: 1px solid var(--desk-rule); padding-top: 12px; }
+
+  .page-verdict #act-2 { padding-bottom: 34px; }
+  .page-verdict .chart-wrap {
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .page-verdict .chart-legend {
+    width: fit-content;
+    padding: 8px 10px;
+    border: 1px solid var(--desk-rule);
+    border-radius: 999px;
+    background: #f6f5ef;
+    font-size: 11px;
+  }
+  .page-verdict .gap-block {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid var(--desk-rule);
+  }
+
+  .page-verdict #act-3 .sure-row,
+  .page-verdict .sure-grid {
+    display: grid;
+    grid-template-columns: minmax(340px, .9fr) minmax(0, 1.1fr);
+    gap: 34px;
+    align-items: center;
+  }
+  .page-verdict .sure-lines {
+    margin-top: 0;
+    padding: 18px 20px;
+    border-radius: 15px;
+    background: #f5f4ee;
+    border: 1px solid var(--desk-rule);
+  }
+  .page-verdict .sure-tag {
+    display: block;
+    margin-bottom: 6px;
+    color: #777a72;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: .11em;
+    font-weight: 700;
+  }
+
+  .page-verdict .details-stack {
+    margin: 16px 0;
+    overflow: hidden;
+    border: 1px solid rgba(20,24,20,.09);
+    border-radius: 20px;
+    background: rgba(255,255,255,.86);
+    box-shadow: 0 9px 34px rgba(20,24,20,.04);
+  }
+  .page-verdict .dtl { margin: 0; border-bottom: 1px solid var(--desk-rule); }
+  .page-verdict .dtl:last-child { border-bottom: 0; }
+  .page-verdict .dtl summary {
+    padding: 18px 22px;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .page-verdict .dtl-body { padding: 0 22px 24px; }
+  .page-verdict .analyst {
+    margin: 16px 0 0;
+    padding: 26px 28px;
+    border: 1px solid rgba(20,24,20,.09);
+    border-radius: 20px;
+    background: #fff;
+  }
+  .page-verdict .site-footer { margin-top: 24px; }
+
+  /* ---------------------------------------------------------------------
+     Track record: evidence dashboard
+     --------------------------------------------------------------------- */
+  .page-track .page-head,
+  .page-batch .page-head {
+    position: relative;
+    overflow: hidden;
+    margin: 22px 0 18px;
+    padding: 36px 38px;
+    border: 1px solid rgba(20,24,20,.09);
+    border-radius: 24px;
+    background:
+      radial-gradient(circle at 92% 8%, rgba(217,255,113,.22), transparent 28%),
+      rgba(255,255,255,.78);
+    box-shadow: 0 12px 40px rgba(20,24,20,.04);
+  }
+  .page-track .page-head h1,
+  .page-batch .page-head h1 {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-size: 54px;
+    line-height: .95;
+    font-weight: 400;
+    letter-spacing: -.04em;
+  }
+  .page-track .page-head p,
+  .page-batch .page-head p {
+    max-width: 720px;
+    margin-top: 14px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .page-track .summary-line {
+    width: fit-content;
+    margin-top: 20px;
+    padding: 8px 12px;
+    border: 1px solid rgba(20,24,20,.10);
+    border-radius: 999px;
+    background: #fff;
+    color: #5f625b;
+    font-size: 11px;
+  }
+  .page-track .table-wrap {
+    margin: 0 0 36px;
+    overflow: hidden;
+    border: 1px solid rgba(20,24,20,.09);
+    border-radius: 20px;
+    background: rgba(255,255,255,.88);
+    box-shadow: 0 9px 34px rgba(20,24,20,.035);
+  }
+  .page-track .track-record-table { font-size: 12px; }
+  .page-track .track-record-table thead { background: #eeede7; }
+  .page-track .track-record-table th {
+    padding: 12px 14px;
+    border-bottom-color: rgba(20,24,20,.10);
+    font-size: 9px;
+    letter-spacing: .10em;
+    color: #767870;
+  }
+  .page-track .track-record-table td {
+    padding: 14px;
+    border-bottom-color: rgba(20,24,20,.075);
+    vertical-align: middle;
+  }
+  .page-track .track-record-table tbody tr { transition: background .15s ease; }
+  .page-track .track-record-table tbody tr:hover { background: #f7f6f1; }
+  .page-track .track-record-table td:first-child a {
+    font-weight: 650;
+    text-decoration: none;
+    letter-spacing: -.015em;
+  }
+  .page-track .blind {
+    margin: 20px 0 60px !important;
+    padding: 28px !important;
+    border: 1px solid rgba(20,24,20,.09) !important;
+    border-radius: 20px;
+    background: rgba(255,255,255,.82);
+  }
+  .page-track .blind .card { border-radius: 14px; background: #f7f6f1; }
+
+  /* ---------------------------------------------------------------------
+     Batch: utility workspace
+     --------------------------------------------------------------------- */
+  .page-batch .batch-form {
+    max-width: 980px;
+    margin: 18px 0 36px;
+    padding: 26px;
+    border: 1px solid rgba(20,24,20,.09);
+    border-radius: 20px;
+    background: rgba(255,255,255,.88);
+    box-shadow: 0 9px 34px rgba(20,24,20,.04);
+  }
+  .page-batch textarea,
+  .page-batch input[type="text"],
+  .page-batch input[type="date"],
+  .page-batch select {
+    border-radius: 11px;
+    background: #fbfaf6;
+  }
+  .page-batch textarea { min-height: 170px; padding: 12px 13px; }
+  .page-batch .defaults-grid {
+    margin: 18px 0 4px;
+    padding-top: 18px;
+    border-top: 1px solid var(--desk-rule);
+  }
+  .page-batch #submit-btn {
+    min-height: 44px;
+    margin-top: 6px;
+    border-radius: 11px;
+    background: #171a17;
+    color: #fff;
+  }
+  .page-batch .batch-result {
+    padding: 24px;
+    border: 1px solid rgba(20,24,20,.09);
+    border-radius: 20px;
+    background: #fff;
+  }
+
+  /* ---------------------------------------------------------------------
+     Wide-screen tuning
+     --------------------------------------------------------------------- */
+  @media (min-width: 1500px) {
+    .page-landing .hero-panel { left: 6vw; width: 690px; }
+    .page-landing .case-rail { width: min(820px, calc(100vw - 760px)); }
+    .page-landing .workbench { width: 470px; }
+    body.page-verdict .container,
+    body.page-track .container,
+    body.page-batch .container { max-width: 1480px; }
+  }
+}
+
+@media (min-width: 641px) {
+  .page-verdict .topbar-right .topbar-new,
+  .page-track .topbar-right .topbar-new,
+  .page-batch .topbar-right .topbar-new {
+    background: var(--desk-accent);
+    color: #17200d;
+    font-weight: 650;
+  }
+  .page-verdict .topbar-right .topbar-new:hover,
+  .page-track .topbar-right .topbar-new:hover,
+  .page-batch .topbar-right .topbar-new:hover {
+    background: #e4ff96;
+    color: #17200d;
+  }
+}
+
+@media (min-width: 641px) {
+  .page-landing .leaflet-top.leaflet-left {
+    top: auto !important;
+    bottom: 26px !important;
+    left: auto !important;
+    right: 28px !important;
+  }
+  .page-landing .leaflet-control-zoom { margin: 0 !important; }
+  .page-landing .search-go { min-width: 52px; }
+
+  body.page-landing.is-drawing .workbench {
+    opacity: .32;
+    transform: translateX(calc(-100% + 62px)) scale(.99);
+    pointer-events: none;
+  }
+  body.page-landing.is-drawing .map-wash { opacity: .04; }
+  body.page-landing.is-drawing .map-grid { opacity: .025; }
+}
+
+@media (min-width: 641px) {
+  /* The desktop workbench should feel like a focused instrument, not an empty
+     full-height drawer. It grows with the step and only scrolls when needed. */
+  .page-landing .workbench {
+    bottom: auto;
+    max-height: calc(100vh - 92px);
+  }
+  .page-landing .workbench-footer {
+    position: static;
+    margin-top: 22px;
+    padding: 15px 0 2px;
+    background: transparent;
+  }
+}

@@ -1,0 +1,16 @@
+
+=== OTHERWISE ===
+Can't tell
+Weather-normalised NO₂ was 1.2 µg/m³ lower than the matched no-policy trajectory over the 3 months after 29 Aug 2023 (90% interval -2.9 to +0.5 µg/m³; -4.0%). But: only 9 usable same-type control monitors (need 12); the control pool cannot support placebo cohorts as large as the treated London cohort; only 0 valid exact-size placebo cohorts (need 19); the estimated improvement is not robust to leaving out one treated monitor; the estimated improvement is not robust to removing an influential control monitor. Weather-normalised NO₂ was 0.5 µg/m³ higher than the matched no-policy trajectory over the 3 months after 29 Aug 2023 (90% interval -0.9 to +2.2 µg/m³; +2.9%). But: only 6 usable same-type control monitors (need 12); the control pool cannot support placebo cohorts as large as the treated London cohort; only 0 valid exact-size placebo cohorts (need 19); the estimated improvement is not robust to leaving out one treated monitor; the estimated improvement is not robust to removing an influential control monitor.
+NO2_TRAFFIC       -4.02%    -1.20 µg/m³  90% [-2.92, +0.52]  placebo p=1.000
+NO2_BACKGROUND    +2.93%    +0.49 µg/m³  90% [-0.93, +2.17]  placebo p=1.000
+
+=== PUBLISHED ANSWER KEY (attached after estimation) ===
+- Tong et al. (2025), npj Clean Air: No detectable additional effect on NO₂ after the 2023 London-wide expansion.
+  Otherwise: -4.02% (90% -9.81% to +1.76%)
+  published study reported no detectable effect; compare with Otherwise verdict above
+- Tong et al. (2025), npj Clean Air: No detectable additional effect on NO₂ after the 2023 London-wide expansion.
+  Otherwise: +2.93% (90% -5.59% to +12.99%)
+  published study reported no detectable effect; compare with Otherwise verdict above
+
+Permalink id: 2a0403c2bd026b93  -> /v/2a0403c2bd026b93
