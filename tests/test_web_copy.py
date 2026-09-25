@@ -391,3 +391,17 @@ def test_no_horizontal_scroll_at_360(browser, web_url, path):
     widths = pg.evaluate("() => [document.scrollingElement.scrollWidth, window.innerWidth]")
     pg.close()
     assert widths[0] <= widths[1], f"{path} scrolls sideways at 360px: {widths}"
+
+
+def test_runs_from_before_the_placebo_fix_say_so(load):
+    """Committed showcase runs predate CRITIQUE #4 and carry no placebo_symmetric
+    flag; their page must say the p-value came from the older, flattering procedure.
+    A run made with the symmetric procedure must not carry that caveat."""
+    run = copy.deepcopy(showcase_run("REAL"))
+    sig = run["signals"][run["verdict"]["lead_signal"]]
+    sig.pop("placebo_symmetric", None)
+    caveat = [el.inner_text() for el in load(run).query_selector_all(".sure-caveat")]
+    assert len(caveat) == 1 and "predates a fix to the placebo test" in caveat[0]
+
+    sig["placebo_symmetric"] = True
+    assert load(run).query_selector_all(".sure-caveat") == []
