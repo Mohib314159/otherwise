@@ -208,3 +208,40 @@
 @media (max-width: 640px) {
   .step-rail span b, .step-rail span em { display: none; }
 }
+
+@media (max-width: 640px) {
+  .hero-eyebrow { line-height: 1.3; max-width: 88%; }
+  .hero-flow { margin-top: 11px; gap: 5px 7px; font-size: 9.5px; }
+  .hero-flow b { width: 17px; height: 17px; font-size: 8px; }
+  .hero-flow > i { font-size: 9px; }
+  .hero-proof { color: rgba(255,255,255,.42); }
+  .hero-proof > i { display: inline; }
+
+  .case-list { grid-auto-columns: 86%; gap: 10px; }
+  .sc-card, .sc-body { min-height: 174px; }
+  .sc-card { border-radius: 18px; }
+  .sc-body { padding: 13px; }
+  .sc-label { font-size: 13.5px; }
+  .sc-blurb { font-size: 9.5px; }
+  .sc-foot { margin-top: 8px; }
+  .sc-open { font-size: 9px; }
+}
+
+@media (max-width: 640px) {
+  /* Examples open as their own product surface, not as cards floating over the hero. */
+  .case-rail {
+    padding: 14px 13px 13px;
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 23px;
+    background: rgba(10,12,11,.91);
+    backdrop-filter: blur(24px) saturate(118%);
+    box-shadow: 0 24px 70px rgba(0,0,0,.42);
+    overflow: hidden;
+  }
+  body.show-cases .hero-panel { opacity: 0; transform: translateY(24px); visibility: hidden; }
+  .case-rail-head { margin: 0 1px 10px; }
+  .case-rail-head strong { color: rgba(255,255,255,.72); line-height: 1.25; }
+  .case-rail-head a { font-size: 9.5px; }
+  .case-list { padding: 0 1px 2px; }
+  .case-close { flex: 0 0 auto; background: rgba(255,255,255,.07); }
+}
