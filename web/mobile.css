@@ -245,3 +245,79 @@
   .case-list { padding: 0 1px 2px; }
   .case-close { flex: 0 0 auto; background: rgba(255,255,255,.07); }
 }
+
+/* -------------------------------------------------------------------------
+   V5 mobile drawing — pan under a crosshair, then Add point / Undo / Done.
+   This avoids finger-occluded vertices and makes the 500 ha limit visible
+   before the polygon can be committed.
+   ------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  body.mobile-draw-mode .mobile-map-crosshair {
+    display: block; position: fixed; z-index: 790; left: 50%; top: 43%;
+    width: 52px; height: 52px; transform: translate(-50%,-50%); pointer-events: none;
+    border-radius: 50%; border: 1px solid rgba(217,255,113,.20);
+    background: radial-gradient(circle, rgba(217,255,113,.08), transparent 62%);
+    box-shadow: 0 0 0 10px rgba(6,8,7,.08);
+    transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+  }
+  .mobile-map-crosshair::before,
+  .mobile-map-crosshair::after {
+    content: ""; position: absolute; left: 50%; top: 50%; background: #d9ff71;
+    transform: translate(-50%,-50%); border-radius: 99px; box-shadow: 0 0 8px rgba(217,255,113,.34);
+  }
+  .mobile-map-crosshair::before { width: 20px; height: 1px; }
+  .mobile-map-crosshair::after { width: 1px; height: 20px; }
+  .mobile-map-crosshair > span {
+    position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; transform: translate(-50%,-50%);
+    border-radius: 50%; background: #d9ff71; box-shadow: 0 0 0 4px rgba(217,255,113,.14);
+  }
+  .mobile-map-crosshair[data-state="large"] { border-color: rgba(255,143,134,.38); background: radial-gradient(circle, rgba(255,143,134,.10), transparent 62%); box-shadow: 0 0 0 10px rgba(255,143,134,.05); }
+  .mobile-map-crosshair[data-state="large"]::before,
+  .mobile-map-crosshair[data-state="large"]::after,
+  .mobile-map-crosshair[data-state="large"] > span { background: #ff8f86; box-shadow: 0 0 0 4px rgba(255,143,134,.12); }
+  .mobile-map-crosshair[data-state="near"] { border-color: rgba(241,223,154,.34); }
+
+  body.mobile-draw-mode .leaflet-control-zoom { opacity: .18; pointer-events: none; }
+  body.mobile-draw-mode .map-style { opacity: .32; pointer-events: none; }
+
+  .draw-coach {
+    top: auto; bottom: max(10px, env(safe-area-inset-bottom)); left: var(--phone-gutter); right: var(--phone-gutter);
+    width: auto; max-width: none; min-width: 0; transform: translateY(14px);
+    grid-template-columns: 30px minmax(0,1fr); gap: 9px 10px; align-items: start;
+    border-radius: 21px; padding: 12px 12px calc(11px + env(safe-area-inset-bottom));
+    background: rgba(10,12,11,.92); backdrop-filter: blur(24px) saturate(118%);
+    box-shadow: 0 24px 68px rgba(0,0,0,.40);
+  }
+  body.is-drawing .draw-coach { transform: none; }
+  .draw-coach-icon { width: 30px; height: 30px; border-radius: 10px; }
+  .draw-coach-copy { padding-right: 38px; }
+  .draw-coach strong { font-size: 12.5px; line-height: 1.15; }
+  .draw-coach #draw-coach-hint { margin-top: 3px; font-size: 9.5px; line-height: 1.35; }
+  .draw-live { margin-top: 7px; min-height: 26px; max-width: 100%; }
+  .draw-live b, .draw-live span { font-size: 9px !important; }
+  .draw-coach-actions {
+    grid-column: 1 / -1; display: grid; grid-template-columns: .72fr 1.38fr 1fr; gap: 7px;
+    position: relative; padding-top: 2px;
+  }
+  .draw-coach-actions button { min-height: 42px; border-radius: 11px; padding: 8px 9px; font-size: 10px; }
+  .draw-coach-actions #draw-coach-cancel {
+    position: absolute; right: 0; top: -86px; width: 34px; min-height: 34px; height: 34px;
+    overflow: hidden; color: transparent; border-radius: 50%; padding: 0;
+  }
+  .draw-coach-actions #draw-coach-cancel::after { content: "×"; position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.74); font-size: 18px; line-height: 1; }
+  .draw-add { display: block; color: #17200e !important; background: #d9ff71 !important; font-weight: 700 !important; }
+  .draw-add:hover:not(:disabled) { background: #e5ff99 !important; color: #17200e !important; }
+  .draw-add:disabled { color: rgba(255,255,255,.60) !important; background: rgba(255,143,134,.16) !important; opacity: 1 !important; }
+  .draw-done:not(:disabled) { color: #fff !important; background: rgba(255,255,255,.14) !important; box-shadow: inset 0 0 0 1px rgba(217,255,113,.26); }
+  .draw-done:not(:disabled)::after { content: " ✓"; color: #d9ff71; }
+  body.draw-area-too-large .draw-coach { border-color: rgba(255,143,134,.34); }
+}
+@media (max-width: 640px) {
+  body.mobile-draw-mode .landing-nav { opacity: .34; pointer-events: none; transition: opacity .18s ease; }
+}
+@media (max-width: 640px) {
+  .mobile-map-crosshair[data-state="cross"] { border-color: rgba(255,143,134,.38); background: radial-gradient(circle, rgba(255,143,134,.10), transparent 62%); box-shadow: 0 0 0 10px rgba(255,143,134,.05); }
+  .mobile-map-crosshair[data-state="cross"]::before,
+  .mobile-map-crosshair[data-state="cross"]::after,
+  .mobile-map-crosshair[data-state="cross"] > span { background: #ff8f86; box-shadow: 0 0 0 4px rgba(255,143,134,.12); }
+}

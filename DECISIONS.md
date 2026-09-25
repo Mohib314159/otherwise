@@ -1592,3 +1592,30 @@ changed", but the rail includes the two no-change sites. It now reads "Start wit
 documented case."
 
 Suite 368 passed; screenshots in `docs/screenshots/2026-09-25-ui-v4/`.
+
+## 2026-09-25 — Codex UI pass V5 (branch `uiv5`) landed, with one bug fixed
+
+`uiv5` is V4 plus one commit touching 6 `web/` files. It was merged three-way (base = V4 tip),
+so only the V4→V5 changes applied.
+
+**Taken from V5:**
+- **Live area feedback while drawing.** It uses the existing server-matched
+  `polygonAreaHa` / `wrapLng` from the hectare fix, so the readout is the number the
+  server will accept.
+- **Explicit Undo / Done / Cancel controls.** Done is enabled only for a valid shape, and
+  Leaflet's own finish is guarded the same way.
+- **A crosshair "Add point" mode on phones.**
+- **Mosaic tiles as links** to their verdict pages.
+
+**Rejected:** V5's service-worker cache-name bump. main keeps its network-first worker.
+
+**Fixed in V5's own CSS: desktop drawing was impossible.** To keep the hero clickable over
+the new clickable mosaic, V5 set `pointer-events: auto` on `.landing-shell`. That element
+is a full-screen fixed layer, so on desktop it swallowed every map click, and no polygon
+could be drawn. The real mouse-drawing test caught it: the click landed on
+`landing-shell`, not the map. Now only the shell's children (hero panel, workbench) take
+pointer events. The drawing test passes (21.4 ha), with screenshots of both drawing modes.
+
+**V6 was requested but does not exist on the remote.** Only `uiv4` and `uiv5` were pushed.
+
+Suite 368 passed; screenshots in `docs/screenshots/2026-09-25-ui-v5/`.

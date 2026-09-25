@@ -446,3 +446,40 @@ body.is-drawing .draw-coach { opacity: 1; visibility: visible; transform: transl
 .workbench .domain-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin: 14px 0 4px; background: #e9ebe1; border-radius: 13px; }
 .workbench .domain-tab { border: none; border-radius: 10px; min-height: 40px; font-weight: 600; background: transparent; cursor: pointer; }
 .workbench .domain-tab.active { background: #17200d; color: #d9ff71; }
+
+/* -------------------------------------------------------------------------
+   V5 interaction polish — live area feedback + explicit drawing controls.
+   ------------------------------------------------------------------------- */
+.mobile-map-crosshair { display: none; }
+.draw-coach-copy { min-width: 0; }
+.draw-live {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 6px;
+  min-height: 24px; padding: 4px 7px; border-radius: 999px;
+  background: rgba(255,255,255,.075); border: 1px solid rgba(255,255,255,.08);
+  color: rgba(255,255,255,.74); font-size: 9px; line-height: 1;
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
+}
+.draw-live b { color: #fff; font-size: 9px; font-weight: 700; }
+.draw-live i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.32); }
+.draw-live span { margin: 0 !important; color: inherit !important; font-size: 9px !important; }
+.draw-live[data-state="ok"] { color: #d9ff71; background: rgba(217,255,113,.08); border-color: rgba(217,255,113,.18); }
+.draw-live[data-state="ok"] i { background: #d9ff71; box-shadow: 0 0 0 3px rgba(217,255,113,.08); }
+.draw-live[data-state="near"] { color: #f1df9a; background: rgba(241,223,154,.08); border-color: rgba(241,223,154,.18); }
+.draw-live[data-state="near"] i { background: #f1df9a; }
+.draw-live[data-state="small"] { color: #ffd771; background: rgba(255,215,113,.08); border-color: rgba(255,215,113,.18); }
+.draw-live[data-state="small"] i { background: #ffd771; }
+.draw-live[data-state="large"] { color: #ffaaa3; background: rgba(255,143,134,.10); border-color: rgba(255,143,134,.24); }
+.draw-live[data-state="large"] i { background: #ff8f86; box-shadow: 0 0 0 3px rgba(255,143,134,.08); }
+.draw-coach-actions { display: flex; align-items: center; gap: 6px; }
+.draw-coach-actions button { white-space: nowrap; transition: background .16s ease, color .16s ease, opacity .16s ease, transform .16s ease; }
+.draw-coach-actions button:hover:not(:disabled) { background: rgba(255,255,255,.14); color: #fff; transform: translateY(-1px); }
+.draw-coach-actions button:disabled { opacity: .34; cursor: not-allowed; }
+.draw-coach-actions .draw-done:not(:disabled) { color: #17200e; background: #d9ff71; font-weight: 700; }
+.draw-coach-actions .draw-done:not(:disabled):hover { background: #e5ff99; color: #17200e; }
+.draw-add { display: none; }
+body.draw-area-too-large .draw-coach { border-color: rgba(255,143,134,.34); box-shadow: 0 18px 48px rgba(0,0,0,.28), 0 0 0 1px rgba(255,143,134,.07); }
+
+.sc-card.is-linked-active { transform: translateY(-5px); border-color: rgba(217,255,113,.34); box-shadow: 0 24px 58px rgba(0,0,0,.30), 0 0 0 1px rgba(217,255,113,.08); }
+.sc-card.is-linked-active .sc-thumb { transform: scale(1.045); }
+.draw-live[data-state="cross"] { color: #ffaaa3; background: rgba(255,143,134,.10); border-color: rgba(255,143,134,.24); }
+.draw-live[data-state="cross"] i { background: #ff8f86; box-shadow: 0 0 0 3px rgba(255,143,134,.08); }
