@@ -53,6 +53,54 @@ def _worker(args: dict) -> dict:
                 "error": f"{type(e).__name__}: {e}", "traceback": traceback.format_exc()[-2000:]}
 
 
+def _proc_entry(args: dict, q) -> None:
+    q.put(_worker(args))
+
+
+def run_bounded(todo: list[dict], runs_dir: str, parallel: int, timeout: float, worker=None):
+    """Yield (item, result) with at most `parallel` items running at once.
+
+    Each item runs in its own process and its timeout is measured from the
+    moment it STARTS. An item that overruns is terminated, so it neither keeps
+    burning CPU nor finishes unrecorded. (The earlier pool submitted every item
+    at once and timed each one from submission, so after one timeout period
+    every item still queued was recorded as "timeout" without ever running.)"""
+    ctx = mp.get_context("spawn")
+    target = worker or _proc_entry
+    global queue, running
+    queue, running = list(todo), {}
+    while queue or running:
+        while queue and len(running) < parallel:
+            it = queue.pop(0)
+            q = ctx.Queue()
+            pr = ctx.Process(target=target, args=({"item": it, "runs_dir": runs_dir}, q), daemon=True)
+            pr.start()
+            running[it["id"]] = (it, pr, q, time.time())
+        time.sleep(0.2 if worker else 5)
+        for iid in list(running):
+            it, pr, q, t0 = running[iid]
+            res = None
+            try:
+                res = q.get_nowait()
+            except Exception:                          # noqa: BLE001  (queue.Empty)
+                if not pr.is_alive():
+                    res = {"id": iid, "run_id": None, "seconds": round(time.time() - t0, 1),
+                           "error": f"worker exited with code {pr.exitcode} and no result"}
+                elif time.time() - t0 > timeout:
+                    pr.terminate()
+                    res = {"id": iid, "run_id": None, "seconds": round(time.time() - t0, 1),
+                           "error": f"timeout after {timeout:.0f} s (terminated)"}
+            if res is None:
+                continue
+            pr.join(timeout=10)
+            del running[iid]
+            yield it, res
+
+
+queue: list = []
+running: dict = {}
+
+
 def run_id_for(item: dict) -> str:
     """The cache key run_verdict will use (mirrors src.app.run.run_id without fetching)."""
     from src.app.run import run_id
@@ -461,46 +509,27 @@ def main(argv=None):
     if not todo:
         return
 
-    ctx = mp.get_context("spawn")
     t_all = time.time()
-    with ctx.Pool(processes=a.parallel, maxtasksperchild=1) as pool:
-        pending = {it["id"]: (it, pool.apply_async(_worker, ({"item": it, "runs_dir": runs_dir},)), time.time())
-                   for it in todo}
-        while pending:
-            time.sleep(5)
-            for iid in list(pending):
-                it, ar, t0 = pending[iid]
-                res = None
-                if ar.ready():
-                    try:
-                        res = ar.get()
-                    except Exception as e:                # noqa: BLE001
-                        res = {"id": iid, "run_id": None, "seconds": round(time.time() - t0, 1),
-                               "error": f"worker failed: {e}"}
-                elif time.time() - t0 > a.timeout:
-                    res = {"id": iid, "run_id": None, "seconds": round(time.time() - t0, 1),
-                           "error": f"timeout after {a.timeout} s"}
-                    # the worker keeps running until the pool closes; the row records the timeout
-                if res is None:
-                    continue
-                del pending[iid]
-                rj = None
-                if res.get("run_id"):
-                    p = os.path.join(runs_dir, res["run_id"] + ".json")
-                    rj = json.load(open(p)) if os.path.exists(p) else None
-                row = row_from_result(it, res, rj, res["seconds"], res.get("error"))
-                rows[iid] = row
-                with open(results_path, "a") as f:
-                    f.write(json.dumps(row) + "\n")
-                s = refresh(sample, rows, out_dir, a.sample, a.parallel, a.doc)
-                o = s["overall"]
-                eff = "" if row.get("point") is None else f" {row['lead']} {row['point']:+.3f} [{row['lo']:+.3f},{row['hi']:+.3f}] p={row['placebo_p']}"
-                log(f"{iid} {row['expected']:8s} -> {row.get('status')}{eff} {row['seconds']}s"
-                    f"{(' ERROR ' + row['error'][:120]) if row.get('error') else ''}"
-                    f" | events {o['events']['hit']}/{o['events']['n']} hit, nulls {o['nulls']['false_alarm']}/{o['nulls']['n']} FA,"
-                    f" {len(pending)} pending, {(time.time() - t_all) / 60:.0f} min")
-        pool.close()
-        pool.join()
+
+    def record(it, res):
+        rj = None
+        if res.get("run_id"):
+            p = os.path.join(runs_dir, res["run_id"] + ".json")
+            rj = json.load(open(p)) if os.path.exists(p) else None
+        row = row_from_result(it, res, rj, res["seconds"], res.get("error"))
+        rows[it["id"]] = row
+        with open(results_path, "a") as f:
+            f.write(json.dumps(row) + "\n")
+        s = refresh(sample, rows, out_dir, a.sample, a.parallel, a.doc)
+        o = s["overall"]
+        eff = "" if row.get("point") is None else f" {row['lead']} {row['point']:+.3f} [{row['lo']:+.3f},{row['hi']:+.3f}] p={row['placebo_p']}"
+        log(f"{it['id']} {row['expected']:8s} -> {row.get('status')}{eff} {row['seconds']}s"
+            f"{(' ERROR ' + row['error'][:120]) if row.get('error') else ''}"
+            f" | events {o['events']['hit']}/{o['events']['n']} hit, nulls {o['nulls']['false_alarm']}/{o['nulls']['n']} FA,"
+            f" {len(queue) + len(running)} pending, {(time.time() - t_all) / 60:.0f} min")
+
+    for it, res in run_bounded(todo, runs_dir, a.parallel, a.timeout):
+        record(it, res)
     log("done")
 
 
