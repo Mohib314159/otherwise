@@ -688,3 +688,32 @@ section.block { padding: 32px 0; border-top: 1px solid var(--rule); }
 .air-research-card > * + * { margin-top:7px; }
 .air-research-card a { font-size:13px; }
 @media (max-width:640px) { .air-result-grid { grid-template-columns:1fr; } .air-effect { font-size:30px; } }
+
+/* ---- matched control areas beside the drawn area -------------------------- */
+.cmp-lede { max-width: 720px; margin: 6px 0 18px; font-size: 14px; line-height: 1.55; }
+.cmp-grid { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 14px; }
+.cmp-col { margin: 0; min-width: 0; }
+.cmp-col figcaption { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; font-size: 13px; }
+.cmp-col figcaption span { color: var(--muted); font-size: 12px; }
+.cmp-col:first-child figcaption strong { color: var(--ink); }
+.cmp-pair { display: grid; gap: 6px; }
+.cmp-shot { position: relative; aspect-ratio: 1 / 1; border-radius: 10px; overflow: hidden; background: var(--panel); }
+.cmp-shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cmp-date { position: absolute; left: 8px; bottom: 8px; padding: 3px 7px; border-radius: 999px; background: rgba(12, 14, 12, .72); color: #fff; font-size: 11px; }
+.cmp-col:first-child .cmp-shot { outline: 2px solid var(--ink); outline-offset: -2px; }
+.cmp-note { margin-top: 12px; font-size: 12px; }
+
+/* ---- change-map legend and time-lapse event label -------------------------- */
+.change-legend { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.change-legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 6px; vertical-align: -1px; }
+.change-legend .sw:first-child { margin-left: 0; }
+.change-legend .sw.dec { background: rgb(179, 38, 30); }
+.change-legend .sw.inc { background: rgb(43, 95, 168); }
+.lapse-event { opacity: 1 !important; width: 2px !important; background: var(--ink); }
+.lapse-event-lbl { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); white-space: nowrap;
+  font-size: 10px; font-weight: 600; letter-spacing: .02em; color: var(--ink); background: var(--paper, #fff); padding: 1px 5px; border-radius: 4px; }
+
+@media (max-width: 640px) {
+  .cmp-grid { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 62%; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+  .cmp-col { scroll-snap-align: start; }
+}

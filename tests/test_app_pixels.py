@@ -134,3 +134,27 @@ def test_render_writes_640_png(tmp_path):
     assert px[0] > px[1] + 60 and px[0] > px[2] + 60
     # the outline is white somewhere on the block's top edge
     assert (arr[20 * 640 // 50, 20 * 640 // 50 + 40] == 255).all()
+
+
+def test_change_overlay_is_cropped_to_the_thumbnail_window_and_transparent_elsewhere(tmp_path):
+    """The overlay must line up with the before/after thumbnail it sits on: it is
+    cropped to that window, coloured only where the test applies, clear elsewhere."""
+    from affine import Affine
+    from PIL import Image
+    from src.app.pixels import render_change_overlay
+    tr = Affine(10.0, 0, 1000.0, 0, -10.0, 2000.0)         # 10 m grid, top-left (1000, 2000)
+    delta = np.zeros((100, 100)); delta[40:50, 40:50] = -0.5
+    changed = delta < -0.2
+    eligible = np.ones_like(changed)
+    # window = columns/rows 30..70 -> 400 m square centred on the changed block
+    bounds = (1000 + 300, 2000 - 700, 1000 + 700, 2000 - 300)
+    path = tmp_path / "ov.png"
+    assert render_change_overlay(delta, changed, eligible, tr, bounds, str(path), size=40) == str(path)
+    a = np.asarray(Image.open(path))
+    assert a.shape == (40, 40, 4)
+    assert a[15, 15, 3] > 0 and a[15, 15, 0] > a[15, 15, 2]    # block at window rows/cols 10..20: red
+    assert a[2, 2, 3] == 0 and a[35, 35, 3] == 0                # everywhere else fully transparent
+    ineligible = np.zeros_like(changed)
+    render_change_overlay(delta, changed, ineligible, tr, bounds, str(path), size=40)
+    assert np.asarray(Image.open(path))[..., 3].max() == 0      # no colour where the test is undefined
+    assert render_change_overlay(delta, changed, eligible, tr, (0, 0, 50, 50), str(path)) is None
