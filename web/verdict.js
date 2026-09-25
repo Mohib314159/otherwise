@@ -105,6 +105,7 @@ function renderCompare(d) {
       <div class="compare-divider" id="compare-divider"><div class="compare-handle">${HANDLE_SVG}</div></div>
       <span class="compare-tag before">Before · ${fmtDate(im.before.date)}</span>
       <span class="compare-tag after">After · ${fmtDate(im.after.date)}</span>
+      <div class="compare-coach" id="compare-coach" aria-hidden="true"><span>↔</span> Drag to compare</div>
       ${px.map ? `<button type="button" class="compare-toggle" id="compare-map-toggle" aria-pressed="false">Change map</button>` : ""}
     </div>`;
 }
@@ -124,16 +125,21 @@ function renderAct1(d) {
   const hasPair = !!(d.imagery && d.imagery.before && d.imagery.after);
   return `
     <section class="act reveal" id="act-1">
-      <div class="label">What we saw</div>
+      <div class="label">Satellite evidence</div>
       <div class="act1-grid">
         <div class="act1-media">
           ${renderCompare(d)}
+          ${hasPair ? `<div class="compare-presets" role="group" aria-label="Comparison view">
+            <button type="button" class="compare-preset" data-compare-preset="100">Before</button>
+            <button type="button" class="compare-preset active" data-compare-preset="50">Split</button>
+            <button type="button" class="compare-preset" data-compare-preset="0">After</button>
+          </div>` : ""}
           <div id="lapse-mount"></div>
         </div>
         <aside class="act1-aside">
           ${renderNumber(d)}
           ${pixelLine}
-          <p class="act1-lede muted">The white outline is the drawn area${hasPair ? ". Drag the divider to compare" : ""}${(d.pixels && d.pixels.map) ? "; the change map marks pixels that changed more than their surroundings" : ""}.</p>
+          <p class="act1-lede muted">${hasPair ? "Same place, two dates. Drag the divider or tap Before / Split / After. " : ""}The white outline is the area you drew${(d.pixels && d.pixels.map) ? ". The change map highlights pixels that moved more than their surroundings" : ""}.</p>
         </aside>
       </div>
     </section>`;
@@ -155,6 +161,11 @@ function initCompare() {
     divider.style.left = `${pct}%`;
     el.setAttribute("aria-valuenow", Math.round(pct));
     el.setAttribute("aria-valuetext", `${Math.round(pct)}% before, ${Math.round(100 - pct)}% after`);
+    document.querySelectorAll("[data-compare-preset]").forEach((btn) => {
+      const target = Number(btn.dataset.comparePreset);
+      btn.classList.toggle("active", Math.abs(target - pct) < 1);
+      btn.setAttribute("aria-pressed", Math.abs(target - pct) < 1 ? "true" : "false");
+    });
   }
   set(50);
 
@@ -163,8 +174,10 @@ function initCompare() {
     const r = el.getBoundingClientRect();
     return ((e.clientX - r.left) / r.width) * 100;
   };
+  const hideCoach = () => document.getElementById("compare-coach")?.classList.add("hidden");
   el.addEventListener("pointerdown", (e) => {
     if (e.target.closest && e.target.closest(".compare-toggle")) return;
+    hideCoach();
     dragging = true;
     el.setPointerCapture(e.pointerId);
     set(fromEvent(e));
@@ -176,10 +189,18 @@ function initCompare() {
   el.addEventListener("pointercancel", stop);
   el.addEventListener("keydown", (e) => {
     const step = e.shiftKey ? 10 : 2;
+    hideCoach();
     if (e.key === "ArrowLeft") { set(pct - step, { animate: true }); e.preventDefault(); }
     else if (e.key === "ArrowRight") { set(pct + step, { animate: true }); e.preventDefault(); }
     else if (e.key === "Home") { set(0, { animate: true }); e.preventDefault(); }
     else if (e.key === "End") { set(100, { animate: true }); e.preventDefault(); }
+  });
+
+  document.querySelectorAll("[data-compare-preset]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      hideCoach();
+      set(Number(btn.dataset.comparePreset), { animate: true });
+    });
   });
 
   el.querySelectorAll("img").forEach((img) => {
@@ -502,7 +523,7 @@ function renderCharts(d) {
   const sig = d.signals[lead];
   return `
     <section class="act reveal" id="act-2">
-      <div class="label">What it did, and what it would have done anyway</div>
+      <div class="label">Observed vs counterfactual</div>
       <div class="chart-wrap" id="main-chart"></div>
       <div class="chart-legend">
         <span><span class="swatch" style="border-color:var(--treated)"></span>This area</span>
@@ -557,7 +578,7 @@ function renderSure(d) {
     : `<p class="sure-caveat"><span class="sure-tag">Older placebo procedure</span>This run predates a fix to the placebo test: its control cells were scored against controls chosen for this area rather than for themselves, which makes the p-value look stronger than it should. It has not been re-run yet.</p>`;
   return `
     <section class="act reveal" id="act-3">
-      <div class="label">How sure</div>
+      <div class="label">Placebo test</div>
       <div class="sure-row">
         <div class="strip-wrap" id="placebo-strip"></div>
         <div class="sure-lines">${fitLine}${gapLine}${asymLine}</div>

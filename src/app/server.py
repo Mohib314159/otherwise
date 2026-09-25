@@ -409,6 +409,21 @@ def _share_block(rid: str, run: dict | None, base: str) -> str:
 
 
 # ---- pages -----------------------------------------------------------------
+# Installable app (PWA). Both files are served from the root so the service
+# worker's scope can be the whole site; no-cache so a deploy is picked up at once.
+@app.get("/manifest.webmanifest")
+def pwa_manifest():
+    return FileResponse(os.path.join(WEB_DIR, "manifest.webmanifest"),
+                        media_type="application/manifest+json",
+                        headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/sw.js")
+def service_worker():
+    return FileResponse(os.path.join(WEB_DIR, "sw.js"), media_type="application/javascript",
+                        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"})
+
+
 @app.get("/")
 def index():
     return FileResponse(os.path.join(WEB_DIR, "index.html"))

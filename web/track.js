@@ -27,13 +27,13 @@ function renderRow(r) {
     : "—";
   return `
     <tr>
-      <td><a href="/v/${encodeURIComponent(r.id)}">${escapeHtml(r.label || r.id)}</a></td>
-      <td>${escapeHtml(CHANGE_TYPE_LABEL[r.type] || r.type || "—")}</td>
-      <td>${escapeHtml(r.expected || "—")}</td>
-      <td class="verdict-cell v-${r.status}">${statusLabel}</td>
-      <td class="tnum">${effect}</td>
-      <td>${escapeHtml(r.signal ? (SIGNAL_LABEL[r.signal] || r.signal) : "—")}</td>
-      <td>${r.source ? `<a href="${escapeHtml(r.source)}" target="_blank" rel="noopener">source</a>` : "—"}</td>
+      <td data-label="Site"><a href="/v/${encodeURIComponent(r.id)}">${escapeHtml(r.label || r.id)}</a></td>
+      <td data-label="Type">${escapeHtml(CHANGE_TYPE_LABEL[r.type] || r.type || "—")}</td>
+      <td data-label="Expected">${escapeHtml(r.expected || "—")}</td>
+      <td data-label="Verdict" class="verdict-cell v-${r.status}">${statusLabel}</td>
+      <td data-label="Effect" class="tnum">${effect}</td>
+      <td data-label="Signal">${escapeHtml(r.signal ? (SIGNAL_LABEL[r.signal] || r.signal) : "—")}</td>
+      <td data-label="Evidence">${r.source ? `<a href="${escapeHtml(r.source)}" target="_blank" rel="noopener">Open source ↗</a>` : "—"}</td>
     </tr>`;
 }
 
@@ -61,7 +61,7 @@ async function boot() {
         <div class="summary-line tnum">${summaryLine(data.summary)}</div>
       </section>
       <div class="table-wrap">
-        <table class="track-table">
+        <table class="track-table track-record-table">
           <thead>
             <tr><th>Site</th><th>Type</th><th>Expected</th><th>Verdict</th><th>Effect</th><th>Signal</th><th>Source</th></tr>
           </thead>
