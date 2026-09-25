@@ -1539,3 +1539,27 @@ match the area's pre-event greenness trajectory, which is what the method uses, 
 do not look like it. The earlier, wrongly indexed thumbnails showed forest. The land-cover
 label of the Grünheide polygon is itself a finding worth checking before it is used in
 outreach.
+
+## 2026-09-25 — blind-validation runner timed items out before they ran
+
+The first blind_v2 attempt recorded 246 of 247 items as "timeout after 3600 s"
+within an hour. The runner submitted every item to a process pool at once and timed
+each one from **submission**, so after one timeout period every item still waiting in
+the queue was marked timed out without ever starting. The "timed-out" workers were also
+never stopped, so they kept burning CPU (load about 10 on 4 cores), and if they
+finished, their result was discarded.
+
+The same runner produced the original 34 blind runs (25-minute timeout). Some or all
+of their 6 error rows may be this bug rather than genuine timeouts, which is one more
+reason the v1 numbers are superseded rather than merged.
+
+**Fix (`scripts/blind_validation.run_bounded`, tested in `tests/test_blind_runner.py`):**
+- At most `--parallel` items run at once, each in its own process.
+- The timeout counts from the item's own start.
+- An overrunning process is terminated and recorded as such.
+- The timeout for this run is 90 minutes: one completed full-mode item took 33 minutes.
+- Genuine timeouts are reported as errors, per stratum, not dropped.
+
+The attempt's log is kept as `logs/blind_attempt1_submission_timeout_bug.log` in the
+run worktree. Its one genuine result (a CAN'T TELL) is kept; the 246 bogus rows are
+retried.
