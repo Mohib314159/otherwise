@@ -85,6 +85,15 @@ const stepPlace = document.getElementById("step-place");
 const stepCount = document.getElementById("step-count");
 const drawCoach = document.getElementById("draw-coach");
 const drawCoachCancel = document.getElementById("draw-coach-cancel");
+const drawCoachTitle = document.getElementById("draw-coach-title");
+const drawCoachHint = document.getElementById("draw-coach-hint");
+const drawLive = document.getElementById("draw-live");
+const drawLiveValue = document.getElementById("draw-live-value");
+const drawLiveState = document.getElementById("draw-live-state");
+const drawUndo = document.getElementById("draw-undo");
+const drawAdd = document.getElementById("draw-add");
+const drawDone = document.getElementById("draw-done");
+const mobileCrosshair = document.getElementById("mobile-map-crosshair");
 const caseRail = document.getElementById("case-rail");
 const caseClose = document.getElementById("case-close");
 
@@ -108,7 +117,7 @@ function openWorkbench() {
 function closeWorkbench() {
   document.body.classList.remove("is-workbench", "is-drawing", "hero-map-view");
   heroMapView = false;
-  if (drawHandler) drawHandler.disable();
+  cancelDrawingMode();
   if (workbench) workbench.setAttribute("aria-hidden", "true");
   syncMapToggleLabel();
   setTimeout(() => map.invalidateSize({ pan: false }), 360);
@@ -139,8 +148,7 @@ if (location.hash === "#new") {
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
   if (document.body.classList.contains("is-drawing")) {
-    drawHandler?.disable();
-    document.body.classList.remove("is-drawing");
+    cancelDrawingMode();
     return;
   }
   if (document.body.classList.contains("show-cases")) {
@@ -212,18 +220,27 @@ async function loadShowcase() {
     dot.on("click", () => { location.href = `/v/${entry.id}`; });
 
     const mosaicTile = [...document.querySelectorAll(".mosaic-tile")].find((el) => el.dataset.runId === entry.id);
+    if (mosaicTile) {
+      const titleEl = mosaicTile.querySelector("[data-mosaic-title]");
+      if (titleEl) titleEl.textContent = `${place} · ${eventTitle}`;
+      mosaicTile.setAttribute("aria-label", `Open evidence for ${entry.label}`);
+    }
     const activate = () => {
       layer.setStyle({ color: "var(--counter)", weight: 2.5 });
       mosaicTile?.classList.add("is-active");
+      card.classList.add("is-linked-active");
     };
     const deactivate = () => {
       layer.setStyle({ color: "var(--ink)", weight: 1.5 });
       mosaicTile?.classList.remove("is-active");
+      card.classList.remove("is-linked-active");
     };
-    card.addEventListener("mouseenter", activate);
-    card.addEventListener("mouseleave", deactivate);
-    card.addEventListener("focus", activate);
-    card.addEventListener("blur", deactivate);
+    [card, mosaicTile].filter(Boolean).forEach((el) => {
+      el.addEventListener("mouseenter", activate);
+      el.addEventListener("mouseleave", deactivate);
+      el.addEventListener("focus", activate);
+      el.addEventListener("blur", deactivate);
+    });
 
     listEl.appendChild(card);
     loadEffectSize(entry.id, card.querySelector("[data-effect]"));
@@ -514,22 +531,327 @@ const areaHaLine = document.getElementById("area-ha-line");
 let drawHandler = null;
 let currentGeoJSON = null;
 let currentHa = null;
+let mobileDrawPoints = [];
+let mobileDrawLayer = null;
+let mobilePreviewEdge = null;
+let mobileVertexLayer = null;
+let mobilePreviewFrame = null;
+let lastDesktopPreviewLatLng = null;
 
-drawBtn.addEventListener("click", () => {
-  if (drawHandler) drawHandler.disable();
-  document.body.classList.add("is-drawing");
-  document.body.classList.remove("show-cases");
+function isPhoneViewport() {
+  return matchMedia("(max-width: 640px)").matches;
+}
+
+function formatDrawHa(ha) {
+  if (ha === null || !Number.isFinite(ha)) return null;
+  if (ha < 1) return `${ha.toFixed(2)} ha`;
+  if (ha < 10) return `${ha.toFixed(1)} ha`;
+  return `${Math.round(ha)} ha`;
+}
+
+function classifyArea(ha, pointCount) {
+  if (pointCount < 3 || ha === null || !Number.isFinite(ha)) {
+    return { state: "waiting", valid: false, message: pointCount ? "Add another point" : `Target: ${MIN_HA}–${MAX_HA} ha` };
+  }
+  if (ha > MAX_HA) return { state: "large", valid: false, message: "Too large — move inward or undo" };
+  if (ha < MIN_HA) return { state: "small", valid: false, message: "Too small — make the outline wider" };
+  if (ha > MAX_HA * 0.8) return { state: "near", valid: true, message: "Within limit — getting close to 500 ha" };
+  return { state: "ok", valid: true, message: "Within the 0.5–500 ha limit" };
+}
+
+function setDrawFeedback({ ha = null, pointCount = 0, preview = false } = {}) {
+  const info = classifyArea(ha, pointCount);
+  if (drawLive) drawLive.dataset.state = info.state;
+  if (drawLiveValue) {
+    const size = formatDrawHa(ha);
+    drawLiveValue.textContent = size ? `${size}${preview ? " preview" : ""}` : `${pointCount} point${pointCount === 1 ? "" : "s"}`;
+  }
+  if (drawLiveState) drawLiveState.textContent = info.message;
+  if (drawDone) drawDone.disabled = !info.valid || preview;
+  if (drawUndo) drawUndo.disabled = pointCount === 0;
+  document.body.classList.toggle("draw-area-invalid", info.state === "large" || info.state === "small");
+  document.body.classList.toggle("draw-area-too-large", info.state === "large");
+  return info;
+}
+
+function latLngsToRing(latlngs) {
+  if (!latlngs.length) return [];
+  const shift = wrapLng(latlngs[0].lng) - latlngs[0].lng;
+  return latlngs.map((p) => [round6(p.lng + shift), round6(p.lat)]);
+}
+
+function areaFromLatLngs(latlngs) {
+  if (latlngs.length < 3) return null;
+  return polygonAreaHa(latLngsToRing(latlngs));
+}
+
+function polygonSelfIntersects(latlngs) {
+  if (latlngs.length < 4) return false;
+  const pts = latlngs.map((p) => [p.lng, p.lat]);
+  const orient = (a, b, c) => Math.sign((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]));
+  const intersects = (a, b, c, d) => {
+    const o1 = orient(a, b, c), o2 = orient(a, b, d), o3 = orient(c, d, a), o4 = orient(c, d, b);
+    return o1 !== 0 && o2 !== 0 && o3 !== 0 && o4 !== 0 && o1 !== o2 && o3 !== o4;
+  };
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[(i + 1) % n];
+    for (let j = i + 1; j < n; j++) {
+      // Adjacent edges share a vertex and are allowed; first/last are adjacent too.
+      if (j === i || j === i + 1 || (i === 0 && j === n - 1)) continue;
+      const c = pts[j], d = pts[(j + 1) % n];
+      if (intersects(a, b, c, d)) return true;
+    }
+  }
+  return false;
+}
+
+function desktopMarkers() {
+  return drawHandler?._markers?.map((m) => m.getLatLng()) || [];
+}
+
+function updateDesktopDrawFeedback(previewLatLng = null) {
+  if (!drawHandler || isPhoneViewport()) return;
+  const fixed = desktopMarkers();
+  const fixedHa = areaFromLatLngs(fixed);
+  const fixedInfo = classifyArea(fixedHa, fixed.length);
+  const hasPreview = Boolean(previewLatLng && fixed.length >= 2);
+  const points = hasPreview ? [...fixed, previewLatLng] : fixed;
+  const ha = areaFromLatLngs(points);
+  const info = setDrawFeedback({ ha, pointCount: fixed.length, preview: hasPreview });
+  // A moving preview can be out of bounds while the already-placed polygon is
+  // finishable. Keep Done tied to the fixed vertices, not the cursor.
+  if (drawDone) drawDone.disabled = !fixedInfo.valid;
+  if (drawHandler._poly) {
+    const color = info.state === "large" ? "#ff8f86" : info.state === "small" ? "#ffd771" : "#d9ff71";
+    drawHandler._poly.setStyle({ color, fillColor: color, fillOpacity: info.state === "large" ? 0.16 : 0.10 });
+  }
+}
+
+function finishDesktopPolygon() {
+  if (!drawHandler || isPhoneViewport()) return;
+  const fixed = desktopMarkers();
+  const ha = areaFromLatLngs(fixed);
+  const info = setDrawFeedback({ ha, pointCount: fixed.length });
+  if (!info.valid) {
+    drawCoach?.animate(
+      [{ transform: "translate(-50%,0)" }, { transform: "translate(-50%,-2px) scale(1.012)" }, { transform: "translate(-50%,0)" }],
+      { duration: 280, easing: "ease-out" }
+    );
+    return;
+  }
+  drawHandler._finishShape();
+}
+
+function beginDesktopDrawing() {
   drawHandler = new L.Draw.Polygon(map, {
     shapeOptions: { color: "#d9ff71", weight: 2, fillOpacity: 0.10, fillColor: "#d9ff71" },
     showArea: false,
     allowIntersection: false,
   });
+  const nativeFinish = drawHandler._finishShape.bind(drawHandler);
+  drawHandler._finishShape = function guardedFinish() {
+    const fixed = desktopMarkers();
+    const ha = areaFromLatLngs(fixed);
+    const info = setDrawFeedback({ ha, pointCount: fixed.length });
+    if (!info.valid) return;
+    nativeFinish();
+  };
   drawHandler.enable();
+  setDrawFeedback({ pointCount: 0 });
+}
+
+function clearMobileDrawLayers() {
+  [mobileDrawLayer, mobilePreviewEdge, mobileVertexLayer].forEach((layer) => {
+    if (layer && map.hasLayer(layer)) map.removeLayer(layer);
+  });
+  mobileDrawLayer = null;
+  mobilePreviewEdge = null;
+  mobileVertexLayer = null;
+}
+
+function mobileCrosshairLatLng() {
+  const el = map.getContainer();
+  const point = L.point(el.clientWidth / 2, el.clientHeight * 0.43);
+  return map.containerPointToLatLng(point);
+}
+
+function mobilePreviewPoints() {
+  return mobileDrawPoints.length >= 2 ? [...mobileDrawPoints, mobileCrosshairLatLng()] : mobileDrawPoints;
+}
+
+function scheduleMobileDrawPreview() {
+  if (mobilePreviewFrame !== null) return;
+  mobilePreviewFrame = requestAnimationFrame(() => {
+    mobilePreviewFrame = null;
+    updateMobileDrawPreview();
+  });
+}
+
+function updateMobileDrawPreview() {
+  if (!document.body.classList.contains("mobile-draw-mode")) return;
+  clearMobileDrawLayers();
+  const previewPoints = mobilePreviewPoints();
+  const previewHa = areaFromLatLngs(previewPoints);
+  const previewCrosses = polygonSelfIntersects(previewPoints);
+  const previewInfo = previewCrosses
+    ? { state: "cross", valid: false, message: "Edges would cross — move the point" }
+    : classifyArea(previewHa, previewPoints.length);
+  const fixedHa = areaFromLatLngs(mobileDrawPoints);
+  const fixedInfo = classifyArea(fixedHa, mobileDrawPoints.length);
+  const color = (previewInfo.state === "large" || previewInfo.state === "cross") ? "#ff8f86" : previewInfo.state === "small" ? "#ffd771" : "#d9ff71";
+
+  if (previewPoints.length >= 3) {
+    mobileDrawLayer = L.polygon(previewPoints, { color, weight: 2.4, fillColor: color, fillOpacity: previewInfo.state === "large" ? .16 : .10, interactive: false }).addTo(map);
+  } else if (previewPoints.length >= 2) {
+    mobilePreviewEdge = L.polyline(previewPoints, { color, weight: 2.2, dashArray: "5 6", opacity: .9, interactive: false }).addTo(map);
+  }
+  if (mobileDrawPoints.length) {
+    mobileVertexLayer = L.layerGroup(mobileDrawPoints.map((p, i) => L.circleMarker(p, {
+      radius: i === 0 ? 5 : 4,
+      color: "#0e120d",
+      weight: 2,
+      fillColor: "#d9ff71",
+      fillOpacity: 1,
+      interactive: false,
+    }))).addTo(map);
+  }
+
+  // The live readout describes the fixed polygon when it can be finished;
+  // otherwise it previews what would happen if the user adds the crosshair.
+  if (mobileDrawPoints.length >= 3) {
+    setDrawFeedback({ ha: fixedHa, pointCount: mobileDrawPoints.length });
+    if (drawCoachHint) drawCoachHint.textContent = fixedInfo.valid
+      ? previewInfo.state === "large"
+        ? "Current outline is valid. Move the crosshair inward before adding another point, or tap Done."
+        : "Area is valid. Add more corners for precision, or tap Done."
+      : fixedInfo.state === "large"
+        ? "That outline is over 500 ha. Undo a point to bring it back inside the limit."
+        : "Keep adding a wider corner until the area reaches 0.5 ha.";
+  } else {
+    setDrawFeedback({ ha: previewHa, pointCount: previewPoints.length, preview: previewPoints.length >= 3 });
+    if (drawUndo) drawUndo.disabled = mobileDrawPoints.length === 0;
+    if (drawCoachHint) drawCoachHint.textContent = previewInfo.state === "cross"
+      ? "That next corner would cross the outline. Pan to a different corner."
+      : previewInfo.state === "large"
+        ? "That next corner would push the area over 500 ha. Pan inward before adding it."
+        : mobileDrawPoints.length === 0
+        ? "Pan the map until the crosshair sits on a corner, then add a point."
+        : "Pan to the next corner and add another point.";
+  }
+
+  if (drawAdd) {
+    const wouldExceed = previewPoints.length >= 3 && previewInfo.state === "large";
+    const wouldCross = previewInfo.state === "cross";
+    drawAdd.dataset.previewState = previewInfo.state;
+    drawAdd.disabled = wouldExceed || wouldCross;
+    drawAdd.textContent = wouldCross
+      ? "Avoid crossing"
+      : wouldExceed
+        ? "Move inward"
+        : mobileDrawPoints.length === 0 ? "Add first point" : "Add point";
+  }
+  if (mobileCrosshair) mobileCrosshair.dataset.state = previewInfo.state;
+}
+
+function beginMobileDrawing() {
+  document.body.classList.add("mobile-draw-mode");
+  mobileDrawPoints = [];
+  clearMobileDrawLayers();
+  if (drawCoachTitle) drawCoachTitle.textContent = "Outline with the crosshair";
+  if (drawCoachHint) drawCoachHint.textContent = "Pan the map until the crosshair sits on a corner, then add a point.";
+  setDrawFeedback({ pointCount: 0 });
+  map.on("move", scheduleMobileDrawPreview);
+  map.on("zoom", scheduleMobileDrawPreview);
+  updateMobileDrawPreview();
+}
+
+function addMobilePoint() {
+  if (!document.body.classList.contains("mobile-draw-mode")) return;
+  const point = mobileCrosshairLatLng();
+  const candidate = [...mobileDrawPoints, point];
+  const ha = areaFromLatLngs(candidate);
+  const info = classifyArea(ha, candidate.length);
+  const crosses = polygonSelfIntersects(candidate);
+  // Preview validation normally catches these before the tap. Keep this guard
+  // too, so a stale animation frame can never commit a bad next vertex.
+  if (crosses || info.state === "large") {
+    updateMobileDrawPreview();
+    navigator.vibrate?.(18);
+    drawCoach?.animate(
+      [{ transform: "translateY(0)" }, { transform: "translateY(-3px) scale(1.01)" }, { transform: "translateY(0)" }],
+      { duration: 260, easing: "ease-out" }
+    );
+    return;
+  }
+  mobileDrawPoints.push(L.latLng(point.lat, point.lng));
+  updateMobileDrawPreview();
+}
+
+function undoMobilePoint() {
+  if (!mobileDrawPoints.length) return;
+  mobileDrawPoints.pop();
+  updateMobileDrawPreview();
+}
+
+function finishMobilePolygon() {
+  const ha = areaFromLatLngs(mobileDrawPoints);
+  const info = setDrawFeedback({ ha, pointCount: mobileDrawPoints.length });
+  if (!info.valid) return;
+  const layer = L.polygon(mobileDrawPoints, { color: "#d9ff71", weight: 2, fillOpacity: .10, fillColor: "#d9ff71" });
+  clearMobileDrawLayers();
+  drawnItems.clearLayers();
+  drawnItems.addLayer(layer);
+  document.body.classList.remove("mobile-draw-mode");
+  map.off("move", scheduleMobileDrawPreview);
+  map.off("zoom", scheduleMobileDrawPreview);
+  onPolygonReady(layer);
+}
+
+function cancelDrawingMode() {
+  drawHandler?.disable();
+  drawHandler = null;
+  lastDesktopPreviewLatLng = null;
+  map.off("move", scheduleMobileDrawPreview);
+  map.off("zoom", scheduleMobileDrawPreview);
+  clearMobileDrawLayers();
+  mobileDrawPoints = [];
+  if (mobilePreviewFrame !== null) { cancelAnimationFrame(mobilePreviewFrame); mobilePreviewFrame = null; }
+  document.body.classList.remove("is-drawing", "mobile-draw-mode", "draw-area-invalid", "draw-area-too-large");
+  if (drawCoachTitle) drawCoachTitle.textContent = "Outline the area";
+  if (drawCoachHint) drawCoachHint.textContent = "Click around its boundary. We’ll tell you the size before you finish.";
+  if (drawAdd) { drawAdd.disabled = false; drawAdd.textContent = "Add point"; drawAdd.dataset.previewState = "waiting"; }
+  if (mobileCrosshair) mobileCrosshair.dataset.state = "waiting";
+  setDrawFeedback({ pointCount: 0 });
+}
+
+drawBtn.addEventListener("click", () => {
+  cancelDrawingMode();
+  document.body.classList.add("is-drawing");
+  document.body.classList.remove("show-cases");
+  if (isPhoneViewport()) beginMobileDrawing();
+  else beginDesktopDrawing();
 });
 
-drawCoachCancel?.addEventListener("click", () => {
-  if (drawHandler) drawHandler.disable();
-  document.body.classList.remove("is-drawing");
+drawCoachCancel?.addEventListener("click", cancelDrawingMode);
+drawAdd?.addEventListener("click", addMobilePoint);
+drawUndo?.addEventListener("click", () => {
+  if (isPhoneViewport()) undoMobilePoint();
+  else {
+    drawHandler?.deleteLastVertex?.();
+    updateDesktopDrawFeedback(lastDesktopPreviewLatLng);
+  }
+});
+drawDone?.addEventListener("click", () => {
+  if (isPhoneViewport()) finishMobilePolygon();
+  else finishDesktopPolygon();
+});
+
+map.on(L.Draw.Event.DRAWVERTEX, () => updateDesktopDrawFeedback(lastDesktopPreviewLatLng));
+map.on("mousemove", (e) => {
+  if (!document.body.classList.contains("is-drawing") || isPhoneViewport()) return;
+  lastDesktopPreviewLatLng = e.latlng;
+  updateDesktopDrawFeedback(e.latlng);
 });
 
 map.on(L.Draw.Event.CREATED, (e) => {
@@ -609,10 +931,7 @@ function polygonAreaHa(ring) {
 /** Drawn layer to an open [lon, lat] ring: longitudes unwrapped to one world
  *  copy, coordinates rounded to what will actually be posted. */
 function ringFromLayer(layer) {
-  const latlngs = layer.getLatLngs()[0];
-  // Shift every vertex by the same multiple of 360 so the ring stays contiguous.
-  const shift = wrapLng(latlngs[0].lng) - latlngs[0].lng;
-  return latlngs.map((p) => [round6(p.lng + shift), round6(p.lat)]);
+  return latLngsToRing(layer.getLatLngs()[0]);
 }
 
 function areaOk() {
@@ -623,7 +942,7 @@ function onPolygonReady(layer) {
   const ring = ringFromLayer(layer);
   currentHa = polygonAreaHa(ring);
   currentGeoJSON = { type: "Polygon", coordinates: [ring.concat([ring[0]])] };
-  document.body.classList.remove("is-drawing");
+  cancelDrawingMode();
   document.body.classList.add("is-workbench");
   renderHa();
   if (stepPlace) stepPlace.style.display = "none";
@@ -650,7 +969,7 @@ const redrawBtn = document.getElementById("redraw-btn");
 redrawBtn?.addEventListener("click", () => drawBtn.click());
 
 // Exposed for the browser regression test, alongside __DEBUG_MAP above.
-window.__DEBUG_AREA = { polygonAreaHa, ringFromLayer, wrapLng, areaOk: () => areaOk() };
+window.__DEBUG_AREA = { polygonAreaHa, ringFromLayer, wrapLng, areaOk: () => areaOk(), classifyArea };
 
 // ---- form ------------------------------------------------------------------
 
