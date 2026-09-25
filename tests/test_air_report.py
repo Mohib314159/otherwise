@@ -21,3 +21,19 @@ def test_air_report_contains_research_and_reproduce_contract():
     assert "Published-study comparison" in md
     assert "µg/m³" in md
     assert '"domain": "air"' in md
+
+
+def test_zero_placebo_cohorts_never_print_a_p_value():
+    """Older air run files store placebo_p = 1.0 when no cohort could be formed.
+    That sentinel must not reach the report or the share preview as a result."""
+    from src.app import server
+    from src.app.report import air_placebo_p
+    for stored in (1.0, None):
+        sig = {"placebo_n": 0, "placebo_p": stored, "placebo_p_effect": stored}
+        assert "not available" in air_placebo_p(sig, "placebo_p")
+        run = {"label": "x", "verdict": {"headline": "Can't tell", "lead_signal": "NO2_TRAFFIC"},
+               "signals": {"NO2_TRAFFIC": {**sig, "point": -1.9, "lo": -4.0, "hi": 0.4}},
+               "post_months": 3, "event_date": "2023-08-29"}
+        _, desc = server._share_text(run)
+        assert "1.000" not in desc and "no placebo test could be run" in desc
+    assert air_placebo_p({"placebo_n": 25, "placebo_p": 0.04}, "placebo_p") == "0.040"

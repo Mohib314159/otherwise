@@ -1,11 +1,20 @@
 """Air API contract tests; all local, no live data calls."""
 import json
+import os
 from collections import OrderedDict
 
+import pytest
 from fastapi.testclient import TestClient
 
 from src.app import server
 from src.app.air import AIR_CASES, air_run_id
+
+
+@pytest.fixture(autouse=True)
+def _air_enabled(monkeypatch):
+    """These tests exercise the air API itself, so switch it on. The default
+    (off) is covered by the tests at the bottom of this file."""
+    monkeypatch.setattr(server, "AIR_ENABLED", True)
 
 
 def test_mixed_case_air_domain_reaches_air_worker(monkeypatch):
@@ -126,3 +135,33 @@ def test_air_boundary_endpoint_uses_registered_layer_without_touching_runner(tmp
     r23 = client.get("/api/air/cases/ulez-londonwide-2023/boundary")
     assert r23.status_code == 200
     assert client.get("/api/air/cases/nope/boundary").status_code == 404
+
+
+def test_air_is_off_by_default_and_every_air_route_says_so(monkeypatch):
+    monkeypatch.delenv("APP_AIR_ENABLED", raising=False)
+    assert os.environ.get("APP_AIR_ENABLED", "0") != "1"
+    src = open(server.__file__, encoding="utf-8").read()
+    assert 'os.environ.get("APP_AIR_ENABLED", "0") == "1"' in src   # default is off
+
+    monkeypatch.setattr(server, "AIR_ENABLED", False)
+    c = TestClient(server.app)
+    case_id = next(iter(AIR_CASES))
+    for url in ("/api/air/cases", f"/api/air/cases/{case_id}/boundary", "/api/air/validation"):
+        assert c.get(url).status_code == 404, url
+    r = c.post("/api/run", json={"domain": "air", "case_id": case_id})
+    assert r.status_code == 404
+    h = c.get("/api/health").json()
+    assert h["air_pollution"] is False and h["air_cases"] == 0
+
+
+def test_landing_page_hides_the_air_tab_until_the_server_enables_it():
+    html = open(os.path.join(os.path.dirname(server.WEB_DIR), "web", "index.html"), encoding="utf-8").read()
+    assert 'id="domain-picker"' in html and 'style="display:none;"' in html.split('id="domain-picker"')[1][:120]
+    js = open(os.path.join(server.WEB_DIR, "landing.js"), encoding="utf-8").read()
+    assert 'getElementById("domain-picker").style.display = ""' in js
+
+
+def test_render_blueprint_keeps_air_off():
+    root = os.path.dirname(server.WEB_DIR)
+    y = open(os.path.join(root, "render.yaml"), encoding="utf-8").read()
+    assert "APP_AIR_ENABLED" in y and 'value: "0"' in y.split("APP_AIR_ENABLED")[1][:40]

@@ -80,6 +80,14 @@ def interval_str(signal, lo, hi) -> str:
     return f"{fmt_signal(signal, lo)} to {fmt_signal(signal, hi)}"
 
 
+def air_placebo_p(sig: dict, key: str) -> str:
+    """An air placebo p only exists if at least one placebo cohort ran. Older run
+    files store a sentinel 1.0 when none did; that is not a test result."""
+    if not sig.get("placebo_n"):
+        return "not available (no placebo cohorts could be formed)"
+    return fmt_p(sig.get(key))
+
+
 def placebo_k(p, n):
     """k = max(round(p*(n+1)) - 1, 0), or None if p/n are missing."""
     if not isinstance(p, (int, float)) or not isinstance(n, (int, float)):
@@ -186,8 +194,8 @@ def _render_air_report(run: dict) -> str:
                 f"- Pre-event weekly observations: {_na(sig.get('n_pre'))}",
                 f"- Post-event weekly observations: {_na(sig.get('n_post'))}",
                 f"- Pre-fit RMSE: {fmt_signal(key, sig.get('pre_rmse'))}",
-                f"- Symmetric in-space placebo p: {fmt_p(sig.get('placebo_p'))}",
-                f"- Gap-size placebo p: {fmt_p(sig.get('placebo_p_effect'))}",
+                f"- Symmetric in-space placebo p: {air_placebo_p(sig, 'placebo_p')}",
+                f"- Gap-size placebo p: {air_placebo_p(sig, 'placebo_p_effect')}",
                 f"- Placebo cohorts: {_na(sig.get('placebo_n'))}; cohort size {_na(sig.get('placebo_cohort_size'))}",
                 ""]
         di = donors.get(key) or {}

@@ -42,6 +42,11 @@ LIVE_RUNS_ENABLED = os.environ.get("APP_LIVE_RUNS", "1") == "1"
 # killed safely, so cancellation is cooperative: run_verdict calls back on
 # progress often (once per scene), and the callback raises past the deadline.
 JOB_TIMEOUT_S = float(os.environ.get("APP_JOB_TIMEOUT_S", "2400"))
+# Air/ULEZ is off unless explicitly enabled. It has no validated known-answer set
+# or false-alarm test yet (SPEC-v2 rule 3), so a default deploy must not offer it.
+# Off means: /api/air/* return 404, air runs are refused, the landing tab stays
+# hidden. Existing air permalinks under /v/<id> still render (immutable evidence).
+AIR_ENABLED = os.environ.get("APP_AIR_ENABLED", "0") == "1"
 
 app = FastAPI(title="Otherwise", docs_url=None, redoc_url=None)
 # blind review + analyst annotations; self-contained router, own storage
@@ -156,6 +161,8 @@ def submit(req: RunRequest):
     # The validated route and background worker must use the same domain.
     req.domain = domain
     if domain == "air":
+        if not AIR_ENABLED:
+            raise HTTPException(404, "Air-pollution analysis is not enabled on this server")
         if not req.case_id or req.case_id not in AIR_CASES:
             raise HTTPException(400, "Unknown air-pollution case")
         months = int(min(max(req.post_months or AIR_CASES[req.case_id].default_post_months, 1), 18))
@@ -257,14 +264,21 @@ def track_record():
     return json.load(open(p))
 
 
+def _require_air():
+    if not AIR_ENABLED:
+        raise HTTPException(404, "Air-pollution analysis is not enabled on this server")
+
+
 @app.get("/api/air/cases")
 def air_cases():
     """Public, pre-registered policy cases. Published answer keys are metadata only."""
+    _require_air()
     return [c.public_dict() for c in AIR_CASES.values() if c.supported]
 
 
 @app.get("/api/air/cases/{case_id}/boundary")
 def air_case_boundary(case_id: str):
+    _require_air()
     case = AIR_CASES.get(case_id)
     if case is None or not case.supported:
         raise HTTPException(404, "Unknown air-pollution case")
@@ -278,6 +292,7 @@ def air_case_boundary(case_id: str):
 @app.get("/api/air/validation")
 def air_validation():
     """Known-answer table if it has actually been run; never fabricate pending rows."""
+    _require_air()
     p = os.path.join(SHOWCASE_DIR, "air_validation.json")
     payload = {"runs": [], "generated_by": None}
     if os.path.exists(p):
@@ -295,7 +310,7 @@ def health():
     running = sum(1 for j in _jobs.values() if j["status"] == "running")
     queued = sum(1 for j in _jobs.values() if j["status"] == "queued")
     return {"ok": True, "live_runs": LIVE_RUNS_ENABLED, "live_profile": LIVE_PROFILE,
-            "air_pollution": True, "air_cases": len(AIR_CASES),
+            "air_pollution": AIR_ENABLED, "air_cases": len(AIR_CASES) if AIR_ENABLED else 0,
             "max_live_jobs": MAX_LIVE_JOBS, "job_timeout_s": JOB_TIMEOUT_S,
             "running": running, "queued": queued}
 
@@ -360,7 +375,8 @@ def _share_text(run: dict) -> tuple[str, str]:
             f"{name} {fmt_signal(lead, sig.get('point'))} relative to the "
             f"control trajectory, {months} months after {when} "
             f"(90% interval {report_interval(lead, sig.get('lo'), sig.get('hi'))}; "
-            f"in-space placebo p {fmt_p(sig.get('placebo_p'))}).")
+            + (f"in-space placebo p {fmt_p(sig.get('placebo_p'))})." if sig.get("placebo_n")
+               else "no placebo test could be run)."))
     desc = " ".join(parts) or SHARE_DEFAULT_DESC
     return title[:200], desc[:300]
 

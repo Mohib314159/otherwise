@@ -220,6 +220,9 @@ async function loadAirCases() {
       .map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.label)}</option>`)
       .join("");
     renderAirCase();
+    // The tab only appears when the server has air enabled (APP_AIR_ENABLED=1);
+    // otherwise /api/air/cases is a 404 and the page stays land-only.
+    if (airCases.length) document.getElementById("domain-picker").style.display = "";
   } catch (err) {
     airCaseSelect.innerHTML = '<option value="">Air cases unavailable</option>';
     airSubmit.disabled = true;

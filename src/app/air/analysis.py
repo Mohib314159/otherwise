@@ -50,8 +50,8 @@ class AirVerdict:
 
 @dataclass
 class _PlaceboResult:
-    p_ratio: float
-    p_effect: float
+    p_ratio: float | None      # None when no placebo cohort could be formed
+    p_effect: float | None
     ratios: np.ndarray
     effects: np.ndarray
     pre_rmses: np.ndarray
@@ -182,7 +182,10 @@ def _symmetric_placebos(y: np.ndarray, candidates: np.ndarray, pre: np.ndarray,
     # A fake treated cohort must be exactly the same size as London *and* leave
     # enough monitors behind to satisfy the same donor minimum as the real run.
     if group_n <= 0 or m - group_n < AIR_MIN_DONORS:
-        return _PlaceboResult(1.0, 1.0, np.array([]), np.array([]), np.array([]),
+        # No placebo cohort means no test, not p = 1. The (0+1)/(0+1) sentinel used
+        # to reach the CLI and reports as "p=1.000"; the verdict already refuses
+        # REAL below AIR_MIN_PLACEBOS, so None changes no verdict.
+        return _PlaceboResult(None, None, np.array([]), np.array([]), np.array([]),
                               np.empty((0, len(y))), max(group_n, 0), False, possible)
     groups = _sample_exact_groups(m, group_n, max_units, seed_key)
     ratios, effects, pres, paths = [], [], [], []
@@ -200,7 +203,7 @@ def _symmetric_placebos(y: np.ndarray, candidates: np.ndarray, pre: np.ndarray,
         pres.append(f.pre_rmse)
         paths.append(f.effect)
     if not ratios:
-        return _PlaceboResult(1.0, 1.0, np.array([]), np.array([]), np.array([]),
+        return _PlaceboResult(None, None, np.array([]), np.array([]), np.array([]),
                               np.empty((0, len(y))), group_n, True, possible)
     ratios = np.asarray(ratios); effects = np.asarray(effects); pres = np.asarray(pres)
     real_fit_sel, _ = _select_donors(y, candidates, pre, k=AIR_DONOR_K)

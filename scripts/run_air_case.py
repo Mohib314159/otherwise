@@ -43,7 +43,9 @@ def main() -> None:
     print(out["verdict"]["statement"])
     for signal, r in out["signals"].items():
         print(f"{signal:15s} {r['relative_pct']:+7.2f}%  {r['point']:+7.2f} µg/m³  "
-              f"90% [{r['lo']:+.2f}, {r['hi']:+.2f}]  placebo p={r['placebo_p']:.3f}")
+              f"90% [{r['lo']:+.2f}, {r['hi']:+.2f}]  "
+              + (f"placebo p={r['placebo_p']:.3f} (n={r['placebo_n']})" if r.get("placebo_n")
+                 else "placebo: none could be formed, no p-value"))
 
     print("\n=== PUBLISHED ANSWER KEY (attached after estimation) ===")
     if not out.get("research_comparison"):

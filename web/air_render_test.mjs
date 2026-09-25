@@ -50,6 +50,14 @@ fixture.signals.NO2_TRAFFIC.pretrend = { applicable: false, flagged: false };
 html = vm.runInContext('renderAirCharts(fixture)', context);
 assert.match(html, /Pre-trend: not run/);
 
+// Zero placebo cohorts: no p-value and no "0 cohorts reran..." claim, even when
+// an older run file carries the p = 1.0 sentinel.
+fixture.signals.NO2_TRAFFIC = { ...fixture.signals.NO2_TRAFFIC, placebo_n: 0, placebo_p: 1, placebo_p_effect: 1 };
+html = vm.runInContext('renderAirCharts(fixture)', context);
+assert.doesNotMatch(html, /1\.000/);
+assert.match(html, /no placebo test and no placebo p-value/);
+assert.doesNotMatch(html, /0 exact-size placebo cohorts reran/);
+
 const charts = readFileSync(new URL('./chart.js', import.meta.url), 'utf8');
 vm.runInContext(charts.slice(charts.indexOf('function linePath'), charts.indexOf('/** Shared frame')), context);
 assert.equal(vm.runInContext('bandPathD([0,1], [null,null], [null,null], x=>x, y=>y)', context), '');

@@ -125,6 +125,8 @@ def test_too_small_control_pool_cannot_silently_shrink_placebo_cohort():
     assert result["placebo_exact_cohort"] is False
     assert result["placebo_n"] == 0
     assert verdict.status == "CANT_TELL"
+    # no placebo cohort means no p-value at all, not the old p = 1.0 sentinel
+    assert result["placebo_p"] is None and result["placebo_p_effect"] is None
 
 
 def test_weekly_repair_limits_total_holes_and_reports_actual_imputation():
