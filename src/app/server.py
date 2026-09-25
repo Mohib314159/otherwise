@@ -95,7 +95,20 @@ def _load_run(rid: str) -> dict:
             try:
                 px = json.load(open(cj))
                 px["map"] = f"/api/runs/{rid}/change.png"
+                # the overlay is cropped to the before/after thumbnail window; the
+                # wider greyscale map is not aligned with them and is never overlaid
+                ov = px.get("overlay")
+                px["overlay_url"] = (f"/api/runs/{rid}/changeoverlay.png"
+                                     if ov and os.path.exists(os.path.join(d, ov)) else None)
                 out["pixels"] = px
+            except Exception:
+                pass
+            break
+    for d in (RUNS_DIR, SHOWCASE_DIR):
+        cj = os.path.join(d, f"{rid}_controls.json")
+        if os.path.exists(cj):
+            try:
+                out["control_imagery"] = json.load(open(cj))
             except Exception:
                 pass
             break
@@ -222,7 +235,8 @@ def get_frames(rid: str):
 @app.get("/api/runs/{rid}/{tag}.png")
 def get_thumb(rid: str, tag: str):
     import re as _re
-    if tag not in ("before", "after", "change") and not _re.fullmatch(r"t\d{1,2}", tag):
+    if tag not in ("before", "after", "change", "changeoverlay") \
+            and not _re.fullmatch(r"t\d{1,2}|ctl\d_(before|after)", tag):
         raise HTTPException(404)
     for d in (RUNS_DIR, SHOWCASE_DIR):
         p = os.path.join(d, f"{rid}_{tag}.png")

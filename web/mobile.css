@@ -142,7 +142,7 @@
   .compare-tag.after { right: 10px !important; }
   .compare-toggle { bottom: 10px !important; right: 10px !important; min-height: 36px !important; border-radius: 999px !important; }
   .compare-coach { bottom: 11px !important; left: 50% !important; transform: translateX(-50%); }
-  .compare-presets { display: grid !important; grid-template-columns: repeat(3,1fr); gap: 6px; margin-top: 8px; }
+  .compare-presets { display: grid !important; grid-auto-flow: column; grid-auto-columns: minmax(0,1fr); gap: 6px; margin-top: 8px; }
   .compare-preset { min-height: 40px; border-radius: 10px !important; font-size: 10px !important; }
 
   .lapse { margin-top: 16px !important; }

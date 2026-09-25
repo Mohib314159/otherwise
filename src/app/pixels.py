@@ -187,6 +187,39 @@ def render_change_map(pre_index: np.ndarray, delta: np.ndarray, changed: np.ndar
     return path
 
 
+def render_change_overlay(delta: np.ndarray, changed: np.ndarray, eligible: np.ndarray,
+                          transform, window_bounds, path: str, size: int = 480) -> str | None:
+    """Transparent overlay for the verdict page's after image.
+
+    Cropped to `window_bounds` (minx, miny, maxx, maxy in the grid's CRS), which
+    the caller sets to the before/after thumbnail's own square, so the overlay
+    lines up with the picture underneath. Only pixels where the test is defined
+    are coloured: the area and control pixels of the area's land-cover class
+    (`eligible`). Everything else is fully transparent. Red = the index fell past
+    the control threshold, blue = it rose past it. By construction about 5 % of
+    unchanged control pixels are coloured too; that speckle is the baseline."""
+    from PIL import Image
+    inv = ~transform
+    c0, r0 = inv * (window_bounds[0], window_bounds[3])
+    c1, r1 = inv * (window_bounds[2], window_bounds[1])
+    r0, r1 = int(math.floor(min(r0, r1))), int(math.ceil(max(r0, r1)))
+    c0, c1 = int(math.floor(min(c0, c1))), int(math.ceil(max(c0, c1)))
+    H, W = delta.shape
+    if r0 < 0 or c0 < 0 or r1 > H or c1 > W or r1 - r0 < 4 or c1 - c0 < 4:
+        return None                                   # thumbnail window not inside the grid
+    d = np.asarray(delta, dtype=float)[r0:r1, c0:c1]
+    ch = (np.asarray(changed, bool) & np.asarray(eligible, bool))[r0:r1, c0:c1]
+    rgba = np.zeros(d.shape + (4,), dtype="uint8")
+    with np.errstate(invalid="ignore"):
+        dec, inc = ch & (d < 0), ch & ~(d < 0)
+    rgba[dec] = COLOR_DECREASE + (int(255 * OVERLAY_ALPHA),)
+    rgba[inc] = COLOR_INCREASE + (int(255 * OVERLAY_ALPHA),)
+    img = Image.fromarray(rgba, "RGBA").resize((size, size), Image.NEAREST)
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    img.save(path, optimize=True)
+    return path
+
+
 # ----------------------------------------------------------------------------
 # network-facing pipeline
 # ----------------------------------------------------------------------------
@@ -398,6 +431,20 @@ def compute_pixel_change(area_geojson: dict, event_date: str, change_type: str, 
         map_name = None
         notes.append(f"Change map could not be rendered: {type(e).__name__}: {e}")
 
+    # 6b. overlay aligned with the before/after thumbnails ----------------------
+    overlay_name = f"{run_id}_changeoverlay.png"
+    try:
+        from .imagery import _square_bounds
+        thumb_sq = reproject(_square_bounds(area), area.epsg, scene_epsg)
+        eligible = area_mask | ((labels >= 1) & (wc == lc_class))
+        if render_change_overlay(delta, changed & has_data, eligible, tr, thumb_sq.bounds,
+                                 os.path.join(out_dir, overlay_name)) is None:
+            overlay_name = None
+            notes.append("The thumbnail window lies outside the change grid; no overlay.")
+    except Exception as e:                           # the numbers stand without the picture
+        overlay_name = None
+        notes.append(f"Change overlay could not be rendered: {type(e).__name__}: {e}")
+
     # 7. result -----------------------------------------------------------------
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
@@ -417,7 +464,7 @@ def compute_pixel_change(area_geojson: dict, event_date: str, change_type: str, 
         "pre": {"n_scenes": len(pre_dates), "dates": pre_dates},
         "post": {"n_scenes": len(post_dates), "dates": post_dates},
         "threshold": _r(thr), "median_delta_area": _r(med_area), "median_delta_controls": _r(med_ctrl),
-        "map": map_name, "notes": notes,
+        "map": map_name, "overlay": overlay_name, "notes": notes,
     }
     with open(os.path.join(out_dir, f"{run_id}_change.json"), "w") as f:
         json.dump(result, f, indent=1)

@@ -1,0 +1,56 @@
+{
+ "status": "ok",
+ "signal": "NBR",
+ "expected_sign": -1,
+ "fraction_changed": 0.72,
+ "expected_null_fraction": 0.05,
+ "placebo_p": 0.2,
+ "n_placebo_cells": 4,
+ "median_cell_fraction": 0.002,
+ "p95_cell_fraction": 0.004,
+ "n_area_pixels": 8127,
+ "n_area_pixels_total": 8215,
+ "n_control_pixels": 158237,
+ "landcover_class": 10,
+ "landcover": "tree cover",
+ "landcover_fraction": 0.54,
+ "worldcover_year": 2020,
+ "tile": "34HBH",
+ "epsg": 32734,
+ "cell_px": 91,
+ "pre": {
+  "n_scenes": 8,
+  "dates": [
+   "2020-04-30",
+   "2020-06-19",
+   "2020-07-24",
+   "2020-09-07",
+   "2020-11-01",
+   "2020-11-11",
+   "2020-12-06",
+   "2020-07-19"
+  ]
+ },
+ "post": {
+  "n_scenes": 8,
+  "dates": [
+   "2021-06-19",
+   "2021-09-22",
+   "2021-04-20",
+   "2021-09-07",
+   "2021-08-13",
+   "2021-09-17",
+   "2021-04-30",
+   "2021-06-04"
+  ]
+ },
+ "threshold": -0.27,
+ "median_delta_area": -0.432,
+ "median_delta_controls": 0.008,
+ "map": "e2519aed970b1913_change.png",
+ "overlay": "e2519aed970b1913_changeoverlay.png",
+ "notes": [
+  "Only 4 placebo cells; placebo_p is coarse.",
+  "The area is mixed land cover: 54% in the dominant class (tree cover); controls match that class only."
+ ]
+}

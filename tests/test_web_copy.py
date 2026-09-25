@@ -405,3 +405,34 @@ def test_runs_from_before_the_placebo_fix_say_so(load):
 
     sig["placebo_symmetric"] = True
     assert load(run).query_selector_all(".sure-caveat") == []
+
+
+def test_matched_controls_are_shown_with_honest_labels_and_the_change_preset_shows_a_legend(load):
+    """Controls appear beside the area on the same dates; a weighted control shows
+    its share, a pool member says it is not weighted; 'Changes' reveals the legend."""
+    run = copy.deepcopy(showcase_run("REAL"))
+    rid = run["id"]
+    run["imagery"] = {"before": {"url": f"/api/runs/{rid}/before.png", "date": "2020-01-24"},
+                      "after": {"url": f"/api/runs/{rid}/after.png", "date": "2020-03-14"}}
+    shot = lambda i, t, dt: {"url": f"/api/runs/{rid}/ctl{i}_{t}.png", "date": dt}
+    run["control_imagery"] = {"controls": [
+        {"rank": 1, "role": "weighted", "weight": 1.0, "distance_m": 3162,
+         "before": shot(1, "before", "2020-01-24"), "after": shot(1, "after", "2020-03-14")},
+        {"rank": 2, "role": "pool", "weight": 0.0, "distance_m": 1846,
+         "before": shot(2, "before", "2020-01-24"), "after": shot(2, "after", "2020-03-14")}]}
+    run["pixels"] = {"signal": "NDVI", "overlay_url": f"/api/runs/{rid}/changeoverlay.png"}
+    pg = load(run)
+    pg.wait_for_selector("#act-controls")
+    caps = [el.inner_text() for el in pg.query_selector_all("#act-controls figcaption")]
+    assert caps[0].startswith("Your area")
+    assert "100% of the no-event prediction" in caps[1] and "3.2 km away" in caps[1]
+    assert "matched, not weighted" in caps[2]
+    assert "same two dates" in text_of(pg, "#act-controls .cmp-lede")
+    assert pg.is_hidden("#change-legend")
+    pg.click("[data-compare-map='on']")
+    assert pg.is_visible("#change-legend")
+    assert "greenness fell" in text_of(pg, "#change-legend")
+    assert pg.eval_on_selector("#compare", "el => el.classList.contains('map-on')")
+    pg.click("[data-compare-preset='50']")
+    assert pg.is_hidden("#change-legend")
+    assert not pg.errors

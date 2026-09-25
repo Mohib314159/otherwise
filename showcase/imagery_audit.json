@@ -1,0 +1,547 @@
+[
+ {
+  "id": "5a5f8d14423c28f0",
+  "label": "Gr\u00fcnheide, Germany: forest cleared for the Tesla factory",
+  "event_date": "2020-02-13",
+  "problems": [],
+  "before": {
+   "date": "2020-01-24",
+   "clear": 0.94,
+   "scene_id": "S2B_MSIL2A_20200124T101219_R022_T33UVU_20201002T091919",
+   "days_from_event": -20,
+   "clear_basis": "scl"
+  },
+  "after": {
+   "date": "2020-03-14",
+   "clear": 1.0,
+   "scene_id": "S2B_MSIL2A_20200314T101019_R022_T33UVU_20201009T233239",
+   "days_from_event": 30,
+   "clear_basis": "scl"
+  },
+  "frames": {
+   "n": 8,
+   "first": "2017-03-28",
+   "last": "2020-09-18",
+   "min_clear": 0.88
+  },
+  "change_overlay": true,
+  "controls": [
+   {
+    "rank": 1,
+    "role": "weighted",
+    "weight": 1.0,
+    "before": "2020-01-24",
+    "after": "2020-03-14",
+    "same_scenes": true
+   },
+   {
+    "rank": 2,
+    "role": "pool",
+    "weight": 0.0,
+    "before": "2020-01-24",
+    "after": "2020-03-14",
+    "same_scenes": true
+   },
+   {
+    "rank": 3,
+    "role": "pool",
+    "weight": 0.0,
+    "before": "2020-01-24",
+    "after": "2020-03-14",
+    "same_scenes": true
+   }
+  ],
+  "key": "grunheide"
+ },
+ {
+  "id": "0c2af4baa8c24486",
+  "label": "Rhodes, Greece: July 2023 wildfire",
+  "event_date": "2023-07-18",
+  "problems": [],
+  "before": {
+   "date": "2023-07-13",
+   "clear": 1.0,
+   "scene_id": "S2B_MSIL2A_20230713T084649_R107_T35SNV_20241121T074216",
+   "days_from_event": -5,
+   "clear_basis": "scl"
+  },
+  "after": {
+   "date": "2023-08-17",
+   "clear": 0.9,
+   "scene_id": "S2A_MSIL2A_20230817T084601_R107_T35SNV_20230817T171612",
+   "days_from_event": 30,
+   "clear_basis": "scl"
+  },
+  "frames": {
+   "n": 8,
+   "first": "2020-07-18",
+   "last": "2023-08-22",
+   "min_clear": 0.9
+  },
+  "change_overlay": true,
+  "controls": [
+   {
+    "rank": 1,
+    "role": "weighted",
+    "weight": 0.3128,
+    "before": "2023-07-13",
+    "after": "2023-08-17",
+    "same_scenes": false
+   },
+   {
+    "rank": 2,
+    "role": "weighted",
+    "weight": 0.2098,
+    "before": "2023-07-13",
+    "after": "2023-08-17",
+    "same_scenes": false
+   },
+   {
+    "rank": 3,
+    "role": "weighted",
+    "weight": 0.1921,
+    "before": "2023-07-13",
+    "after": "2023-08-17",
+    "same_scenes": false
+   }
+  ],
+  "key": "rhodes"
+ },
+ {
+  "id": "e2519aed970b1913",
+  "label": "Cape Town: April 2021 Table Mountain fire",
+  "event_date": "2021-04-18",
+  "problems": [],
+  "before": {
+   "date": "2021-03-16",
+   "clear": 0.99,
+   "scene_id": "S2B_MSIL2A_20210316T081649_R121_T34HBH_20210317T234426",
+   "days_from_event": -33,
+   "clear_basis": "scl"
+  },
+  "after": {
+   "date": "2021-04-30",
+   "clear": 0.87,
+   "scene_id": "S2A_MSIL2A_20210430T081601_R121_T34HBH_20210523T191219",
+   "days_from_event": 12,
+   "clear_basis": "scl"
+  },
+  "frames": {
+   "n": 8,
+   "first": "2018-07-15",
+   "last": "2021-09-07",
+   "min_clear": 0.98
+  },
+  "change_overlay": true,
+  "controls": [
+   {
+    "rank": 1,
+    "role": "weighted",
+    "weight": 0.1481,
+    "before": "2021-03-16",
+    "after": "2021-04-30",
+    "same_scenes": true
+   },
+   {
+    "rank": 2,
+    "role": "weighted",
+    "weight": 0.1385,
+    "before": "2021-03-16",
+    "after": "2021-04-30",
+    "same_scenes": true
+   },
+   {
+    "rank": 3,
+    "role": "weighted",
+    "weight": 0.0719,
+    "before": "2021-03-16",
+    "after": "2021-04-30",
+    "same_scenes": true
+   }
+  ],
+  "key": "tablemountain"
+ },
+ {
+  "id": "0423e078c5f38593",
+  "label": "Austin, Texas: Tesla Gigafactory built on a gravel-pit site",
+  "event_date": "2020-07-22",
+  "problems": [],
+  "before": {
+   "date": "2020-07-20",
+   "clear": 0.97,
+   "scene_id": "S2A_MSIL2A_20200720T165901_R069_T14RPU_20200816T203820",
+   "days_from_event": -2,
+   "clear_basis": "scl"
+  },
+  "after": {
+   "date": "2020-08-04",
+   "clear": 0.98,
+   "scene_id": "S2B_MSIL2A_20200804T165849_R069_T14RPU_20200816T044032",
+   "days_from_event": 13,
+   "clear_basis": "scl"
+  },
+  "frames": {
+   "n": 8,
+   "first": "2017-08-20",
+   "last": "2021-03-07",
+   "min_clear": 0.94
+  },
+  "change_overlay": true,
+  "controls": [
+   {
+    "rank": 1,
+    "role": "weighted",
+    "weight": 0.3716,
+    "before": "2020-07-20",
+    "after": "2020-08-04",
+    "same_scenes": true
+   },
+   {
+    "rank": 2,
+    "role": "weighted",
+    "weight": 0.1085,
+    "before": "2020-07-20",
+    "after": "2020-08-04",
+    "same_scenes": true
+   },
+   {
+    "rank": 3,
+    "role": "weighted",
+    "weight": 0.1068,
+    "before": "2020-07-20",
+    "after": "2020-08-04",
+    "same_scenes": true
+   }
+  ],
+  "key": "austin"
+ },
+ {
+  "id": "40bc25d4d731d8d7",
+  "label": "Saddleworth Moor, England: June 2018 moorland fire",
+  "event_date": "2018-06-24",
+  "problems": [
+   "control 2 before: dated 2018-05-22, not the area's 2018-05-27 (different tile; date shown on the page)"
+  ],
+  "before": {
+   "date": "2018-05-27",
+   "clear": 1.0,
+   "scene_id": "S2A_MSIL2A_20180527T110651_R137_T30UWE_20201012T144635",
+   "days_from_event": -28,
+   "clear_basis": "scl"
+  },
+  "after": {
+   "date": "2018-08-05",
+   "clear": 0.88,
+   "scene_id": "S2A_MSIL2A_20180805T110621_R137_T30UWE_20201010T212631",
+   "days_from_event": 42,
+   "clear_basis": "scl"
+  },
+  "frames": {
+   "n": 6,
+   "first": "2016-04-20",
+   "last": "2018-08-05",
+   "min_clear": 0.88
+  },
+  "change_overlay": true,
+  "controls": [
+   {
+    "rank": 1,
+    "role": "weighted",
+    "weight": 0.369,
+    "before": "2018-05-27",
+    "after": "2018-08-05",
+    "same_scenes": true
+   },
+   {
+    "rank": 2,
+    "role": "weighted",
+    "weight": 0.2728,
+    "before": "2018-05-22",
+    "after": "2018-08-05",
+    "same_scenes": false
+   },
+   {
+    "rank": 3,
+    "role": "weighted",
+    "weight": 0.2545,
+    "before": "2018-05-27",
+    "after": "2018-08-05",
+    "same_scenes": true
+   }
+  ],
+  "key": "saddleworth"
+ },
+ {
+  "id": "2ee1c9c9753b3a11",
+  "label": "L\u00fctzerath, Germany: village and fields taken by the Garzweiler mine",
+  "event_date": "2023-01-11",
+  "problems": [],
+  "before": {
+   "date": "2022-11-23",
+   "clear": 1.0,
+   "scene_id": "S2A_MSIL2A_20221123T104351_R008_T32ULB_20221123T225629",
+   "days_from_event": -49,
+   "clear_basis": "scl"
+  },
+  "after": {
+   "date": "2023-01-17",
+   "clear": 1.0,
+   "scene_id": "S2B_MSIL2A_20230117T104259_R008_T31UGS_20240809T004624",
+   "days_from_event": 6,
+   "clear_basis": "scl"
+  },
+  "frames": {
+   "n": 8,
+   "first": "2020-03-18",
+   "last": "2023-08-10",
+   "min_clear": 0.99
+  },
+  "change_overlay": true,
+  "controls": [
+   {
+    "rank": 1,
+    "role": "weighted",
+    "weight": 0.3002,
+    "before": "2022-11-23",
+    "after": "2023-01-17",
+    "same_scenes": false
+   },
+   {
+    "rank": 2,
+    "role": "weighted",
+    "weight": 0.266,
+    "before": "2022-11-23",
+    "after": "2023-01-17",
+    "same_scenes": false
+   },
+   {
+    "rank": 3,
+    "role": "weighted",
+    "weight": 0.1072,
+    "before": "2022-11-23",
+    "after": "2023-01-17",
+    "same_scenes": false
+   }
+  ],
+  "key": "lutzerath"
+ },
+ {
+  "id": "4cf27cafaf37cb06",
+  "label": "Hasankeyf, Turkey: old town flooded by the Il\u0131su reservoir",
+  "event_date": "2020-01-05",
+  "problems": [],
+  "before": {
+   "date": "2019-11-21",
+   "clear": 0.7,
+   "scene_id": "S2A_MSIL2A_20191121T080231_R035_T37SGB_20201003T183305",
+   "days_from_event": -45,
+   "clear_basis": "scene_cloud_cover<=5%"
+  },
+  "notes": [
+   "before: accepted on scene cloud cover 0.042233% because the pixel classification scores bright ground as cloud here (area clear share 0.7); checked by eye"
+  ],
+  "after": {
+   "date": "2020-04-14",
+   "clear": 0.93,
+   "scene_id": "S2B_MSIL2A_20200414T075609_R035_T37SGB_20200923T123813",
+   "days_from_event": 100,
+   "clear_basis": "scl"
+  },
+  "frames": {
+   "n": 5,
+   "first": "2017-06-04",
+   "last": "2020-04-14",
+   "min_clear": 0.86
+  },
+  "change_overlay": true,
+  "controls": [
+   {
+    "rank": 1,
+    "role": "weighted",
+    "weight": 0.1062,
+    "before": "2019-11-21",
+    "after": "2020-04-14",
+    "same_scenes": true
+   },
+   {
+    "rank": 2,
+    "role": "pool",
+    "weight": 0.0,
+    "before": "2019-11-21",
+    "after": "2020-04-14",
+    "same_scenes": true
+   },
+   {
+    "rank": 3,
+    "role": "pool",
+    "weight": 0.0,
+    "before": "2019-11-21",
+    "after": "2020-04-14",
+    "same_scenes": true
+   }
+  ],
+  "key": "hasankeyf"
+ },
+ {
+  "id": "2d6a535e10cc094e",
+  "label": "Sindh, Pakistan: 2022 monsoon floods near Lake Manchar",
+  "event_date": "2022-08-25",
+  "problems": [],
+  "before": {
+   "date": "2022-08-04",
+   "clear": 1.0,
+   "scene_id": "S2A_MSIL2A_20220804T060641_R134_T42RUR_20220804T155927",
+   "days_from_event": -21,
+   "clear_basis": "scl"
+  },
+  "after": {
+   "date": "2022-08-29",
+   "clear": 1.0,
+   "scene_id": "S2B_MSIL2A_20220829T060629_R134_T42RUR_20220830T211328",
+   "days_from_event": 4,
+   "clear_basis": "scl"
+  },
+  "frames": {
+   "n": 8,
+   "first": "2020-02-16",
+   "last": "2022-08-29",
+   "min_clear": 0.93
+  },
+  "change_overlay": true,
+  "controls": [
+   {
+    "rank": 1,
+    "role": "weighted",
+    "weight": 0.4106,
+    "before": "2022-08-04",
+    "after": "2022-08-29",
+    "same_scenes": true
+   },
+   {
+    "rank": 2,
+    "role": "weighted",
+    "weight": 0.2884,
+    "before": "2022-08-04",
+    "after": "2022-08-29",
+    "same_scenes": true
+   },
+   {
+    "rank": 3,
+    "role": "weighted",
+    "weight": 0.0929,
+    "before": "2022-08-04",
+    "after": "2022-08-29",
+    "same_scenes": false
+   }
+  ],
+  "key": "sindh"
+ },
+ {
+  "id": "f8b923727d8e96f4",
+  "label": "Richmond Park, London: nothing documented",
+  "event_date": "2022-06-01",
+  "problems": [],
+  "before": {
+   "date": "2022-03-24",
+   "clear": 0.99,
+   "scene_id": "S2A_MSIL2A_20220324T105721_R094_T30UXC_20220324T234338",
+   "days_from_event": -69,
+   "clear_basis": "scl"
+  },
+  "after": {
+   "date": "2022-06-22",
+   "clear": 0.98,
+   "scene_id": "S2A_MSIL2A_20220622T105631_R094_T30UXC_20240718T031007",
+   "days_from_event": 21,
+   "clear_basis": "scl"
+  },
+  "frames": {
+   "n": 7,
+   "first": "2019-09-21",
+   "last": "2023-01-11",
+   "min_clear": 0.95
+  },
+  "change_overlay": true,
+  "controls": [
+   {
+    "rank": 1,
+    "role": "weighted",
+    "weight": 0.5752,
+    "before": "2022-03-24",
+    "after": "2022-06-22",
+    "same_scenes": true
+   },
+   {
+    "rank": 2,
+    "role": "weighted",
+    "weight": 0.2656,
+    "before": "2022-03-24",
+    "after": "2022-06-22",
+    "same_scenes": true
+   },
+   {
+    "rank": 3,
+    "role": "weighted",
+    "weight": 0.1591,
+    "before": "2022-03-24",
+    "after": "2022-06-22",
+    "same_scenes": true
+   }
+  ],
+  "key": "richmond"
+ },
+ {
+  "id": "917915c7bc6e2fb9",
+  "label": "Ja\u00fa National Park, Brazil: nothing documented",
+  "event_date": "2022-06-01",
+  "problems": [],
+  "before": {
+   "date": "2022-03-24",
+   "clear": 1.0,
+   "scene_id": "S2A_MSIL2A_20220324T143731_R096_T20MNC_20240523T195017",
+   "days_from_event": -69,
+   "clear_basis": "scl"
+  },
+  "after": {
+   "date": "2022-08-06",
+   "clear": 0.81,
+   "scene_id": "S2B_MSIL2A_20220806T143729_R096_T20MNC_20220807T173421",
+   "days_from_event": 66,
+   "clear_basis": "scl"
+  },
+  "frames": {
+   "n": 8,
+   "first": "2019-08-22",
+   "last": "2022-12-14",
+   "min_clear": 0.88
+  },
+  "change_overlay": true,
+  "controls": [
+   {
+    "rank": 1,
+    "role": "weighted",
+    "weight": 0.2227,
+    "before": "2022-03-24",
+    "after": "2022-08-06",
+    "same_scenes": true
+   },
+   {
+    "rank": 2,
+    "role": "weighted",
+    "weight": 0.2,
+    "before": "2022-03-24",
+    "after": "2022-08-06",
+    "same_scenes": true
+   },
+   {
+    "rank": 3,
+    "role": "weighted",
+    "weight": 0.1919,
+    "before": "2022-03-24",
+    "after": "2022-08-06",
+    "same_scenes": true
+   }
+  ],
+  "key": "jau"
+ }
+]

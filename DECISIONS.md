@@ -1409,3 +1409,57 @@ guards against a cache-first handler coming back.
 `/api/run` as a prefix, so the mosaic's `/api/runs/<id>/after.png` requests were
 parsed as run submissions; the mouse-draw test now clicks "Check an area" before
 drawing. Suite: 361 passed, 8 xfailed.
+
+## 2026-09-26 — visual evidence on the verdict page, and an imagery audit
+
+Mohib asked for the comparison to be visible without reading a chart.
+
+**Matched controls as pictures.** The verdict page now shows the drawn area beside up to
+three control areas, before and after (`imagery.make_control_thumbnails`).
+
+- **Fairness rule: the same Sentinel-2 scene as the area's own thumbnail.** Distant
+  wide-mode controls can fall on another tile. Then the clearest scene within ±5 days is
+  used, its real date is shown, and the page drops its "same two dates" line.
+- **Which controls.** Controls that carry weight in the no-event prediction come first,
+  labelled with their share. Convex weights are often sparse (Grünheide puts 100 % on one
+  cell), so any free slots go to the closest pre-event matches in the same selected pool,
+  labelled "matched, not weighted". They are never presented as the counterfactual.
+- **Clear sky.** A control that is not clear on those dates (the same 0.9 / 0.6 bar as the
+  area's thumbnails) is skipped and recorded.
+
+**The change map was not aligned.** The old "Change map" toggle laid `_change.png` over
+the after image. That PNG is a greyscale view of a window at least 4 km across, while the
+thumbnails are a square three times the area, so the overlay never lined up. It also existed
+for only 2 of 10 showcase runs.
+
+- `pixels.compute_pixel_change` now also writes `_changeoverlay.png`: transparent,
+  cropped to the thumbnail's own square, coloured only where the per-pixel test is defined
+  (the area and control pixels of its land-cover class).
+- It is the same statistic as the "% of pixels changed" figure, not a new one.
+- It sits behind a "Changes" preset with a legend that states the roughly 1-in-20 chance
+  speckle.
+- The wide greyscale map is no longer overlaid.
+
+**Imagery audit (`scripts/showcase_imagery.py`, output `showcase/imagery_audit.json`).**
+Every showcase run was checked: "before" dated before the event, "after" after it, clear
+share at or above the bar, and a time-lapse spanning the event so it can be marked. It
+found three real failures, now fixed:
+
+- **Table Mountain:** no time-lapse. Regenerated.
+- **Hasankeyf:** no time-lapse either, and its before thumbnail was 0.79 clear, below the
+  thumbnailer's own 0.9 bar. Within 365 days, no scene reaches 0.9 over the area.
+  - The scene classification scores the town's bright limestone and fresh fill as cloud
+    or "unclassified" (10–18 % of area pixels) on scenes that are 4–9 % cloudy overall.
+    Checked by eye: cloud-free.
+  - Added a disclosed last resort, used only after the widened search: the nearest scene
+    ≤ 5 % cloudy overall and ≥ 0.65 clear over the area. The basis is stored with the
+    thumbnail and listed in the audit.
+- **Sindh:** eight equal time-lapse slots over three years before and three months after
+  all landed before the flood, so the event could not be marked. The time-lapse now adds
+  the clearest frame on any empty side of the event.
+
+After the fixes, 10 of 10 runs pass. The Saddleworth control on another tile is listed
+as a note.
+
+**Copy:** the panel says a difference "points to something local … the charts below test
+it", not that pictures prove the cause.

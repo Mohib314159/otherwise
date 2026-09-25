@@ -100,14 +100,18 @@ function renderCompare(d) {
     <div class="compare" id="compare" tabindex="0" role="slider" aria-label="Before and after comparison; drag or use arrow keys"
          aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-valuetext="Showing half before, half after">
       <div class="compare-layer compare-after"><img src="${escapeHtml(im.after.url)}" alt="After the event, ${fmtDate(im.after.date)}" decoding="async"></div>
-      ${px.map ? `<div class="compare-layer compare-map"><img src="${escapeHtml(px.map)}" alt="Change map over the after image" decoding="async"></div>` : ""}
+      ${px.overlay_url ? `<div class="compare-layer compare-map"><img src="${escapeHtml(px.overlay_url)}" alt="Pixels that changed more than comparable land, over the after image" decoding="async"></div>` : ""}
       <div class="compare-layer compare-before" id="compare-before"><img src="${escapeHtml(im.before.url)}" alt="Before the event, ${fmtDate(im.before.date)}" decoding="async"></div>
       <div class="compare-divider" id="compare-divider"><div class="compare-handle">${HANDLE_SVG}</div></div>
       <span class="compare-tag before">Before · ${fmtDate(im.before.date)}</span>
       <span class="compare-tag after">After · ${fmtDate(im.after.date)}</span>
       <div class="compare-coach" id="compare-coach" aria-hidden="true"><span>↔</span> Drag to compare</div>
-      ${px.map ? `<button type="button" class="compare-toggle" id="compare-map-toggle" aria-pressed="false">Change map</button>` : ""}
     </div>`;
+}
+
+function changeWord(px, dir) {
+  const name = { NDVI: "greenness", NBR: "burn ratio", NDWI: "surface water" }[px.signal] || "the index";
+  return dir === "dec" ? `${name} fell;` : `${name} rose.`;
 }
 
 /** Facts about the drawn area only. What was claimed lives in claimSentence. */
@@ -133,13 +137,15 @@ function renderAct1(d) {
             <button type="button" class="compare-preset" data-compare-preset="100">Before</button>
             <button type="button" class="compare-preset active" data-compare-preset="50">Split</button>
             <button type="button" class="compare-preset" data-compare-preset="0">After</button>
-          </div>` : ""}
+            ${px.overlay_url ? `<button type="button" class="compare-preset" data-compare-preset="0" data-compare-map="on">Changes</button>` : ""}
+          </div>
+          ${px.overlay_url ? `<p class="change-legend" id="change-legend" hidden><span class="sw dec"></span>${escapeHtml(changeWord(px, "dec"))} <span class="sw inc"></span>${escapeHtml(changeWord(px, "inc"))} Coloured pixels moved further than 95% of comparable land nearby, so about 1 in 20 would be coloured by chance.</p>` : ""}` : ""}
           <div id="lapse-mount"></div>
         </div>
         <aside class="act1-aside">
           ${renderNumber(d)}
           ${pixelLine}
-          <p class="act1-lede muted">${hasPair ? "Same place, two dates. Drag the divider or tap Before / Split / After. " : ""}The white outline is the area you drew${(d.pixels && d.pixels.map) ? ". The change map highlights pixels that moved more than their surroundings" : ""}.</p>
+          <p class="act1-lede muted">${hasPair ? "Same place, two dates. Drag the divider or tap Before / Split / After. " : ""}The white outline is the area you drew${px.overlay_url ? ". Tap Changes to colour the pixels that moved more than their surroundings" : ""}.</p>
         </aside>
       </div>
     </section>`;
@@ -161,10 +167,12 @@ function initCompare() {
     divider.style.left = `${pct}%`;
     el.setAttribute("aria-valuenow", Math.round(pct));
     el.setAttribute("aria-valuetext", `${Math.round(pct)}% before, ${Math.round(100 - pct)}% after`);
+    const mapOn = el.classList.contains("map-on");
     document.querySelectorAll("[data-compare-preset]").forEach((btn) => {
       const target = Number(btn.dataset.comparePreset);
-      btn.classList.toggle("active", Math.abs(target - pct) < 1);
-      btn.setAttribute("aria-pressed", Math.abs(target - pct) < 1 ? "true" : "false");
+      const on = Math.abs(target - pct) < 1 && (btn.dataset.compareMap === "on") === mapOn;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
     });
   }
   set(50);
@@ -178,6 +186,7 @@ function initCompare() {
   el.addEventListener("pointerdown", (e) => {
     if (e.target.closest && e.target.closest(".compare-toggle")) return;
     hideCoach();
+    if (el.classList.contains("map-on")) { el.classList.remove("map-on"); if (document.getElementById("change-legend")) document.getElementById("change-legend").hidden = true; }
     dragging = true;
     el.setPointerCapture(e.pointerId);
     set(fromEvent(e));
@@ -196,9 +205,15 @@ function initCompare() {
     else if (e.key === "End") { set(100, { animate: true }); e.preventDefault(); }
   });
 
+  const legend = document.getElementById("change-legend");
+  const setMap = (on) => {
+    el.classList.toggle("map-on", on);
+    if (legend) legend.hidden = !on;
+  };
   document.querySelectorAll("[data-compare-preset]").forEach((btn) => {
     btn.addEventListener("click", () => {
       hideCoach();
+      setMap(btn.dataset.compareMap === "on");
       set(Number(btn.dataset.comparePreset), { animate: true });
     });
   });
@@ -259,7 +274,7 @@ async function initLapse(d) {
       <div class="lapse-head"><span class="label" style="margin:0">Time-lapse</span><span class="lapse-hint muted">${frames.length} clear scenes · drag along the timeline</span></div>
       <div class="lapse-track" id="lapse-track" tabindex="0" role="slider" aria-label="Time-lapse scene"
            aria-valuemin="0" aria-valuemax="${frames.length - 1}" aria-valuenow="0">
-        ${eventInRange ? `<span class="lapse-event" style="left:${pos(d.event_date).toFixed(2)}%" title="event · ${fmtDate(d.event_date)}"></span>` : ""}
+        ${eventInRange ? `<span class="lapse-event" style="left:${pos(d.event_date).toFixed(2)}%" title="event · ${fmtDate(d.event_date)}"><span class="lapse-event-lbl">Event · ${fmtDate(d.event_date)}</span></span>` : ""}
         ${frames.map((f, i) => `<span class="lapse-frame${i === 0 ? " first" : i === frames.length - 1 ? " last" : ""}" data-i="${i}" style="left:${pos(f.date).toFixed(2)}%"><span class="lbl">${fmtDate(f.date)}</span></span>`).join("")}
       </div>
     </div>`;
@@ -514,6 +529,47 @@ function renderNumber(d) {
     ${rc.interval ? `<div class="big-sub tnum muted" id="big-interval">${escapeHtml(rc.interval)}</div>` : ""}
     ${rc.index ? `<div class="big-sub tnum muted" id="big-index">${escapeHtml(rc.index)}</div>` : ""}
     ${rc.detail ? `<details class="what-num" id="what-num"><summary>What this number means</summary><p>${escapeHtml(rc.detail)}</p></details>` : ""}`;
+}
+
+// ---- act 1c: the drawn area next to its matched control areas ---------------
+
+function fmtKm(m) {
+  if (!Number.isFinite(m)) return "";
+  return m >= 10000 ? `${Math.round(m / 1000)} km away` : `${(m / 1000).toFixed(1)} km away`;
+}
+
+/**
+ * The comparison the verdict rests on, as pictures: the drawn area and up to
+ * three control areas, each on the same two dates. Controls that carry weight in
+ * the no-event prediction are labelled with their share; any others are the
+ * closest pre-event matches in the same pool and are labelled as not weighted.
+ */
+function renderControlsImagery(d) {
+  const im = d.imagery || {};
+  const ctl = (d.control_imagery && d.control_imagery.controls) || [];
+  if (!im.before || !im.after || !ctl.length) return "";
+  const cell = (label, sub, before, after) => `
+    <figure class="cmp-col">
+      <figcaption><strong>${escapeHtml(label)}</strong>${sub ? `<span>${escapeHtml(sub)}</span>` : ""}</figcaption>
+      <div class="cmp-pair">
+        <div class="cmp-shot"><img src="${escapeHtml(before.url)}" alt="${escapeHtml(label)} before, ${fmtDate(before.date)}" loading="lazy" decoding="async"><span class="cmp-date">${fmtDate(before.date)}</span></div>
+        <div class="cmp-shot"><img src="${escapeHtml(after.url)}" alt="${escapeHtml(label)} after, ${fmtDate(after.date)}" loading="lazy" decoding="async"><span class="cmp-date">${fmtDate(after.date)}</span></div>
+      </div>
+    </figure>`;
+  const cols = [cell("Your area", "the white outline", im.before, im.after)].concat(ctl.map((c, i) => {
+    const share = c.role === "weighted"
+      ? `${Math.round(c.weight * 100)}% of the no-event prediction`
+      : "matched, not weighted";
+    return cell(`Control ${i + 1}`, [share, fmtKm(c.distance_m)].filter(Boolean).join(" · "), c.before, c.after);
+  }));
+  const sameDates = ctl.every((c) => c.before.date === im.before.date && c.after.date === im.after.date);
+  return `
+    <section class="act reveal" id="act-controls">
+      <div class="label">Compared with matched places</div>
+      <p class="cmp-lede muted">Top row before the event, bottom row after${sameDates ? ", every column on the same two dates" : ""}. The control areas behaved like yours before the event and did not get it. If yours changed and they did not, that points to something local to your area rather than the season, the weather or a regional trend; the charts below test it.</p>
+      <div class="cmp-grid" style="--cols:${cols.length}">${cols.join("")}</div>
+      ${ctl.some((c) => c.role === "pool") ? `<p class="cmp-note muted">The no-event prediction put its weight on ${ctl.filter((c) => c.role === "weighted").length === 1 ? "one control" : "the weighted controls"}; the others shown are the closest pre-event matches from the same pool, for comparison.</p>` : ""}
+    </section>`;
 }
 
 // ---- act 1 (imagery + number) is renderAct1 above; charts below -------------
@@ -997,6 +1053,7 @@ function render(d) {
   contentEl.innerHTML =
     renderVerdictTop(d) +
     renderAct1(d) +
+    renderControlsImagery(d) +
     renderCharts(d) +
     renderSure(d) +
     renderDetails(d);

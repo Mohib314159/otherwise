@@ -48,6 +48,7 @@
  "median_delta_area": -0.633,
  "median_delta_controls": 0.019,
  "map": "5a5f8d14423c28f0_change.png",
+ "overlay": "5a5f8d14423c28f0_changeoverlay.png",
  "notes": [
   "Only 9 placebo cells; placebo_p is coarse."
  ]

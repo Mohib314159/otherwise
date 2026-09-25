@@ -1,0 +1,53 @@
+{
+ "status": "ok",
+ "signal": "NBR",
+ "expected_sign": -1,
+ "fraction_changed": 0.211,
+ "expected_null_fraction": 0.05,
+ "placebo_p": 0.304,
+ "n_placebo_cells": 22,
+ "median_cell_fraction": 0.007,
+ "p95_cell_fraction": 0.289,
+ "n_area_pixels": 6546,
+ "n_area_pixels_total": 9298,
+ "n_control_pixels": 416351,
+ "landcover_class": 30,
+ "landcover": "grassland",
+ "landcover_fraction": 0.96,
+ "worldcover_year": 2020,
+ "tile": "30UWE",
+ "epsg": 32630,
+ "cell_px": 96,
+ "pre": {
+  "n_scenes": 8,
+  "dates": [
+   "2018-05-07",
+   "2018-05-05",
+   "2018-01-07",
+   "2017-10-29",
+   "2018-04-05",
+   "2018-05-27",
+   "2017-10-27",
+   "2018-05-22"
+  ]
+ },
+ "post": {
+  "n_scenes": 8,
+  "dates": [
+   "2018-06-29",
+   "2018-08-05",
+   "2018-07-04",
+   "2018-07-06",
+   "2018-06-26",
+   "2018-07-11",
+   "2018-10-19",
+   "2018-07-14"
+  ]
+ },
+ "threshold": -0.605,
+ "median_delta_area": -0.439,
+ "median_delta_controls": -0.083,
+ "map": "40bc25d4d731d8d7_change.png",
+ "overlay": "40bc25d4d731d8d7_changeoverlay.png",
+ "notes": []
+}

@@ -126,7 +126,7 @@ def test_a_real_run_gets_its_own_title_description_and_image(real_client):
         assert h.metas["twitter:card"] == "summary"
 
     # the page itself is still the app: the module that fills it in is loaded
-    assert any(s.endswith("/static/verdict.js") for s in h.scripts)
+    assert any(s.split("?")[0].endswith("/static/verdict.js") for s in h.scripts)   # cache-busting query allowed
 
 
 def test_the_description_never_states_a_number_of_its_own(real_client):
