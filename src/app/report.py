@@ -137,7 +137,7 @@ def _placebo_lines(sig: dict) -> list[str]:
             f"- Placebo p by gap size: {fmt_p(p_eff)} "
             f"({_na(placebo_k(p_eff, n))} of {_na(n)} cells whose post-event gap was at least as large, "
             f"in the same direction)")
-    if sig.get("placebo_symmetric") is False:
+    if sig.get("placebo_symmetric") is not True:   # missing = run predates the fix
         lines.append("- Note: these placebo units did not re-run the area's own control selection, so "
                      "this p-value is anti-conservative (see DECISIONS.md, CRITIQUE #4)")
     return lines

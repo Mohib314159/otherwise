@@ -23,6 +23,7 @@ from .fetch import MemoryBudgetError
 from .geometry import PolygonError, validate_polygon
 from .report import (SIGNAL_LABEL, render_report, fmt_p, fmt_signal,
                      interval_str as report_interval)
+from .review import router as review_router
 from .run import RUNS_DIR, run_id, run_verdict
 from .air import AIR_CASES, air_run_id, run_air_verdict, fetch_case_boundary
 from .air.providers import CachedHTTP
@@ -43,6 +44,8 @@ LIVE_RUNS_ENABLED = os.environ.get("APP_LIVE_RUNS", "1") == "1"
 JOB_TIMEOUT_S = float(os.environ.get("APP_JOB_TIMEOUT_S", "2400"))
 
 app = FastAPI(title="Otherwise", docs_url=None, redoc_url=None)
+# blind review + analyst annotations; self-contained router, own storage
+app.include_router(review_router)
 
 _jobs: "OrderedDict[str, dict]" = OrderedDict()
 _lock = threading.Lock()

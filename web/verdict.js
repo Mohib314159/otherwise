@@ -550,12 +550,17 @@ function renderSure(d) {
   const gapLine = kGap === null
     ? ""
     : `<p class="sure-line second"><span class="sure-tag">Counted by gap size instead</span>${kGap} of those ${n} cells moved at least as far as this area did, in the same direction (${sig.placebo_p_effect.toFixed(2)}).</p>`;
+  // Runs made before the CRITIQUE #4 fix carry no placebo_symmetric flag: their
+  // placebo cells reused this area's control selection, which flatters the p-value.
+  const asymLine = (kFit === null || sig.placebo_symmetric === true)
+    ? ""
+    : `<p class="sure-caveat"><span class="sure-tag">Older placebo procedure</span>This run predates a fix to the placebo test: its control cells were scored against controls chosen for this area rather than for themselves, which makes the p-value look stronger than it should. It has not been re-run yet.</p>`;
   return `
     <section class="act reveal" id="act-3">
       <div class="label">How sure</div>
       <div class="sure-row">
         <div class="strip-wrap" id="placebo-strip"></div>
-        <div class="sure-lines">${fitLine}${gapLine}</div>
+        <div class="sure-lines">${fitLine}${gapLine}${asymLine}</div>
       </div>
     </section>`;
 }

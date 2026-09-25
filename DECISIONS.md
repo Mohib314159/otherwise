@@ -1032,6 +1032,185 @@ is enough to run the `full` profile, and that would dissolve the co-observation
 caveat live verdicts must currently carry. The same argument applies to any
 off-Render compute, so it is not specific to Hugging Face.
 
+## HANDOFF (2026-09-19, end of session 2)
+
+### What is live
+
+**`main` is at `2717b38`**, which Render auto-deploys. It carries four finished,
+tested pieces: the live-run memory fix, the hectare input fix, the mobile layout
+(including a scroll bug that locked every non-landing page to one screen on a
+phone), and the honest verdict copy plus server-rendered share previews. Suite on
+that tree: **272 passed, 3 skipped, 8 xfailed, 0 failed**, smoke-tested against a
+live server.
+
+**`main` deliberately does NOT have** the CRITIQUE #4 placebo-symmetry fix, the
+blind-validation surfaces, or the comparison results. All three are on
+`claude/elegant-franklin-en2noi` (`ec9b310` at the time of writing). The deploy
+commit message lists exactly what was held back and why.
+
+**So main still computes an anti-conservative placebo p-value.** That is recorded
+in `CRITIQUE.md`, in the triage in this file, and now in every downloaded report,
+which prints a note whenever `placebo_symmetric` is false. It is the most
+important thing outstanding.
+
+### First thing to check on the live site
+
+Whether Render's 0.1 CPU can finish a live run at all. Memory is solved; CPU is
+not. Measured on a two-core machine: 26 min for a 27 ha ring run, 2.81 h for a
+wide-control run. `APP_JOB_TIMEOUT_S` is 2400 s, so a run slower than 40 minutes
+is now cancelled with a message rather than blocking the queue for ever — on 0.1
+CPU that may cancel everything. If it does, the honest fix is
+`APP_LIVE_RUNS=0` plus the "request an area" route in `docs/LIVE_RUNS_DESIGN.md`,
+not a longer timeout.
+
+### Unfinished, where it lives, and how to resume
+
+**1. CRITIQUE #4 — placebo symmetry.** Branch `claude/elegant-franklin-en2noi`.
+Pre-registered, implemented, 7 tests. Every placebo unit now re-runs the treated
+unit's donor selection on itself, with its own covariates and its own ridge
+penalty, and placebo units are drawn from the whole candidate pool. Verified
+mechanism: own-pool fits beat inherited-pool fits for 8 of 9 units, median placebo
+RMSPE ratio rises 1.259 → 1.373, 0 of 12 null panels reach p ≤ 0.05.
+
+*Resume:* re-run `python -m scripts.power data/cache/<dir> NDVI` (it now runs both
+procedures on the same cache, so the fix is measured rather than confounded with a
+change of test area), then re-run every showcase site and publish the result even
+if verdicts weaken, then `python -m scripts.method_tables` and
+`python -m scripts.track_record`. **Be honest about the cost:** full-mode showcase
+re-runs read ~6 Mpx windows per scene and those caches are gitignored and gone, so
+this is hours per site, not minutes. Do not substitute live-mode numbers for
+full-mode ones to save time; they are not the same measurement.
+
+*Not done in the same step, on purpose:* the in-time placebo (`time_placebos`)
+selects donors using the whole pre-period including the window after its own fake
+event date. Same class of leakage. Fix it separately so each change's effect on
+the published numbers stays attributable.
+
+**2. Live-vs-full comparison.** `scripts/compare_profiles.py`, results in
+`showcase/profile_comparison.json` on the branch. **4 of 10 sites**, and all four
+REALs agree: effect sizes move by at most 0.016 (Rhodes, 3.4%).
+
+*One thing I could not explain and did not paper over:* interval width goes both
+ways — wider on Grünheide (×1.10) but narrower on Rhodes (×0.97), Table Mountain
+(×0.60) and Austin (×0.72). I expected 40 m controls to widen intervals. Two
+candidates, neither confirmed: coarser cells average more pixels and carry less
+per-observation noise, or the per-bin scene cap changes how many observations
+enter each bin. The remaining six sites, especially the two nulls and the marginal
+Lützerath and Hasankeyf, should discriminate.
+
+*Resume:* `python -m scripts.compare_profiles` (resumable, checkpoints per site);
+`--table` rebuilds the table. **These results predate #4 on both arms**, so they
+measure the profile difference under the old placebo and must be re-run after #4
+lands.
+
+**3. Blind validation.** Branch `claude/elegant-franklin-en2noi`. Harness, `/review`
+blind review page, three-way rate reporting and the analyst layer are all built
+and tested, including two tests proving the blind payload leaks no ground truth.
+**247 items drawn, 34 verdict runs completed, all events, zero controls.** So
+there is a detection rate and no false-alarm rate, which is not a blind test.
+Nobody has reviewed anything; the review pool is empty.
+
+*Resume:* `APP_CACHE_DIR=data/cache/blind python -m scripts.blind_validation
+--sample showcase/blind/sample.json --parallel 3 --shuffle-seed 20260918 --out
+showcase/blind/` — the shuffle makes the finished subset a random subsample, so
+control runs and therefore the false-alarm rate start appearing immediately. Then
+`python -m scripts.blind_review_prep --frames`. Note the runs on disk were
+produced at `6d8776d`, i.e. before both the memory work and #4.
+
+**4. Hosting.** `docs/LIVE_RUNS_DESIGN.md`. GitHub Actions is ruled out — not on
+limits (a 25-minute run fits the 6-hour job cap easily) but on GitHub's Additional
+Product Terms, which prohibit Actions as part of a serverless application, with
+account suspension as the penalty. Actions stays for owner-triggered batch work,
+which would unblock the Sindh wide rerun, blind validation and the sweep. The next
+step costs money and needs Mohib.
+
+**5. SPEC-v2.md is on `main` and has not been started.** It was uploaded during
+this session and asks for the engine to be generalised so a "signal" is a plugin,
+then air pollution, UK open data, urban heat and night lights — each with its own
+known-answer tests and null power test before it is shown to users, and with land
+required to keep working exactly as it does now. Nothing in this session addressed
+it. Worth noting that its rule 1 ("run the existing test suite and land power test
+after every merge") is the discipline the #4 re-runs above are already owed.
+
+### Open items from CRITIQUE.md, unchanged
+
+Fixed: 2, 3, 7, 10, 11, 12, 13, 14, 15, 17, 18, 21, 22, 23. Left open with
+reasoning in the triage table above: 1, 4 (fixed on the branch, unpublished), 5,
+6, 8, 9, 16, 19, 20. Issue 6 — wide mode giving up co-observation — now applies to
+the live profile too, which is what the "quick check" label exists to admit.
+
+### Live vs full: the completed sweep (10 of 10)
+
+The sweep finished after the HANDOFF above was written. Correcting it: this is no
+longer unfinished.
+
+| Site | Expected | Full | Live | Agree | Full effect | Live effect | Full width | Live width | Full p | Live p |
+|---|---|---|---|---|---|---|---|---|---|---|
+| grunheide | REAL | REAL | REAL | yes | -0.606 | -0.601 | 0.156 | 0.172 | 0.029 | 0.024 |
+| rhodes | REAL | REAL | REAL | yes | -0.468 | -0.452 | 0.178 | 0.172 | 0.023 | 0.036 |
+| tablemountain | REAL | REAL | REAL | yes | -0.463 | -0.465 | 0.285 | 0.170 | 0.032 | 0.024 |
+| austin | REAL | REAL | REAL | yes | -0.188 | -0.188 | 0.069 | 0.050 | 0.016 | 0.024 |
+| saddleworth | REAL | CANT_TELL | **REAL** | **no** | -0.909 | -1.019 | 0.880 | 1.358 | 0.016 | 0.024 |
+| lutzerath | REAL | CANT_TELL | CANT_TELL | yes | -0.074 | -0.083 | 0.109 | 0.116 | 0.623 | 0.854 |
+| hasankeyf | REAL | CANT_TELL | CANT_TELL | yes | 0.101 | 0.759 | 2.050 | 1.600 | 0.951 | 0.268 |
+| sindh | REAL | CANT_TELL | CANT_TELL | yes | -0.129 | -0.247 | 0.000 | 2.050 | 0.508 | 0.317 |
+| richmond | NOT_REAL | CANT_TELL | CANT_TELL | yes | -0.013 | 0.004 | 0.091 | 0.075 | 0.933 | 0.854 |
+| jau | NOT_REAL | CANT_TELL | CANT_TELL | yes | -0.011 | 0.020 | 0.054 | 0.119 | 0.639 | 0.854 |
+
+**9 of 10 agree. Mean live/full interval width ratio 1.09, wider on 4 of 9.**
+
+**The one disagreement matters and is not in live mode's favour.** Saddleworth
+goes CAN'T TELL → REAL, and on the numbers that is live mode being *less*
+cautious about a case the full run refused to call: its interval is wider
+(1.358 against 0.880) on a radar signal that full mode already flagged as having
+too few post-event bins, and its effect grew from -0.909 to -1.019 dB. A verdict
+that flips toward REAL because the evidence got noisier is the wrong direction.
+It does not become a hit for the track record; it is a reason not to present live
+verdicts as equivalent, which is what the "quick check" label now does.
+
+Two further things worth not glossing:
+
+- **Hasankeyf's effect changes sign and magnitude wildly** (+0.101 → +0.759 NDWI)
+  while staying CAN'T TELL. Both runs are uninformative there, so the verdict is
+  right for the wrong-looking reason, but it shows how unstable that site is.
+- **Sindh's degenerate interval (0.000) becomes 2.050.** The full run's
+  zero-width interval was never precision — it was the conformal search failing
+  to find an accepted set, which the generated METHOD.md table now labels as
+  degenerate. Live mode's honest 2.050 is an improvement in presentation even
+  though neither is a usable estimate.
+
+On effect sizes the two profiles agree closely wherever the data support a verdict
+at all: within 0.016 on all four REALs. The disagreements are concentrated exactly
+where the full run already said it could not tell.
+
+**These numbers describe the pre-#4 placebo procedure on both arms** and must be
+re-run once the symmetric placebo is published.
+
+## 2026-09-25 — placebo fix and blind validation merged to main
+
+Mohib decided to merge `claude/elegant-franklin-en2noi` to `main` before the
+showcase re-runs, reversing the earlier hold ("two procedures on one site").
+What that means, stated plainly:
+
+- **New runs** (live and batch) use the symmetric placebo procedure (CRITIQUE #4)
+  and record `placebo_symmetric: true`.
+- **Every committed showcase run predates the fix** and carries no flag. Missing
+  is now read as "old procedure": the verdict page shows an "Older placebo
+  procedure" caveat and the Markdown report prints the anti-conservative note.
+  Before this change the report note only fired on an explicit `false`, so the
+  showcase runs showed their flattering p-values with no warning.
+- The known-answer table in `docs/METHOD.md`, `showcase/track_record.json` and the
+  power table in METHOD.md §10 still describe the old procedure. They are not
+  edited by hand; they change only when `scripts/power.py` and the showcase sites
+  are re-run (hours per site; caches are gone). That re-run is still owed.
+- Blind validation (`/review`, runner, 34 event runs, 0 control runs) is now on
+  main. It still has **no false-alarm rate**; the page says so.
+
+Merge conflicts: `scripts/power.py`, `src/app/server.py` and `DECISIONS.md`
+took the branch side (main's side was the "fix not on this branch" stub);
+`showcase/blind/sample.json` and `sample.log`, deliberately dropped from the
+earlier deploy, come back with the blind-validation work.
+
 ## 2026-09-20 — air v1: ULEZ uses ground monitors first, with symmetric cohort placebos
 
 `SPEC-v2.md` says ground NO₂ + ERA5 first, then Sentinel-5P. That ordering is now implemented rather than treating "air" as a satellite-only feature.

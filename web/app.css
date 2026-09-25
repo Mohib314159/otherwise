@@ -535,6 +535,7 @@ section.block { padding: 32px 0; border-top: 1px solid var(--rule); }
 /* two placebo figures, never merged into one sentence */
 .sure-row .sure-lines { margin-top: 0; gap: 14px; }
 .sure-line.second { font-size: 15px; color: var(--muted); padding-top: 14px; border-top: 1px solid var(--rule); }
+.sure-caveat { margin: 0; font-size: 14px; line-height: 1.45; color: var(--muted); padding-top: 14px; border-top: 1px solid var(--rule); }
 .sure-tag {
   display: block;
   font-size: 11px;
