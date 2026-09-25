@@ -131,28 +131,53 @@ export function wireCopyLink(button) {
 
 const HOW_IT_WORKS_HTML = `
 <button class="drawer-close" data-drawer-close aria-label="Close">&times;</button>
-<h2 style="font-size:20px;font-weight:600;margin:4px 0 4px;">How this works</h2>
-<p>Most tools tell you something changed. Otherwise asks whether it changed more than it would have anyway.</p>
-<h3>1. Data</h3>
-<p>The data depend on the question. Land uses Sentinel-2 optical and Sentinel-1 radar. Air pollution uses hourly ground NO₂ monitors from LAQN and DEFRA AURN plus ERA5 meteorology. Every observation thrown out is listed in the receipts.</p>
-<h3>2. Controls</h3>
-<p>Controls are matched to the unit being tested. Land uses nearby cells with similar land cover, terrain and pre-event history. Air uses same-type monitors in other UK cities, excluding a London spillover buffer, then ranks them by pre-policy NO₂ trajectory and baseline level.</p>
-<h3>3. Counterfactual</h3>
-<p>An augmented synthetic control (Ben-Michael, Feller &amp; Rothstein, 2021) builds the no-event trajectory as a weighted average of control cells, with a ridge correction for what the weights could not match. The gap after the event is the estimated effect.</p>
-<h3>4. Uncertainty</h3>
-<p>A conformal interval (Chernozhukov, W&uuml;thrich &amp; Zhu, 2021) is formed by refitting under hypothetical effect sizes and comparing post-event residuals with block permutations of the whole residual sequence. No distribution is assumed.</p>
-<h3>5. Placebo checks</h3>
-<p>The same test is run on untouched comparison units as if they were treated, and at fake event dates before the real one. Air placebos reselect their own controls and ridge penalty and use fake cohorts the same size as the treated cohort. If the method finds effects where there are none, the verdict says so.</p>
-<h3>6. Verdict</h3>
-<p>Real change: the interval excludes zero in the claimed direction, the effect exceeds a minimum meaningful size, and the placebo rate is low. Not real: the interval rules out a meaningful change. Can't tell: too few clear observations, a poor pre-event fit, or an interval too wide to decide.</p>
-<h3>Prior art</h3>
-<ul class="prior-art">
-  <li><a href="https://github.com/oballinger/PWTT" target="_blank" rel="noopener">PWTT (Ballinger)</a> — pixel-wise t-test against each pixel's own history, no matched controls.</li>
-  <li><a href="https://github.com/quantifyearth/tmf-implementation" target="_blank" rel="noopener">Cambridge 4C PACT / tmf-implementation</a> — pixel-matched counterfactuals for tropical forest carbon, command line, on a forest-cover map.</li>
-  <li><a href="https://github.com/epingchris/placebo_evaluation" target="_blank" rel="noopener">Placebo evaluation of counterfactual methods (4C, 2025)</a> — the idea behind the placebo check.</li>
-  <li>Global Forest Watch, Pachama dynamic baselines, CTrees LUCA, Earth Blox.</li>
-</ul>
-`;
+<div class="method-intro">
+  <div class="label">Method</div>
+  <h2>The idea in 20 seconds.</h2>
+  <p>Seeing a change is easy. The useful question is whether this place changed <em>more than comparable places would have anyway</em>.</p>
+</div>
+<div class="method-flow">
+  <div class="method-step">
+    <span class="method-num">01</span>
+    <div><strong>Find its twins.</strong><p>Nearby places that moved like this one before the event become the comparison.</p></div>
+  </div>
+  <div class="method-step">
+    <span class="method-num">02</span>
+    <div><strong>Hold that match fixed.</strong><p>We use the pre-event relationship to estimate what this place would have looked like without the event.</p></div>
+  </div>
+  <div class="method-step">
+    <span class="method-num">03</span>
+    <div><strong>Watch for the break.</strong><p>After the event, we measure how far the observed satellite signal pulls away from its counterfactual.</p></div>
+  </div>
+  <div class="method-step">
+    <span class="method-num">04</span>
+    <div><strong>Try to fool it.</strong><p>We repeat the test on untouched control places and on fake earlier dates. If this place does not stand out from the control places, Otherwise does not call the change real; a fake date that also fires is flagged on the verdict page.</p></div>
+  </div>
+</div>
+<div class="verdict-key" aria-label="Verdict meanings">
+  <div><span class="method-dot real"></span><strong>Real change</strong><small>Evidence clears the checks.</small></div>
+  <div><span class="method-dot no"></span><strong>Not real</strong><small>A meaningful change is ruled out.</small></div>
+  <div><span class="method-dot unsure"></span><strong>Can't tell</strong><small>The evidence is not strong enough.</small></div>
+</div>
+<details class="method-detail">
+  <summary>Technical detail</summary>
+  <div class="method-detail-body">
+    <p>Sentinel-2 optical and Sentinel-1 radar observations are filtered for quality. Candidate controls are screened by land cover and terrain, then ranked by pre-event similarity.</p>
+    <p>The counterfactual uses augmented synthetic control. Uncertainty is estimated with conformal inference, with spatial and pre-event placebo checks used as stress tests. Every excluded observation and intermediate diagnostic is kept in the run receipt.</p>
+    <p class="method-cites">Methods: Ben-Michael, Feller &amp; Rothstein (2021); Chernozhukov, W&uuml;thrich &amp; Zhu (2021). Data via Microsoft Planetary Computer.</p>
+    <p><strong>Prior art.</strong></p>
+    <ul class="prior-art">
+      <li><a href="https://github.com/oballinger/PWTT" target="_blank" rel="noopener">PWTT (Ballinger)</a> — pixel-wise t-test against each pixel's own history, no matched controls.</li>
+      <li><a href="https://github.com/quantifyearth/tmf-implementation" target="_blank" rel="noopener">Cambridge 4C PACT / tmf-implementation</a> — pixel-matched counterfactuals for tropical forest carbon, command line, on a forest-cover map.</li>
+      <li><a href="https://github.com/epingchris/placebo_evaluation" target="_blank" rel="noopener">Placebo evaluation of counterfactual methods (4C, 2025)</a> — the idea behind the placebo check.</li>
+      <li>Global Forest Watch, Pachama dynamic baselines, CTrees LUCA, Earth Blox.</li>
+    </ul>
+  </div>
+</details>
+<div class="method-links">
+  <a href="/track-record">Track record <span aria-hidden="true">↗</span></a>
+  <a href="https://github.com/Mohib314159/carbon-twin" target="_blank" rel="noopener">Source <span aria-hidden="true">↗</span></a>
+</div>`;
 
 /** Mounts the drawer + backdrop once, wires every [data-drawer-trigger] to open it. */
 export function initHowItWorksDrawer() {

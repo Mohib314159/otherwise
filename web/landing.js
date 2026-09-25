@@ -29,19 +29,107 @@ initHowItWorksDrawer();
 
 const map = L.map("map", { zoomControl: true, attributionControl: true }).setView([20, 0], 2);
 window.__DEBUG_MAP = map;
-const lightLayer = L.tileLayer(LIGHT_TILES, { attribution: LIGHT_ATTR, maxZoom: 19, subdomains: "abcd" }).addTo(map);
-const satLayer = L.tileLayer(SAT_TILES, { attribution: SAT_ATTR, maxZoom: 19 });
+const lightLayer = L.tileLayer(LIGHT_TILES, { attribution: LIGHT_ATTR, maxZoom: 19, subdomains: "abcd" });
+const satLayer = L.tileLayer(SAT_TILES, { attribution: SAT_ATTR, maxZoom: 19 }).addTo(map);
 
 const satToggle = document.getElementById("sat-toggle");
-let satOn = false;
+const mapStyleLabel = document.getElementById("map-style-label");
+const desktopMosaic = window.matchMedia("(min-width: 641px)");
+let satOn = true;
+let heroMapView = false;
+satToggle.classList.add("active");
+
+function syncMapToggleLabel() {
+  if (!mapStyleLabel) return;
+  if (desktopMosaic.matches && !document.body.classList.contains("is-workbench")) {
+    mapStyleLabel.textContent = heroMapView ? "Mosaic" : "Map";
+    return;
+  }
+  mapStyleLabel.textContent = satOn ? "Satellite" : "Street map";
+}
+
+function setHeroMapView(on) {
+  heroMapView = Boolean(on);
+  document.body.classList.toggle("hero-map-view", heroMapView);
+  syncMapToggleLabel();
+  if (heroMapView) setTimeout(() => map.invalidateSize({ pan: false }), 80);
+}
+
 satToggle.addEventListener("click", () => {
+  if (desktopMosaic.matches && !document.body.classList.contains("is-workbench")) {
+    setHeroMapView(!heroMapView);
+    return;
+  }
   satOn = !satOn;
   if (satOn) { map.removeLayer(lightLayer); map.addLayer(satLayer); }
   else { map.removeLayer(satLayer); map.addLayer(lightLayer); }
   satToggle.classList.toggle("active", satOn);
+  satToggle.setAttribute("aria-pressed", String(satOn));
+  syncMapToggleLabel();
 });
+desktopMosaic.addEventListener?.("change", () => {
+  if (!desktopMosaic.matches) setHeroMapView(false);
+  else syncMapToggleLabel();
+});
+syncMapToggleLabel();
 
 const drawnItems = new L.FeatureGroup().addTo(map);
+
+// ---- product shell ---------------------------------------------------------
+
+const heroStart = document.getElementById("hero-start");
+const heroCases = document.getElementById("hero-cases");
+const workbench = document.getElementById("side-panel");
+const workbenchClose = document.getElementById("workbench-close");
+const stepPlace = document.getElementById("step-place");
+const stepCount = document.getElementById("step-count");
+const drawCoach = document.getElementById("draw-coach");
+const drawCoachCancel = document.getElementById("draw-coach-cancel");
+const caseRail = document.getElementById("case-rail");
+const caseClose = document.getElementById("case-close");
+
+function setStep(n) {
+  if (stepCount) stepCount.textContent = `${n} / 3`;
+  document.querySelectorAll("[data-step-dot]").forEach((el) => {
+    el.classList.toggle("active", Number(el.dataset.stepDot) <= n);
+  });
+}
+
+function openWorkbench() {
+  document.body.classList.remove("show-cases", "hero-map-view");
+  heroMapView = false;
+  document.body.classList.add("is-workbench");
+  if (workbench) workbench.setAttribute("aria-hidden", "false");
+  setStep(currentGeoJSON ? 2 : 1);
+  syncMapToggleLabel();
+  setTimeout(() => map.invalidateSize({ pan: false }), 360);
+}
+
+function closeWorkbench() {
+  document.body.classList.remove("is-workbench", "is-drawing", "hero-map-view");
+  heroMapView = false;
+  if (drawHandler) drawHandler.disable();
+  if (workbench) workbench.setAttribute("aria-hidden", "true");
+  syncMapToggleLabel();
+  setTimeout(() => map.invalidateSize({ pan: false }), 360);
+}
+
+heroStart?.addEventListener("click", openWorkbench);
+workbenchClose?.addEventListener("click", closeWorkbench);
+heroCases?.addEventListener("click", () => {
+  if (matchMedia("(max-width: 640px)").matches) {
+    document.body.classList.toggle("show-cases");
+    document.body.classList.remove("is-workbench");
+  } else if (caseRail) {
+    caseRail.animate([{ transform: "translateY(0)" }, { transform: "translateY(-8px)" }, { transform: "translateY(0)" }], { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)" });
+  }
+});
+caseClose?.addEventListener("click", () => document.body.classList.remove("show-cases"));
+map.on("click", () => document.body.classList.remove("show-cases"));
+
+if (location.hash === "#new") {
+  requestAnimationFrame(() => openWorkbench());
+}
 
 // ---- showcase ----------------------------------------------------------------
 
@@ -90,8 +178,15 @@ async function loadShowcase() {
     dot.bindTooltip(entry.label, { permanent: false, direction: "top", className: "area-label" });
     dot.on("click", () => { location.href = `/v/${entry.id}`; });
 
-    card.addEventListener("mouseenter", () => layer.setStyle({ color: "var(--counter)", weight: 2.5 }));
-    card.addEventListener("mouseleave", () => layer.setStyle({ color: "var(--ink)", weight: 1.5 }));
+    const mosaicTile = [...document.querySelectorAll(".mosaic-tile")].find((el) => el.dataset.runId === entry.id);
+    card.addEventListener("mouseenter", () => {
+      layer.setStyle({ color: "var(--counter)", weight: 2.5 });
+      mosaicTile?.classList.add("is-active");
+    });
+    card.addEventListener("mouseleave", () => {
+      layer.setStyle({ color: "var(--ink)", weight: 1.5 });
+      mosaicTile?.classList.remove("is-active");
+    });
     card.addEventListener("click", () => { location.href = `/v/${entry.id}`; });
 
     listEl.appendChild(card);
@@ -121,8 +216,7 @@ async function loadEffectSize(id, el) {
   const point = fmtSigned(lead, sig.point);
   if (point === null) return;
   const label = SIGNAL_LABEL[lead] || lead;
-  const p = typeof sig.placebo_p === "number" ? sig.placebo_p.toFixed(3) : null;
-  el.textContent = p !== null ? `${label} ${point} · placebo p ${p}` : `${label} ${point}`;
+  el.textContent = `${point} ${label} vs matched places`;
 }
 
 function escapeHtml(s) {
@@ -152,6 +246,7 @@ function setDomain(domain) {
   airPanel.style.display = air ? "block" : "none";
   if (!air && airBoundaryLayer) { map.removeLayer(airBoundaryLayer); airBoundaryLayer = null; }
   if (air) renderAirCase();
+  domainIntro.hidden = !air;
   domainIntro.textContent = air
     ? "Choose a policy. Otherwise weather-normalises ground NO₂, builds a same-type no-policy counterfactual from monitors in other UK cities, and reruns symmetric placebo tests before comparing with published research."
     : "Draw an area, name the event and its date. Sentinel-1 and Sentinel-2 are compared against matched control areas that did not get the event.";
@@ -379,12 +474,19 @@ let currentHa = null;
 
 drawBtn.addEventListener("click", () => {
   if (drawHandler) drawHandler.disable();
+  document.body.classList.add("is-drawing");
+  document.body.classList.remove("show-cases");
   drawHandler = new L.Draw.Polygon(map, {
-    shapeOptions: { color: "var(--ink)", weight: 1.5, fillOpacity: 0.06, fillColor: "var(--ink)" },
+    shapeOptions: { color: "#d9ff71", weight: 2, fillOpacity: 0.10, fillColor: "#d9ff71" },
     showArea: false,
     allowIntersection: false,
   });
   drawHandler.enable();
+});
+
+drawCoachCancel?.addEventListener("click", () => {
+  if (drawHandler) drawHandler.disable();
+  document.body.classList.remove("is-drawing");
 });
 
 map.on(L.Draw.Event.CREATED, (e) => {
@@ -478,12 +580,16 @@ function onPolygonReady(layer) {
   const ring = ringFromLayer(layer);
   currentHa = polygonAreaHa(ring);
   currentGeoJSON = { type: "Polygon", coordinates: [ring.concat([ring[0]])] };
+  document.body.classList.remove("is-drawing");
+  document.body.classList.add("is-workbench");
   renderHa();
+  if (stepPlace) stepPlace.style.display = "none";
   runForm.style.display = "block";
-  drawBtn.textContent = "Redraw area";
   runErrorEl.style.display = "none";
-  // The panel scrolls, and the form opens below the fold on a short window:
-  // bring the button the user now needs into view.
+  setStep(2);
+  const head = workbench?.querySelector(".workbench-head h2");
+  if (head) head.textContent = "Describe the event.";
+  // Keep the next action inside the visible panel on short screens.
   submitBtn.scrollIntoView({ block: "nearest" });
 }
 
@@ -496,6 +602,9 @@ function renderHa() {
     : `${haStr} ha — must be between ${MIN_HA} and ${MAX_HA} hectares`;
   submitBtn.disabled = !ok;
 }
+
+const redrawBtn = document.getElementById("redraw-btn");
+redrawBtn?.addEventListener("click", () => drawBtn.click());
 
 // Exposed for the browser regression test, alongside __DEBUG_MAP above.
 window.__DEBUG_AREA = { polygonAreaHa, ringFromLayer, wrapLng, areaOk: () => areaOk() };
@@ -581,7 +690,8 @@ function resetToForm() {
   progressBlock.style.display = "none";
   runForm.style.display = "block";
   submitBtn.disabled = !areaOk();
-  submitBtn.textContent = "Check it";
+  submitBtn.textContent = "Run comparison";
+  setStep(2);
 }
 
 runForm.addEventListener("submit", async (e) => {
@@ -589,7 +699,7 @@ runForm.addEventListener("submit", async (e) => {
   if (!currentGeoJSON || !areaOk()) return;
   runErrorEl.style.display = "none";
   submitBtn.disabled = true;
-  submitBtn.textContent = "Checking…";
+  submitBtn.textContent = "Starting…";
 
   const payload = {
     geojson: currentGeoJSON,
@@ -607,11 +717,14 @@ runForm.addEventListener("submit", async (e) => {
     }
     runForm.style.display = "none";
     progressBlock.style.display = "block";
+    setStep(3);
+    const head = workbench?.querySelector(".workbench-head h2");
+    if (head) head.textContent = "Building the comparison.";
     showProgressLink(resp.run_id);
     pollJob(resp.job_id, resp.run_id);
   } catch (err) {
     submitBtn.disabled = false;
-    submitBtn.textContent = "Check it";
+    submitBtn.textContent = "Run comparison";
     if (err.status === 400 || err.status === 503) {
       showRunError(err.detail || err.message);
     } else {
@@ -656,20 +769,19 @@ function pollJob(jobId, fallbackRunId) {
 // runs timed so far ran on other hardware, and this deployment has a fraction of
 // a CPU, so a range would be invented rather than measured.
 const PROGRESS_NOTE =
-  "A live run reads every Sentinel scene over the area for three years before the "
-  + "event, so it takes tens of minutes and can take hours. It is also a quick check: "
-  + "the control areas are read more coarsely than in the published examples. You can "
-  + "close the tab — the run carries on, and its page is ready at the link below once "
-  + "it finishes.";
+  "Live checks can take tens of minutes or longer because they read several years of satellite scenes. "
+  + "You can close this tab; the run keeps going at the link below.";
 
 function rebuildProgressBlock() {
   progressBlock.innerHTML = `
-    <div class="progress-wrap">
-      <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-fill"></div></div>
-    </div>
-    <div class="progress-stage" id="progress-stage">Starting&hellip;</div>
-    <div class="progress-note">${escapeHtml(PROGRESS_NOTE)}</div>
-    <div class="progress-link" id="progress-link"></div>`;
+    <div class="progress-orbit" aria-hidden="true"><span></span><i></i></div>
+    <div class="form-kicker">Running</div>
+    <h3 id="progress-stage">Starting&hellip;</h3>
+    <div class="progress-wrap" aria-hidden="true"><div class="progress-bar-track"><div class="progress-bar-fill" id="progress-fill"></div></div></div>
+    <div class="progress-pipeline" aria-hidden="true"><span class="done">Area</span><span>Controls</span><span>Placebos</span><span>Evidence</span></div>
+    <p class="progress-note">${escapeHtml(PROGRESS_NOTE)}</p>
+    <div class="progress-link" id="progress-link"></div>
+    <p class="quick-disclosure">Live checks use a faster control read than the published examples. The verdict page labels this clearly.</p>`;
   progressFill = document.getElementById("progress-fill");
   progressStage = document.getElementById("progress-stage");
 }
@@ -679,5 +791,5 @@ function showProgressLink(runId) {
   const el = document.getElementById("progress-link");
   if (!el || !runId) return;
   const href = `/v/${encodeURIComponent(runId)}`;
-  el.innerHTML = `<a href="${escapeHtml(href)}">${escapeHtml(location.origin + href)}</a>`;
+  el.innerHTML = `<span class="muted">Keep this link</span><br><a href="${escapeHtml(href)}">${escapeHtml(location.origin + href)}</a>`;
 }

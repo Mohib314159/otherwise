@@ -116,7 +116,282 @@
   }
   .page-verdict .topbar-right .btn:hover { background: #292d28; color: #fff; }
 
-  /* Landing adapts the canonical dual-domain controls in evidence.css. */
+  /* ---------------------------------------------------------------------
+     Landing: cinematic map + product-grade desktop workbench
+     --------------------------------------------------------------------- */
+  .page-landing .map-wash {
+    background:
+      linear-gradient(90deg, rgba(5,7,6,.76) 0%, rgba(5,7,6,.52) 29%, rgba(5,7,6,.14) 52%, rgba(5,7,6,.02) 72%),
+      linear-gradient(180deg, rgba(6,8,7,.30) 0%, transparent 21%, transparent 78%, rgba(6,8,7,.34) 100%);
+  }
+  .page-landing .map-grid { opacity: .055; background-size: 72px 72px; }
+
+  .page-landing .landing-nav {
+    top: 16px;
+    left: 26px;
+    right: 26px;
+  }
+  .page-landing .brand {
+    gap: 11px;
+    padding: 8px 12px 8px 9px;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 999px;
+    background: rgba(8,10,9,.42);
+    backdrop-filter: blur(16px) saturate(125%);
+    box-shadow: 0 8px 30px rgba(0,0,0,.14);
+    font-size: 14px;
+  }
+  .page-landing .brand-mark { width: 22px; height: 22px; }
+  .page-landing .landing-nav-links {
+    padding: 4px;
+    background: rgba(8,10,9,.48);
+    border-color: rgba(255,255,255,.12);
+    box-shadow: 0 8px 30px rgba(0,0,0,.14);
+  }
+  .page-landing .landing-nav-links a,
+  .page-landing .nav-link,
+  .page-landing .nav-install { font-size: 11px; padding: 8px 12px; }
+
+  .page-landing .hero-panel {
+    left: clamp(44px, 5vw, 84px);
+    top: 47.5%;
+    width: min(650px, 47vw);
+    transform: translateY(-50%);
+  }
+  .page-landing .hero-panel::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    left: -90px; top: -90px;
+    width: 660px; height: 650px;
+    background: radial-gradient(circle at 40% 46%, rgba(5,7,6,.36), rgba(5,7,6,.05) 60%, transparent 74%);
+    filter: blur(14px);
+    pointer-events: none;
+  }
+  .page-landing .hero-eyebrow {
+    margin-bottom: 16px;
+    font-size: 10px;
+    letter-spacing: .16em;
+  }
+  .page-landing .hero-panel h1 {
+    font-size: clamp(66px, 5.8vw, 94px);
+    line-height: .88;
+    max-width: 620px;
+    letter-spacing: -.052em;
+  }
+  .page-landing .hero-copy {
+    width: min(535px, 95%);
+    margin-top: 23px;
+    color: rgba(255,255,255,.72);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .page-landing .counterfactual-demo {
+    width: min(540px, 96%);
+    margin-top: 24px;
+    padding: 12px 14px 11px;
+    border-color: rgba(255,255,255,.10);
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(10,12,11,.42), rgba(10,12,11,.24));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 16px 40px rgba(0,0,0,.08);
+  }
+  .page-landing .hero-actions { margin-top: 20px; }
+  .page-landing .primary-action,
+  .page-landing .secondary-action { min-height: 46px; }
+  .page-landing .hero-proof { margin-top: 14px; }
+  .page-landing .hero-proof span {
+    font-size: 9px;
+    background: rgba(9,11,10,.28);
+  }
+
+  .page-landing .case-rail {
+    right: 28px;
+    bottom: 26px;
+    width: min(760px, calc(100vw - 650px));
+  }
+  .page-landing .case-rail-head { margin-bottom: 10px; }
+  .page-landing .case-rail-head strong { font-size: 11px; }
+  .page-landing .case-list { gap: 10px; grid-auto-columns: minmax(215px, 1fr); }
+  .page-landing .sc-card,
+  .page-landing .sc-body { min-height: 142px; }
+  .page-landing .sc-card {
+    border-radius: 17px;
+    border-color: rgba(255,255,255,.13);
+    background: rgba(8,10,9,.56);
+    box-shadow: 0 18px 44px rgba(0,0,0,.22);
+  }
+  .page-landing .sc-card::after {
+    background: linear-gradient(180deg, rgba(7,8,7,.02) 15%, rgba(7,8,7,.22) 45%, rgba(7,8,7,.9) 100%);
+  }
+  .page-landing .sc-body { padding: 14px; }
+  .page-landing .sc-label { font-size: 13px; max-width: 88%; }
+  .page-landing .sc-meta { margin-top: 6px; }
+
+  /* Full-height investigation dock. This is the desktop product, not a modal. */
+  .page-landing .workbench {
+    --wb-pad: 24px;
+    left: 18px;
+    top: 72px;
+    bottom: 18px;
+    width: 448px;
+    max-height: none;
+    border-radius: 22px;
+    padding: 0 var(--wb-pad) 18px;
+    background: rgba(250,249,244,.975);
+    border: 1px solid rgba(255,255,255,.66);
+    box-shadow: 0 30px 90px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.08);
+    backdrop-filter: blur(24px) saturate(125%);
+    transform: translateX(-24px) scale(.99);
+    scrollbar-color: #c8c7c0 transparent;
+  }
+  .page-landing .workbench::before {
+    content: "";
+    position: sticky;
+    display: block;
+    top: 0;
+    height: 12px;
+    margin: 0 calc(var(--wb-pad) * -1);
+    background: linear-gradient(180deg, rgba(250,249,244,.99), rgba(250,249,244,0));
+    z-index: 4;
+    pointer-events: none;
+  }
+  .page-landing .workbench-head {
+    position: sticky;
+    top: 10px;
+    z-index: 5;
+    grid-template-columns: 36px 1fr auto;
+    gap: 12px;
+    padding: 12px 0 14px;
+    background: linear-gradient(180deg, rgba(250,249,244,.98) 78%, rgba(250,249,244,.82) 100%);
+    backdrop-filter: blur(14px);
+  }
+  .page-landing .workbench-head h2 { font-size: 21px; letter-spacing: -.035em; }
+  .page-landing .workbench-kicker { font-size: 9px; letter-spacing: .14em; }
+  .page-landing .step-count {
+    padding: 6px 9px;
+    border: 1px solid var(--desk-rule);
+    border-radius: 999px;
+    background: #fff;
+    font-size: 10px;
+  }
+  .page-landing .icon-button { border-radius: 11px; background: #fff; }
+
+  .page-landing .step-rail {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin: 2px 0 24px;
+  }
+  .page-landing .step-rail span {
+    height: auto;
+    min-height: 48px;
+    padding: 8px 10px;
+    border: 1px solid rgba(18,21,18,.09);
+    border-radius: 12px;
+    background: #eeede7;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 7px;
+    color: #8b8d85;
+    transition: background .2s ease, border-color .2s ease, color .2s ease, transform .2s ease;
+  }
+  .page-landing .step-rail span b {
+    width: 23px; height: 23px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: rgba(18,21,18,.07);
+    font-size: 8px;
+    letter-spacing: .05em;
+    font-weight: 700;
+  }
+  .page-landing .step-rail span em {
+    font-style: normal;
+    font-size: 10px;
+    font-weight: 650;
+    letter-spacing: -.01em;
+  }
+  .page-landing .step-rail span.active {
+    color: #20231f;
+    background: #fff;
+    border-color: rgba(18,21,18,.15);
+    box-shadow: 0 5px 16px rgba(18,21,18,.045);
+  }
+  .page-landing .step-rail span.active b {
+    color: #1b250f;
+    background: var(--desk-accent);
+  }
+
+  .page-landing .search-box {
+    height: 54px;
+    grid-template-columns: 20px 1fr auto;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.75);
+  }
+  .page-landing .search-go {
+    min-width: 44px;
+    min-height: 38px;
+    border-radius: 10px;
+  }
+  .page-landing .or-row { margin: 18px 0; }
+  .page-landing .draw-action {
+    min-height: 78px;
+    padding: 13px 14px;
+    grid-template-columns: 44px 1fr 18px;
+    border-radius: 15px;
+    background: #f0efe9;
+  }
+  .page-landing .draw-icon { width: 44px; height: 44px; border-radius: 13px; }
+  .page-landing .draw-action strong { font-size: 13px; }
+  .page-landing .draw-action small { font-size: 10px; }
+  .page-landing .workflow-note {
+    margin-top: 14px;
+    padding: 11px 12px;
+    border: 1px solid rgba(18,21,18,.08);
+    border-radius: 12px;
+    background: rgba(255,255,255,.48);
+    font-size: 10.5px;
+  }
+  .page-landing .area-summary { border-radius: 14px; background: #eff1e6; }
+  .page-landing .form-title-row { margin-top: 4px; }
+  .page-landing .workbench input[type="text"],
+  .page-landing .workbench input[type="date"],
+  .page-landing .workbench select {
+    min-height: 48px;
+    border-radius: 12px;
+    background: #fff;
+  }
+  .page-landing .what-next {
+    border-radius: 14px;
+    padding: 14px;
+    background:
+      radial-gradient(circle at 0 0, rgba(217,255,113,.12), transparent 30%),
+      #171917;
+  }
+  .page-landing .submit-action { border-radius: 13px; min-height: 52px; }
+  .page-landing .workbench-footer {
+    position: sticky;
+    bottom: -18px;
+    z-index: 4;
+    margin-top: 24px;
+    padding: 16px 0 14px;
+    background: linear-gradient(0deg, rgba(250,249,244,.99) 75%, rgba(250,249,244,.82) 100%);
+  }
+
+  .page-landing body.is-workbench .case-rail { opacity: 0; }
+  .page-landing body.is-workbench .map-wash,
+  body.page-landing.is-workbench .map-wash {
+    opacity: .16;
+    background: linear-gradient(90deg, rgba(7,9,8,.18) 0 470px, rgba(7,9,8,.02) 650px, transparent 100%);
+  }
+
+  .page-landing .draw-coach {
+    top: 82px;
+    min-width: 430px;
+    border-radius: 16px;
+    padding: 10px 12px;
+  }
 
   /* ---------------------------------------------------------------------
      Verdict: case file, not a paper
@@ -249,7 +524,7 @@
     padding: 7px 11px;
     background: transparent;
   }
-  .page-verdict .compare-preset.active { background: #fff; box-shadow: 0 2px 8px rgba(20,24,20,.08); }
+  .page-verdict .compare-preset.active { background: #fff; color: var(--ink); box-shadow: 0 2px 8px rgba(20,24,20,.08); }
   .page-verdict .act1-aside {
     min-height: 100%;
     padding: 24px;
@@ -515,5 +790,136 @@
     margin-top: 22px;
     padding: 15px 0 2px;
     background: transparent;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Hero V3 — evidence mosaic over the live map.
+   The overview markets the idea with real completed checks; entering a
+   check peels the collage away and reveals the operational map underneath.
+   --------------------------------------------------------------------- */
+@media (min-width: 641px) {
+  .page-landing .hero-mosaic {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 23% 25% 25% 27%;
+    grid-template-rows: 56% 44%;
+    gap: 1px;
+    overflow: hidden;
+    background: #080a09;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: none;
+    transition: opacity .55s cubic-bezier(.2,.8,.2,1), visibility .55s;
+  }
+  .page-landing .hero-mosaic::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, rgba(4,6,5,.28) 0%, rgba(4,6,5,.08) 43%, rgba(4,6,5,.02) 70%, rgba(4,6,5,.08) 100%),
+      linear-gradient(180deg, rgba(3,5,4,.18) 0%, transparent 25%, transparent 72%, rgba(3,5,4,.18) 100%);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.035);
+  }
+  .page-landing .mosaic-tile {
+    position: relative;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+    background: #111612;
+  }
+  .page-landing .mosaic-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scale(1.035);
+    filter: saturate(.82) brightness(.73) contrast(1.08);
+    transition: transform 1.5s cubic-bezier(.2,.8,.2,1), filter .5s ease;
+  }
+  .page-landing .mosaic-a img { object-position: 47% 48%; }
+  .page-landing .mosaic-b img { object-position: 52% 50%; }
+  .page-landing .mosaic-c img { object-position: 50% 47%; }
+  .page-landing .mosaic-d img { object-position: 55% 50%; }
+  .page-landing .mosaic-e img { object-position: 50% 50%; }
+  .page-landing .mosaic-f img { object-position: 48% 49%; }
+  .page-landing .mosaic-g img { object-position: 52% 51%; }
+  .page-landing .mosaic-h img { object-position: 49% 53%; }
+
+
+
+  body.page-landing.is-workbench .hero-mosaic,
+  body.page-landing.hero-map-view .hero-mosaic {
+    opacity: 0;
+    visibility: hidden;
+  }
+  body.page-landing.is-workbench .hero-mosaic .mosaic-tile img,
+  body.page-landing.hero-map-view .hero-mosaic .mosaic-tile img {
+    transform: scale(1.07);
+  }
+
+  /* Make the marketing composition read against a busy image wall without
+     turning it into a glass card. */
+  .page-landing:not(.is-workbench) .hero-panel::before {
+    left: -120px;
+    top: -130px;
+    width: 760px;
+    height: 720px;
+    background: radial-gradient(circle at 39% 46%, rgba(3,5,4,.68), rgba(3,5,4,.34) 46%, rgba(3,5,4,.08) 67%, transparent 78%);
+    filter: blur(20px);
+  }
+  .page-landing:not(.is-workbench) .counterfactual-demo {
+    background: linear-gradient(180deg, rgba(7,9,8,.48), rgba(7,9,8,.31));
+    border-color: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px) saturate(120%);
+  }
+
+  /* The old hero's imagery had just enough movement to feel alive. Keep it
+     almost subliminal so the page still feels like evidence, not a showreel. */
+  @media (prefers-reduced-motion: no-preference) {
+    .page-landing .mosaic-a img,
+    .page-landing .mosaic-d img,
+    .page-landing .mosaic-f img { animation: mosaic-drift-a 18s ease-in-out infinite alternate; }
+    .page-landing .mosaic-b img,
+    .page-landing .mosaic-c img,
+    .page-landing .mosaic-g img,
+    .page-landing .mosaic-h img { animation: mosaic-drift-b 22s ease-in-out infinite alternate; }
+    @keyframes mosaic-drift-a {
+      from { transform: scale(1.035) translate3d(0,0,0); }
+      to { transform: scale(1.075) translate3d(-.8%, .5%, 0); }
+    }
+    @keyframes mosaic-drift-b {
+      from { transform: scale(1.04) translate3d(0,0,0); }
+      to { transform: scale(1.075) translate3d(.7%, -.45%, 0); }
+    }
+    body.page-landing.is-workbench .hero-mosaic img,
+    body.page-landing.hero-map-view .hero-mosaic img { animation-play-state: paused; }
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-mosaic { display: none !important; }
+}
+
+@media (min-width: 641px) {
+  .page-landing .mosaic-tile picture { display: block; width: 100%; height: 100%; }
+  .page-landing .mosaic-tile::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    border: 1px solid transparent;
+    transition: border-color .22s ease, box-shadow .22s ease;
+  }
+  .page-landing .mosaic-tile.is-active::before {
+    border-color: rgba(217,255,113,.42);
+    box-shadow: inset 0 0 0 1px rgba(217,255,113,.08), inset 0 0 44px rgba(217,255,113,.05);
+  }
+  .page-landing .mosaic-tile.is-active img {
+    filter: saturate(.98) brightness(.88) contrast(1.08);
   }
 }

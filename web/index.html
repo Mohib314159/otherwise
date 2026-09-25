@@ -2,207 +2,265 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Otherwise</title>
-<meta name="description" content="Did it change more than it would have anyway? Draw an area, name the event, and compare it against matched controls that did not get it.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d0c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Otherwise">
+<title>Otherwise — See the change. Test whether it’s real.</title>
+<meta name="description" content="Draw a place, name an event, and compare what happened there with matched places that behaved the same before it.">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/static/icon-180.png">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
-<link rel="stylesheet" href="/static/app.css">
-<link rel="stylesheet" href="/static/landing.css">
-<style>
-  html, body { height: 100%; overflow: hidden; }
-  #map { position: fixed; inset: 0; z-index: 0; }
-
-  .side-panel {
-    position: fixed;
-    top: 16px; left: 16px;
-    width: 380px; max-width: calc(100vw - 32px);
-    max-height: calc(100vh - 32px);
-    overflow-y: auto;
-    background: var(--panel);
-    border: 1px solid var(--rule);
-    border-radius: 6px;
-    z-index: 500;
-    padding: 20px;
-  }
-  .side-panel h1 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
-  .tagline { margin-top: 4px; font-size: 14px; }
-  .intro-line { margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.5; }
-  .panel-section { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule); }
-  .panel-section:first-of-type { border-top: none; }
-
-  .area-ha-line { font-size: 13px; margin-top: 8px; }
-  .area-ha-line.bad { color: var(--notreal); }
-
-  .draw-hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
-
-  #run-error { color: var(--notreal); font-size: 13px; margin-top: 10px; display: none; }
-
-  .progress-wrap { margin-top: 4px; }
-  .progress-bar-track { height: 4px; background: var(--rule); border-radius: 2px; overflow: hidden; }
-  .progress-bar-fill { height: 100%; background: var(--ink); width: 6%; transition: width 0.3s ease; }
-  .progress-stage { font-size: 13px; margin-top: 10px; }
-  .progress-note { font-size: 12px; color: var(--muted); margin-top: 10px; }
-  .progress-link { font-size: 12px; margin-top: 8px; word-break: break-all; }
-
-  .map-toggle {
-    position: fixed; top: 16px; right: 16px; z-index: 500;
-    background: var(--panel); border: 1px solid var(--rule); border-radius: 4px;
-    padding: 7px 12px; font-size: 13px; cursor: pointer; color: var(--ink);
-  }
-  .map-toggle:hover { border-color: var(--ink); }
-  .map-toggle.active { background: var(--ink); color: var(--paper); }
-
-  .domain-picker { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:16px; }
-  .domain-tab { border:1px solid var(--rule); background:transparent; color:var(--muted); padding:8px 10px; border-radius:4px; cursor:pointer; font:inherit; font-size:13px; }
-  .domain-tab.active { background:var(--ink); color:var(--paper); border-color:var(--ink); }
-  .panel-footer { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--muted); }
-  .panel-footer a { color: var(--muted); margin-right: 10px; }
-  .panel-footer a:hover { color: var(--ink); }
-  .panel-footer .attribution { display: block; margin-top: 8px; line-height: 1.4; }
-</style>
-<!-- placed after the block above so it wins the cascade at equal specificity
-     against those unconditional rules (e.g. .map-toggle's desktop top/right) -->
-<link rel="stylesheet" href="/static/mobile.css">
-<link rel="stylesheet" href="/static/desktop.css?v=air-20260922">
-<link rel="stylesheet" href="/static/evidence.css?v=air-20260922">
-<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/app.css?v=ui3">
+<link rel="stylesheet" href="/static/landing.css?v=ui3">
+<link rel="stylesheet" href="/static/mobile.css?v=ui3">
+<link rel="stylesheet" href="/static/desktop.css?v=ui3">
 </head>
 <body class="page-landing">
-<div id="map" role="application" aria-label="Map"></div>
-<button class="map-toggle" id="sat-toggle" type="button">Satellite</button>
+<div id="map" role="application" aria-label="Interactive map for selecting an area"></div>
+<div class="hero-mosaic" id="hero-mosaic" aria-hidden="true">
+  <div class="mosaic-tile mosaic-a" data-run-id="917915c7bc6e2fb9"><picture><source media="(min-width: 641px)" srcset="/api/runs/917915c7bc6e2fb9/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
+  <div class="mosaic-tile mosaic-b" data-run-id="5a5f8d14423c28f0"><picture><source media="(min-width: 641px)" srcset="/api/runs/5a5f8d14423c28f0/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
+  <div class="mosaic-tile mosaic-c" data-run-id="0423e078c5f38593"><picture><source media="(min-width: 641px)" srcset="/api/runs/0423e078c5f38593/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
+  <div class="mosaic-tile mosaic-d" data-run-id="2ee1c9c9753b3a11"><picture><source media="(min-width: 641px)" srcset="/api/runs/2ee1c9c9753b3a11/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
+  <div class="mosaic-tile mosaic-e" data-run-id="f8b923727d8e96f4"><picture><source media="(min-width: 641px)" srcset="/api/runs/f8b923727d8e96f4/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
+  <div class="mosaic-tile mosaic-f" data-run-id="4cf27cafaf37cb06"><picture><source media="(min-width: 641px)" srcset="/api/runs/4cf27cafaf37cb06/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
+  <div class="mosaic-tile mosaic-g" data-run-id="0c2af4baa8c24486"><picture><source media="(min-width: 641px)" srcset="/api/runs/0c2af4baa8c24486/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
+  <div class="mosaic-tile mosaic-h" data-run-id="2d6a535e10cc094e"><picture><source media="(min-width: 641px)" srcset="/api/runs/2d6a535e10cc094e/after.png"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="eager" decoding="async"></picture></div>
+</div>
+<div class="map-wash" aria-hidden="true"></div>
+<div class="map-grid" aria-hidden="true"></div>
 
-<aside class="side-panel" id="side-panel">
-  <div class="sheet-handle" id="sheet-handle" aria-hidden="true"></div>
-  <h1>Otherwise</h1>
-  <div class="tagline muted">Did it change more than it would have anyway?</div>
-  <p class="intro-line" id="domain-intro">Draw an area, name the event and its date. Sentinel-1 and Sentinel-2 are compared against matched control areas that did not get the event.</p>
+<header class="landing-nav">
+  <a class="brand" href="/" aria-label="Otherwise home">
+    <span class="brand-mark" aria-hidden="true"><span></span></span>
+    <span>Otherwise</span>
+  </a>
+  <nav class="landing-nav-links" aria-label="Primary navigation">
+    <a href="/track-record">Track record</a>
+    <button type="button" class="nav-link" data-drawer-trigger>Method</button>
+    <button type="button" class="nav-install" data-install-trigger>Install</button>
+  </nav>
+</header>
 
-  <div class="domain-picker" id="domain-picker" role="tablist" aria-label="Signal family" style="display:none;">
-    <button class="domain-tab active" id="domain-land" type="button" role="tab" aria-selected="true">Land change</button>
-    <button class="domain-tab" id="domain-air" type="button" role="tab" aria-selected="false">Air pollution</button>
-  </div>
+<button class="map-style" id="sat-toggle" type="button" aria-pressed="true">
+  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 5.2 8 2l5.8 3.2L8 8.4 2.2 5.2Zm0 2.8L8 11.2 13.8 8M2.2 10.8 8 14l5.8-3.2"/></svg>
+  <span id="map-style-label">Map</span>
+</button>
 
-  <div class="panel-section" id="land-showcase">
-    <div class="label">Showcase</div>
-    <p class="showcase-note">Real cases with documented sources. Sources and confirmation status are on the Track record page.</p>
-    <div id="showcase-list" class="stack" style="margin-top:8px;"></div>
-    <div id="showcase-empty" class="muted small" style="display:none;">No showcase runs yet.</div>
-  </div>
+<main class="landing-shell">
+  <section class="hero-panel" id="hero-panel" aria-labelledby="hero-title">
+    <div class="hero-eyebrow"><span class="live-dot"></span> Counterfactual earth checks</div>
+    <h1 id="hero-title">See the change.<br><em>Test whether it’s real.</em></h1>
+    <p class="hero-copy">Draw a place and name what happened. Otherwise compares it with nearby places that behaved the same before the event.</p>
 
-  <div class="panel-section" id="land-analysis-panel">
-    <div class="label">Your own area</div>
-    <div class="place-search">
-      <div class="place-search-row">
-        <input type="text" id="place-search-input" placeholder="Search a place" aria-label="Search a place">
-        <button class="btn btn-quiet" id="place-search-btn" type="button">Go</button>
+    <div class="counterfactual-demo" aria-hidden="true">
+      <div class="demo-labels"><span>before</span><span>event</span><span>after</span></div>
+      <svg viewBox="0 0 420 112" preserveAspectRatio="none">
+        <line class="event-line" x1="228" y1="9" x2="228" y2="104"/>
+        <path class="ghost-line" d="M8 73 C55 58 86 62 126 51 S190 43 228 48 C270 53 313 51 412 50"/>
+        <path class="observed-line" d="M8 73 C55 58 86 62 126 51 S190 43 228 48 C272 46 312 30 412 17"/>
+      </svg>
+      <div class="demo-key"><span><i class="key-observed"></i>This place</span><span><i class="key-ghost"></i>Matched places</span></div>
+    </div>
+
+    <div class="hero-actions">
+      <button class="primary-action" id="hero-start" type="button">
+        Check an area
+        <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M4 9h9M10 5l4 4-4 4"/></svg>
+      </button>
+      <button class="secondary-action" id="hero-cases" type="button">Explore examples</button>
+    </div>
+
+    <div class="hero-proof" aria-label="What the check uses">
+      <span>Sentinel-1 + 2</span><span>Matched controls</span><span>Placebo tests</span>
+    </div>
+  </section>
+
+  <aside class="workbench" id="side-panel" aria-label="Start a check" aria-hidden="true">
+    <div class="sheet-handle" id="sheet-handle" aria-hidden="true"></div>
+    <div class="workbench-head">
+      <button class="icon-button" id="workbench-close" type="button" aria-label="Back to overview">
+        <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M11.5 3.5 6 9l5.5 5.5"/></svg>
+      </button>
+      <div>
+        <div class="workbench-kicker">New check</div>
+        <h2>Choose the place.</h2>
       </div>
-      <div class="place-search-note">Search by OpenStreetMap Nominatim</div>
-      <div class="place-search-error" id="place-search-error" style="display:none;"></div>
-    </div>
-    <div id="draw-block" style="margin-top:10px;">
-      <button class="btn" id="draw-btn" type="button">Draw an area</button>
-      <div class="draw-hint">0.5 to 500 hectares.</div>
+      <div class="step-count" id="step-count">1 / 3</div>
     </div>
 
-    <form id="run-form" style="display:none; margin-top:14px;">
-      <div class="area-ha-line" id="area-ha-line"></div>
+    <!-- Air/ULEZ: hidden unless the server has APP_AIR_ENABLED=1 (landing.js reveals it). -->
+    <div class="domain-picker" id="domain-picker" role="tablist" aria-label="Signal family" style="display:none;">
+      <button class="domain-tab active" id="domain-land" type="button" role="tab" aria-selected="true">Land change</button>
+      <button class="domain-tab" id="domain-air" type="button" role="tab" aria-selected="false">Air pollution</button>
+    </div>
+    <p class="intro-line" id="domain-intro" hidden></p>
 
-      <div class="field-row" style="margin-top:12px;">
-        <label class="field" for="f-change-type">What happened?</label>
+    <div id="land-analysis-panel">
+    <div class="step-rail" aria-hidden="true">
+      <span class="active" data-step-dot="1"><b>01</b><em>Area</em></span>
+      <span data-step-dot="2"><b>02</b><em>Event</em></span>
+      <span data-step-dot="3"><b>03</b><em>Evidence</em></span>
+    </div>
+
+    <section class="workflow-step active" id="step-place" data-step="1">
+      <div class="place-search">
+        <label class="sr-only" for="place-search-input">Search for a place</label>
+        <div class="search-box">
+          <svg viewBox="0 0 18 18" aria-hidden="true"><circle cx="8" cy="8" r="4.8"/><path d="m11.6 11.6 3 3"/></svg>
+          <input type="text" id="place-search-input" placeholder="Search a place" autocomplete="off">
+          <button class="search-go" id="place-search-btn" type="button">Find</button>
+        </div>
+        <div class="place-search-error" id="place-search-error" style="display:none;"></div>
+      </div>
+
+      <div class="or-row"><span>or</span></div>
+
+      <div id="draw-block">
+        <button class="draw-action" id="draw-btn" type="button">
+          <span class="draw-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M4 6.2 9.1 3l6.3 3.8-1.7 8.1-8.2.5L4 6.2Z"/><circle cx="4" cy="6.2" r="1.2"/><circle cx="9.1" cy="3" r="1.2"/><circle cx="15.4" cy="6.8" r="1.2"/><circle cx="13.7" cy="14.9" r="1.2"/><circle cx="5.5" cy="15.4" r="1.2"/></svg></span>
+          <span><strong>Draw it on the map</strong><small>Outline 0.5–500 hectares</small></span>
+          <svg class="arrow" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 9h9M10 5l4 4-4 4"/></svg>
+        </button>
+      </div>
+      <p class="workflow-note">Tip: zoom in first. You only need the area you want to test, not the whole town or region.</p>
+    </section>
+
+    <form id="run-form" class="workflow-step" data-step="2" style="display:none;">
+      <div class="area-summary">
+        <span class="area-check" aria-hidden="true">✓</span>
+        <div><strong id="area-ha-line"></strong><small>Area selected</small></div>
+        <button type="button" class="text-button" id="redraw-btn">Redraw</button>
+      </div>
+
+      <div class="form-title-row">
+        <div><div class="form-kicker">Step 2</div><h3>Describe the event.</h3></div>
+      </div>
+
+      <div class="field-row">
+        <label class="field" for="f-change-type">What happened here?</label>
         <select id="f-change-type" name="change_type">
           <option value="clearing">Forest or vegetation cleared</option>
           <option value="regrowth">Regrowth or restoration</option>
           <option value="flood">Flooding</option>
-          <option value="burn">Burn scar</option>
+          <option value="burn">Burn or wildfire</option>
           <option value="construction">Construction</option>
           <option value="other">Something else</option>
         </select>
       </div>
 
-      <div class="field-row">
-        <label class="field" for="f-date">When?</label>
-        <input type="date" id="f-date" name="event_date" min="2018-01-01" required>
+      <div class="form-grid-2">
+        <div class="field-row">
+          <label class="field" for="f-date">Event date</label>
+          <input type="date" id="f-date" name="event_date" min="2018-01-01" required>
+        </div>
+        <div class="field-row">
+          <label class="field" for="f-post-months">Check the next</label>
+          <select id="f-post-months" name="post_months">
+            <option value="3">3 months</option>
+            <option value="6">6 months</option>
+            <option value="12" selected>12 months</option>
+            <option value="18">18 months</option>
+          </select>
+        </div>
       </div>
 
       <div class="field-row">
-        <label class="field" for="f-post-months">Look how long after?</label>
-        <select id="f-post-months" name="post_months">
-          <option value="3">3 months</option>
-          <option value="6">6 months</option>
-          <option value="12" selected>12 months</option>
-          <option value="18">18 months</option>
-        </select>
+        <label class="field" for="f-label">Name this check <span class="muted">optional</span></label>
+        <input type="text" id="f-label" name="label" placeholder="e.g. North field" maxlength="120">
       </div>
 
-      <div class="field-row">
-        <label class="field" for="f-label">Label <span class="muted">(optional)</span></label>
-        <input type="text" id="f-label" name="label" placeholder="e.g. Field north of the road" maxlength="120">
+      <div class="what-next">
+        <span class="what-next-icon">03</span>
+        <p>Match this area to places that behaved the same before the date. Then test whether it broke away afterwards.</p>
       </div>
 
-      <button class="btn" id="submit-btn" type="submit" style="width:100%;">Check it</button>
+      <button class="primary-action submit-action" id="submit-btn" type="submit">Run comparison</button>
       <div id="run-error"></div>
     </form>
 
-    <div id="progress-block" style="display:none; margin-top:14px;">
-      <div class="progress-wrap">
-        <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-fill"></div></div>
+    <section id="progress-block" class="workflow-step progress-state" data-step="3" style="display:none;">
+      <div class="progress-orbit" aria-hidden="true"><span></span><i></i></div>
+      <div class="form-kicker">Running</div>
+      <h3 id="progress-stage">Starting…</h3>
+      <div class="progress-wrap" aria-hidden="true"><div class="progress-bar-track"><div class="progress-bar-fill" id="progress-fill"></div></div></div>
+      <div class="progress-pipeline" aria-hidden="true">
+        <span class="done">Area</span><span>Controls</span><span>Placebos</span><span>Evidence</span>
       </div>
-      <div class="progress-stage" id="progress-stage">Starting&hellip;</div>
-      <!-- No time estimate: the only runs timed so far were on other hardware, and
-           this deployment has a fraction of a CPU. Tens of minutes to hours is what
-           can honestly be said. -->
-      <div class="progress-note">A live run reads every Sentinel scene over the area for three years before the event, so it takes tens of minutes and can take hours. It is also a quick check: the control areas are read more coarsely than in the published examples. You can close the tab &mdash; the run carries on, and its page is ready at the link below once it finishes.</div>
+      <p class="progress-note">Live checks can take tens of minutes or longer because they read several years of satellite scenes. You can close this tab; the run keeps going.</p>
       <div class="progress-link" id="progress-link"></div>
+      <p class="quick-disclosure">Live checks use a faster control read than the published examples. The verdict page labels this clearly.</p>
+    </section>
     </div>
-  </div>
 
   <div class="panel-section" id="air-analysis-panel" style="display:none;">
-    <div class="label">Air policy lab</div>
-    <p class="showcase-note">Ground NO₂ from London Air Quality Network is weather-normalised with ERA5, then compared with same-type DEFRA AURN monitors in other UK cities. Published ULEZ findings are attached only after estimation.</p>
-    <form id="air-run-form" style="margin-top:12px;">
-      <div class="field-row">
-        <label class="field" for="air-case">Policy / event</label>
-        <select id="air-case" name="case_id"></select>
+      <div class="label">Air policy lab</div>
+      <p class="showcase-note">Ground NO₂ from London Air Quality Network is weather-normalised with ERA5, then compared with same-type DEFRA AURN monitors in other UK cities. Published ULEZ findings are attached only after estimation.</p>
+      <form id="air-run-form" style="margin-top:12px;">
+        <div class="field-row">
+          <label class="field" for="air-case">Policy / event</label>
+          <select id="air-case" name="case_id"></select>
+        </div>
+        <p class="draw-hint" id="air-case-description"></p>
+        <div class="field-row">
+          <label class="field" for="air-post-months">Look how long after?</label>
+          <select id="air-post-months" name="post_months">
+            <option value="1">1 month</option><option value="3" selected>3 months</option>
+            <option value="6">6 months</option><option value="12">12 months</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label class="field" for="air-label">Label <span class="muted">(optional)</span></label>
+          <input type="text" id="air-label" maxlength="120" placeholder="e.g. Independent ULEZ replication">
+        </div>
+        <button class="btn" id="air-submit-btn" type="submit" style="width:100%;">Test the policy</button>
+        <div id="air-run-error" style="color:var(--notreal);font-size:13px;margin-top:10px;display:none;"></div>
+      </form>
+      <div id="air-progress-block" style="display:none;margin-top:14px;">
+        <div class="progress-wrap"><div class="progress-bar-track"><div class="progress-bar-fill" id="air-progress-fill"></div></div></div>
+        <div class="progress-stage" id="air-progress-stage">Starting…</div>
+        <div class="progress-note">This is a research-grade run: it downloads years of hourly monitor data and ERA5 weather, then re-fits matched counterfactuals and symmetric placebos. The resulting verdict gets a permanent URL.</div>
+        <div class="progress-link" id="air-progress-link"></div>
       </div>
-      <p class="draw-hint" id="air-case-description"></p>
-      <div class="field-row">
-        <label class="field" for="air-post-months">Look how long after?</label>
-        <select id="air-post-months" name="post_months">
-          <option value="1">1 month</option><option value="3" selected>3 months</option>
-          <option value="6">6 months</option><option value="12">12 months</option>
-        </select>
-      </div>
-      <div class="field-row">
-        <label class="field" for="air-label">Label <span class="muted">(optional)</span></label>
-        <input type="text" id="air-label" maxlength="120" placeholder="e.g. Independent ULEZ replication">
-      </div>
-      <button class="btn" id="air-submit-btn" type="submit" style="width:100%;">Test the policy</button>
-      <div id="air-run-error" style="color:var(--notreal);font-size:13px;margin-top:10px;display:none;"></div>
-    </form>
-    <div id="air-progress-block" style="display:none;margin-top:14px;">
-      <div class="progress-wrap"><div class="progress-bar-track"><div class="progress-bar-fill" id="air-progress-fill"></div></div></div>
-      <div class="progress-stage" id="air-progress-stage">Starting…</div>
-      <div class="progress-note">This is a research-grade run: it downloads years of hourly monitor data and ERA5 weather, then re-fits matched counterfactuals and symmetric placebos. The resulting verdict gets a permanent URL.</div>
-      <div class="progress-link" id="air-progress-link"></div>
+    </div>
+
+    <footer class="workbench-footer">
+      <button class="footer-link" type="button" data-drawer-trigger>How it works</button>
+      <a href="/track-record">Track record</a>
+      <a href="/batch">Batch</a>
+    </footer>
+    <p class="workbench-attribution">Contains modified Copernicus Sentinel data. Land cover &copy; ESA WorldCover. Terrain &copy; Copernicus DEM. Data via Microsoft Planetary Computer.</p>
+  </aside>
+</main>
+
+<section class="case-rail" id="case-rail" aria-label="Example checks">
+  <div class="case-rail-head">
+    <div><span class="rail-kicker">Known events</span><strong>Open a completed check.</strong></div>
+    <div class="case-rail-actions">
+      <a href="/track-record">All checks <span aria-hidden="true">↗</span></a>
+      <button class="case-close" id="case-close" type="button" aria-label="Close examples">×</button>
     </div>
   </div>
+  <div id="showcase-list" class="case-list"></div>
+  <div id="showcase-empty" class="case-empty" style="display:none;">No example runs available.</div>
+</section>
 
-  <div class="panel-footer">
-    <a href="#" data-drawer-trigger>How this works</a>
-    <a href="/track-record">Track record</a>
-    <a href="/batch">Batch</a>
-    <a href="https://github.com/Mohib314159/carbon-twin" target="_blank" rel="noopener">Source</a>
-    <span class="attribution">Contains modified Copernicus Sentinel data. Land cover &copy; ESA WorldCover. Terrain &copy; Copernicus DEM. Data via Microsoft Planetary Computer.</span>
-  </div>
-</aside>
+<div class="draw-coach" id="draw-coach" aria-live="polite">
+  <span class="draw-coach-icon" aria-hidden="true">✦</span>
+  <div><strong>Outline the area</strong><span>Tap around its boundary, then tap the first point again.</span></div>
+  <button type="button" id="draw-coach-cancel">Cancel</button>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 <script type="module" src="/static/landing.js"></script>
-<script type="module" src="/static/mobile.js"></script>
+<script type="module" src="/static/pwa.js"></script>
 </body>
 </html>

@@ -16,6 +16,37 @@ const errorEl = document.getElementById("batch-error");
 const resultEl = document.getElementById("batch-result");
 const tbody = document.getElementById("batch-tbody");
 const dlBatchReport = document.getElementById("dl-batch-report");
+const uploadDrop = document.getElementById("upload-drop");
+const fileNameEl = document.getElementById("f-file-name");
+
+function syncFileName() {
+  const file = fileInput.files && fileInput.files[0];
+  fileNameEl.textContent = file ? file.name : ".geojson or .json";
+}
+
+fileInput.addEventListener("change", syncFileName);
+if (uploadDrop) {
+  for (const name of ["dragenter", "dragover"]) {
+    uploadDrop.addEventListener(name, (e) => {
+      e.preventDefault();
+      uploadDrop.classList.add("is-dragover");
+    });
+  }
+  for (const name of ["dragleave", "drop"]) {
+    uploadDrop.addEventListener(name, (e) => {
+      e.preventDefault();
+      uploadDrop.classList.remove("is-dragover");
+    });
+  }
+  uploadDrop.addEventListener("drop", (e) => {
+    const files = e.dataTransfer && e.dataTransfer.files;
+    if (files && files.length) {
+      fileInput.files = files;
+      pasteInput.value = "";
+      syncFileName();
+    }
+  });
+}
 
 let pollTimer = null;
 const runCache = new Map(); // run_id -> run json (fetched once done)

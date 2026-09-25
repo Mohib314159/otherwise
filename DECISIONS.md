@@ -1342,3 +1342,70 @@ false-alarm rate from `scripts.air_power` on the current protocol.
 - README, SPEC-v2 status and AIR_METHOD header no longer present air as a live or
   validated signal. The live URL, https://otherwise-r1vd.onrender.com, is recorded in README
   and DEPLOY.
+
+## 2026-09-25 — Hero V3 UI (branch `ui`) reconciled onto main, frontend only
+
+Source: Codex's branch `ui` (one commit, "Import supplied Hero V3 archive for
+selective UI review"; Mohib referred to it as `codex/ui-flagship-v3`, which does
+not exist on the remote). The archive was built from an older snapshot, so a
+straight merge would have reverted about 850 lines outside `web/`.
+
+**Rejected, everything outside `web/` except the PWA routes:** reversions of
+the symmetric placebo in `estimator.py`/`run.py`/`power.py`, blind validation,
+the `/review` router, air routes and `APP_AIR_ENABLED`, the report's
+placebo caveat and air p-value guard, monotonic job timeouts, 311 lines of
+DECISIONS.md, README/DEPLOY/SPEC-v2 honesty text, `render.yaml`, requirements,
+and tests. None of them was a new backend feature.
+
+**Taken, one backend dependency (Mohib approved it):** the PWA needs
+`/manifest.webmanifest` and `/sw.js` served from the root with
+`Service-Worker-Allowed: /`. Both routes were added to main's `server.py`, with
+`tests/test_pwa.py`. The service worker was **rewritten**: Codex's served
+`/static/` JS/CSS cache-first under a cache name that never changed, so a
+deploy's new HTML could run against old scripts on an installed phone, and it
+cached error responses. Now every same-origin GET, both HTML and static, is
+network-first (`cache: "no-cache"`); Cache Storage is only an offline fallback,
+only successful responses are stored, and `/api/*` is never intercepted. A test
+guards against a cache-first handler coming back.
+
+**`web/`, reconciled per file rather than overwritten:**
+
+- Taken from V3: the new landing shell (hero, mosaic, workbench, case rail, draw
+  coach), CSS, the batch upload box, the track-record mobile cards, the
+  Before/Split/After compare control, the "New check" topbar link, the new
+  "How this works" drawer, and PWA install.
+- Kept from main, because V3 predates them:
+  - `chart.js` in full (null-safe lines and bands);
+  - the air verdict renderer and the zero-placebo p-value guard;
+  - the "Older placebo procedure" caveat;
+  - the track record's air section (still 404-gated);
+  - `NO2_*` signal labels;
+  - the `.sure-caveat` and air styles in `app.css`;
+  - `evidence.css` on the verdict, track and batch pages.
+- Put back into the new shell:
+  - the server-gated air tab and panel (hidden unless `APP_AIR_ENABLED=1`);
+  - the Batch link;
+  - the Copernicus / ESA WorldCover / DEM attribution, which V3's workbench had
+    dropped;
+  - the prior-art list in "How this works", which SPEC.md requires.
+- `mobile.js` stays unloaded: V3 replaces the draggable sheet with its own
+  workbench (its `mobile.css` drops the sheet rules and keeps the landing-only
+  scroll lock).
+- The hectare fix (UTM area and longitude wrapping in `landing.js`) is intact in V3.
+
+**Copy changed for honesty (Mohib to confirm):**
+
+- The hero said "See the change. **Test the cause.**" The method tests whether an
+  area broke away from matched places after a date, not what caused it (CRITIQUE
+  #13). It now says "Test whether it's real."
+- The drawer said that if the method "fires too easily, Otherwise does not call the
+  change real". That is true for the in-space placebo but not for fake dates: a
+  flagged fake date only adds a caveat (REDTEAM E5). It now says exactly that.
+- Landing cards no longer show a placebo p. That is V3's change, and it is kept:
+  every committed showcase p comes from the pre-fix procedure.
+
+**Fixed in V3's own CSS:** the active "Split" button was white text on white.
+**Tests adapted to the new UX, not weakened:** the area-input harness matched
+`/api/run` as a prefix, so the mosaic's `/api/runs/<id>/after.png` requests were
+parsed as run submissions; the mouse-draw test now clicks "Check an area" before
+drawing. Suite: 361 passed, 8 xfailed.
