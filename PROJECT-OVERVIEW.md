@@ -1,6 +1,6 @@
 # Otherwise: project overview
 
-Written 25 September 2026 on branch `codex/air-ulez`, for Mohib to reread before posting anything publicly.
+Written 25 September 2026 and updated the same day after the merges below, for Mohib to reread before posting anything publicly.
 Every number here comes from a file in this repo, which is named next to it, or from a command run while writing this and marked **"re-run today"**.
 If a number here disagrees with its source file, the source file wins.
 
@@ -19,7 +19,7 @@ The answer is **REAL**, **NOT REAL** or **CAN'T TELL**, and the evidence is show
 There are two kinds of signal:
 
 - **Land change** (Sentinel-1 radar and Sentinel-2 optical satellite data). This is the original product, and it is on `main`.
-- **Air pollution** (ground-level NO₂ monitors, used for London's ULEZ). Codex added this, and it is **only on the `codex/air-ulez` branch**.
+- **Air pollution** (ground-level NO₂ monitors, used for London's ULEZ). Codex added this, and it is **merged but switched off** (`APP_AIR_ENABLED=0`).
 
 ### The land method, step by step (drawn area → verdict)
 
@@ -61,7 +61,7 @@ Source: `docs/METHOD.md`. The code for each step is in brackets.
 
 ### The air (ULEZ) method, step by step
 
-Source: `docs/AIR_METHOD.md` and `src/app/air/`. **This is on the branch only and has not been reviewed.**
+Source: `docs/AIR_METHOD.md` and `src/app/air/`. **It is on main but switched off. It has been reviewed (DECISIONS.md) but not validated.**
 
 1. **Pick a registered case, not a drawn area** (`src/app/air/cases.py`). There are three:
    - Central ULEZ, 8 Apr 2019 (analysis from 8 Mar 2018).
@@ -96,7 +96,7 @@ Source: `docs/AIR_METHOD.md` and `src/app/air/`. **This is on the branch only an
 | `WORKFLOW.md` | How Claude (architect/reviewer), Codex (implementer) and grunt (routine code) split the work, plus non-negotiable rules. |
 | `ULEZ-DESIGN.md` | Your proposal for a better ULEZ design (roadside-minus-background, ramp instead of step, COVID-free windows). **Not implemented.** |
 | `DECISIONS.md` | The project's memory: every significant decision, the CRITIQUE triage table, and HANDOFF sections. |
-| `HANDOFF-CODEX.md` | Codex's handoff for the air branch (branch only). |
+| `HANDOFF-CODEX.md` | Codex's handoff for the air branch. |
 | `CRITIQUE.md` | An independent critical review: 23 issues, triaged in DECISIONS.md. |
 | `PLAN.md` | The original milestone plan. |
 | `SITES.md` | The known-answer candidate sites, with sources. |
@@ -125,7 +125,7 @@ Source: `docs/AIR_METHOD.md` and `src/app/air/`. **This is on the branch only an
 | `imagery.py`, `pixels.py`, `breakdate.py` | Before/after thumbnails, a pixel-level change test, and a "when did it change?" mode. |
 | `report.py` | The Markdown report for a run. |
 
-### `src/app/air/`: added by Codex (branch only)
+### `src/app/air/`: added by Codex (on main, switched off)
 
 | File | Responsibility |
 |---|---|
@@ -181,18 +181,18 @@ Most of this is **not used by the app**. `scm.py`, `inference.py`, `audit.py`, `
 
 | Branch | State |
 |---|---|
-| `main` @ `9e525ee` | The land app with four finished fixes: live-run memory, hectare input, mobile layout, honest verdict copy and share previews (commit `3393b45`). Also has `WORKFLOW.md` and `ULEZ-DESIGN.md`. **No air code.** |
-| `codex/air-ulez` @ `ef871d3` (this branch) | `main` plus 2 commits: the whole air/ULEZ pipeline, the flagship desktop styling, and Codex's validation evidence. It would fast-forward, so there are no conflicts with main. |
-| `claude/elegant-franklin-en2noi` | **30 commits not on main, and they matter.** They contain:<br>• the CRITIQUE #4 symmetric-placebo fix (implemented, tested, not published)<br>• the blind-validation harness and `/review` page<br>• the completed live-vs-full comparison (10 of 10 sites) |
-| `track/ui-honesty`, `track/live-runs-design`, `track/blind`, `wip-blind`, `wip-design` | Older work branches. Their useful content was mostly merged into main or into `elegant-franklin`. They conflict with the air branch in the UI files. |
+| `main` | The land app, plus (merged 25 Sep, in this order):<br>• `claude/elegant-franklin-en2noi`: the CRITIQUE #4 symmetric-placebo fix, blind validation (`/review`) and the live-vs-full comparison<br>• `codex/air-ulez`: the air/ULEZ pipeline **switched off** (`APP_AIR_ENABLED=0`), Codex's desktop UI, the `p=1.000` fix, and the README/DECISIONS honesty fixes |
+| `codex/air-ulez` | Same content as `main` after the merge. Keep developing air here. |
+| `claude/elegant-franklin-en2noi` | Fully merged. |
+| `track/ui-honesty`, `track/live-runs-design`, `track/blind`, `wip-blind`, `wip-design` | Older work branches. Their useful content reached main through `elegant-franklin`. Don't merge them now: they conflict in the UI files. |
 | `track/hectare`, `track/mobile`, `design`, and other `claude/*` | Already merged. |
 
 ### What's deployed
 
-- `WORKFLOW.md` and DECISIONS.md say `main` auto-deploys to Render (free tier: 512 MB RAM, 0.1 CPU, sleeps after 15 idle minutes).
-- **I could not confirm a live URL.** The repo only has the example `https://otherwise.onrender.com` from DEPLOY.md, and today that address returns Render's "no server" response.
-- Check the real URL in your Render dashboard and write it into README.md.
-- Whatever is deployed runs `main`: land only, and still computing the unfixed placebo p-value (§4).
+- **Live site: https://otherwise-r1vd.onrender.com.** Render free tier (512 MB RAM, 0.1 CPU, sleeps after 15 idle minutes). Every push to `main` redeploys it.
+- Land only: the air tab is hidden and `/api/air/*` returns 404.
+- New runs use the symmetric placebo. The committed showcase runs predate that fix, so their pages and reports carry an "older placebo procedure" caveat until they are re-run.
+- The GitHub → Hugging Face sync workflow fails on every push because its secrets are empty. It deploys nothing, and is harmless but noisy.
 
 ### What's tested
 
@@ -213,12 +213,15 @@ Most of this is **not used by the app**. `scm.py`, `inference.py`, `audit.py`, `
 
 ### Half-finished
 
-1. **Placebo fix (CRITIQUE #4).** Done in code on `elegant-franklin`. Its consequences are not published: `power.py` and every showcase site have to be re-run under it, and the results published even if verdicts weaken.
-2. **Blind validation.** The runs on control areas haven't started, and nobody has reviewed anything.
-3. **Air.** The LAQN downloads need to cope with timeouts, and the AURN station list includes stations that don't measure NO₂ for the years needed.
-   Still to do: the known-answer set (Ratcliffe, COVID, null cities), a v2.3.1 power test, UI honesty fixes (the `p=1.000` placeholder when there are no placebos), and screenshots at desktop and 390px.
+1. **Placebo fix (CRITIQUE #4).** Now on main, and new runs use it. Still owed: re-running `power.py` and every showcase site under it, and publishing the results even if verdicts weaken. It takes hours per site, because the caches are gone. The in-time placebo's similar leak is not yet fixed.
+2. **Blind validation.** Now on main. The runs on control areas haven't started, so there is no false-alarm rate, and nobody has reviewed anything.
+3. **Air (switched off).** The LAQN downloads need to cope with timeouts, and the AURN station list includes stations that don't measure NO₂ for the years needed.
+   Still to do: the known-answer set (Ratcliffe, COVID, null cities), a v2.3.1 false-alarm/power test, a decision on `ULEZ-DESIGN.md`, and justifying or removing the 3× pre-fit bypass (DECISIONS.md triage #9).
 4. **The SPEC-v2 "plugin" refactor (Part A).** Not done. Air was built beside land, not through a shared plugin interface.
-5. **Small UI items:** the mobile sheet uses `vh` (should use `dvh`), and the draw hint doesn't explain how to close a polygon.
+5. **Small UI items:**
+   - The mobile sheet uses `vh` (should use `dvh`).
+   - The draw hint doesn't explain how to close a polygon.
+   - On a phone the landing map opens framed on the Arctic. This was already the case before the merge (`docs/screenshots/2026-09-25/`).
 
 ---
 
@@ -245,7 +248,7 @@ Most of this is **not used by the app**. `scm.py`, `inference.py`, `audit.py`, `
 ### Air weaknesses
 
 - **No completed ULEZ result exists.**
-- **Some rules changed without review.** Codex changed a rule about when to withhold a verdict, and brought in air design decisions from the v2.2 archive. Nobody has done the architect review or the adversarial pass that WORKFLOW.md requires.
+- **Method reviewed, but not red-teamed.** The architect triage is in DECISIONS.md ("Codex air changes: triage"): 11 items, 7 valid, 4 partly valid, 0 wrong. The adversarial pass WORKFLOW.md requires has not been done.
 - **One confounder can't be identified from this data.** A London-only shock starting on exactly the policy date would look like a policy effect.
 - **Your `ULEZ-DESIGN.md` proposes a different design.** It would change the method, so it needs a decision.
 
@@ -266,12 +269,11 @@ Most of this is **not used by the app**. `scm.py`, `inference.py`, `audit.py`, `
 
 ### Open decisions (yours)
 
-1. Merge order: the placebo fix (`elegant-franklin`) first, then air? Recommended.
-2. Hosting option (a)–(d) above.
-3. Confirm, or reject, the 10 land known-answer sites.
-4. Whether air ships hidden (for example `APP_AIR_ENABLED=0`) until it is validated. Recommended.
-5. Whether to adopt the `ULEZ-DESIGN.md` approach for air. This is a method call. Claude should decide it and log it, but you set the priority.
-6. The real deployed URL.
+1. Hosting option (a)–(d) above.
+2. Confirm, or reject, the 10 land known-answer sites.
+3. When to spend the hours re-running the showcase sites under the fixed placebo.
+4. Whether to adopt the `ULEZ-DESIGN.md` approach for air. This is a method call. Claude should decide it and log it, but you set the priority.
+5. When air is switched on. The bar you set: its own known-answer set and false-alarm test first.
 
 ---
 
@@ -290,7 +292,7 @@ Most of this is **not used by the app**. `scm.py`, `inference.py`, `audit.py`, `
 ### Claims you can't make yet
 
 - ✗ Any claim about **how often it's right on unseen cases.** There is no false-alarm rate from blind validation (0 control runs), and the known-answer sites are unconfirmed and were partly used to shape the rules.
-- ✗ That the **placebo p-values are exact or conservative.** On main they are too optimistic (CRITIQUE #4) until the fix is published with re-run numbers.
+- ✗ That the **published placebo p-values are exact or conservative.** Every committed showcase and known-answer p-value comes from the old procedure, which is too optimistic (CRITIQUE #4). Only runs made after the 25 Sep merge use the fixed one.
 - ✗ That it **detects floods reliably** (REDTEAM E7), or that REAL on a gradually declining area is trustworthy (E5).
 - ✗ That **live runs match the published runs.** They are a "quick check": 9 of 10 agree, and the one that doesn't errs towards REAL.
 - ✗ That a **stranger can draw an area and get a verdict** on the free host in reasonable time. CPU makes that unproven.
