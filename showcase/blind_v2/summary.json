@@ -4,7 +4,7 @@
  "sample_n": 247,
  "sample_git_commit": "6d8776d",
  "git_commit": "4c98145",
- "generated": "2026-09-26T02:55:59+00:00",
+ "generated": "2026-09-26T04:13:12+00:00",
  "completed": 247,
  "pending": 0,
  "median_seconds": 3601.5,
@@ -12,26 +12,26 @@
   "n": 247,
   "n_events": 130,
   "n_nulls": 117,
-  "errors": 198,
+  "errors": 192,
   "events": {
-   "n": 20,
-   "hit": 12,
+   "n": 25,
+   "hit": 17,
    "miss": 1,
    "cant_tell": 7,
-   "error": 110,
-   "detection_rate": 0.6,
-   "miss_rate": 0.05,
-   "cant_tell_rate": 0.35
+   "error": 105,
+   "detection_rate": 0.68,
+   "miss_rate": 0.04,
+   "cant_tell_rate": 0.28
   },
   "nulls": {
-   "n": 29,
+   "n": 30,
    "false_alarm": 0,
-   "correct": 19,
+   "correct": 20,
    "cant_tell": 10,
-   "error": 88,
+   "error": 87,
    "false_alarm_rate": 0.0,
-   "correct_rate": 0.655,
-   "cant_tell_rate": 0.345
+   "correct_rate": 0.667,
+   "cant_tell_rate": 0.333
   }
  },
  "by": {
@@ -66,26 +66,26 @@
     "n": 230,
     "n_events": 115,
     "n_nulls": 115,
-    "errors": 184,
+    "errors": 178,
     "events": {
-     "n": 18,
-     "hit": 10,
+     "n": 23,
+     "hit": 15,
      "miss": 1,
      "cant_tell": 7,
-     "error": 97,
-     "detection_rate": 0.556,
-     "miss_rate": 0.056,
-     "cant_tell_rate": 0.389
+     "error": 92,
+     "detection_rate": 0.652,
+     "miss_rate": 0.043,
+     "cant_tell_rate": 0.304
     },
     "nulls": {
-     "n": 28,
+     "n": 29,
      "false_alarm": 0,
-     "correct": 19,
+     "correct": 20,
      "cant_tell": 9,
-     "error": 87,
+     "error": 86,
      "false_alarm_rate": 0.0,
-     "correct_rate": 0.679,
-     "cant_tell_rate": 0.321
+     "correct_rate": 0.69,
+     "cant_tell_rate": 0.31
     }
    }
   },
@@ -94,26 +94,26 @@
     "n": 230,
     "n_events": 115,
     "n_nulls": 115,
-    "errors": 184,
+    "errors": 178,
     "events": {
-     "n": 18,
-     "hit": 10,
+     "n": 23,
+     "hit": 15,
      "miss": 1,
      "cant_tell": 7,
-     "error": 97,
-     "detection_rate": 0.556,
-     "miss_rate": 0.056,
-     "cant_tell_rate": 0.389
+     "error": 92,
+     "detection_rate": 0.652,
+     "miss_rate": 0.043,
+     "cant_tell_rate": 0.304
     },
     "nulls": {
-     "n": 28,
+     "n": 29,
      "false_alarm": 0,
-     "correct": 19,
+     "correct": 20,
      "cant_tell": 9,
-     "error": 87,
+     "error": 86,
      "false_alarm_rate": 0.0,
-     "correct_rate": 0.679,
-     "cant_tell_rate": 0.321
+     "correct_rate": 0.69,
+     "cant_tell_rate": 0.31
     }
    },
    "mtbs": {
@@ -148,16 +148,16 @@
     "n": 170,
     "n_events": 82,
     "n_nulls": 88,
-    "errors": 136,
+    "errors": 132,
     "events": {
-     "n": 12,
-     "hit": 8,
+     "n": 16,
+     "hit": 12,
      "miss": 0,
      "cant_tell": 4,
-     "error": 70,
-     "detection_rate": 0.667,
+     "error": 66,
+     "detection_rate": 0.75,
      "miss_rate": 0.0,
-     "cant_tell_rate": 0.333
+     "cant_tell_rate": 0.25
     },
     "nulls": {
      "n": 22,
@@ -174,26 +174,26 @@
     "n": 53,
     "n_events": 29,
     "n_nulls": 24,
-    "errors": 44,
+    "errors": 42,
     "events": {
-     "n": 5,
-     "hit": 2,
+     "n": 6,
+     "hit": 3,
      "miss": 1,
      "cant_tell": 2,
-     "error": 24,
-     "detection_rate": 0.4,
-     "miss_rate": 0.2,
-     "cant_tell_rate": 0.4
+     "error": 23,
+     "detection_rate": 0.5,
+     "miss_rate": 0.167,
+     "cant_tell_rate": 0.333
     },
     "nulls": {
-     "n": 4,
+     "n": 5,
      "false_alarm": 0,
-     "correct": 3,
+     "correct": 4,
      "cant_tell": 1,
-     "error": 20,
+     "error": 19,
      "false_alarm_rate": 0.0,
-     "correct_rate": 0.75,
-     "cant_tell_rate": 0.25
+     "correct_rate": 0.8,
+     "cant_tell_rate": 0.2
     }
    },
    ">150 ha": {
@@ -228,7 +228,7 @@
     "n": 92,
     "n_events": 23,
     "n_nulls": 69,
-    "errors": 72,
+    "errors": 71,
     "events": {
      "n": 4,
      "hit": 0,
@@ -240,27 +240,27 @@
      "cant_tell_rate": 0.75
     },
     "nulls": {
-     "n": 16,
+     "n": 17,
      "false_alarm": 0,
-     "correct": 12,
+     "correct": 13,
      "cant_tell": 4,
-     "error": 53,
+     "error": 52,
      "false_alarm_rate": 0.0,
-     "correct_rate": 0.75,
-     "cant_tell_rate": 0.25
+     "correct_rate": 0.765,
+     "cant_tell_rate": 0.235
     }
    },
    "temperate": {
     "n": 74,
     "n_events": 51,
     "n_nulls": 23,
-    "errors": 62,
+    "errors": 58,
     "events": {
-     "n": 6,
-     "hit": 6,
+     "n": 10,
+     "hit": 10,
      "miss": 0,
      "cant_tell": 0,
-     "error": 45,
+     "error": 41,
      "detection_rate": 1.0,
      "miss_rate": 0.0,
      "cant_tell_rate": 0.0
@@ -280,16 +280,16 @@
     "n": 74,
     "n_events": 49,
     "n_nulls": 25,
-    "errors": 58,
+    "errors": 57,
     "events": {
-     "n": 9,
-     "hit": 5,
+     "n": 10,
+     "hit": 6,
      "miss": 0,
      "cant_tell": 4,
-     "error": 40,
-     "detection_rate": 0.556,
+     "error": 39,
+     "detection_rate": 0.6,
      "miss_rate": 0.0,
-     "cant_tell_rate": 0.444
+     "cant_tell_rate": 0.4
     },
     "nulls": {
      "n": 7,
@@ -360,26 +360,26 @@
     "n": 230,
     "n_events": 115,
     "n_nulls": 115,
-    "errors": 184,
+    "errors": 178,
     "events": {
-     "n": 18,
-     "hit": 10,
+     "n": 23,
+     "hit": 15,
      "miss": 1,
      "cant_tell": 7,
-     "error": 97,
-     "detection_rate": 0.556,
-     "miss_rate": 0.056,
-     "cant_tell_rate": 0.389
+     "error": 92,
+     "detection_rate": 0.652,
+     "miss_rate": 0.043,
+     "cant_tell_rate": 0.304
     },
     "nulls": {
-     "n": 28,
+     "n": 29,
      "false_alarm": 0,
-     "correct": 19,
+     "correct": 20,
      "cant_tell": 9,
-     "error": 87,
+     "error": 86,
      "false_alarm_rate": 0.0,
-     "correct_rate": 0.679,
-     "cant_tell_rate": 0.321
+     "correct_rate": 0.69,
+     "cant_tell_rate": 0.31
     }
    }
   }
