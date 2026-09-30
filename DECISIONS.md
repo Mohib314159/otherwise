@@ -1910,3 +1910,14 @@ Measured: wall 623.6 s -> 47.8 s, CPU (user+sys) 565.7 s -> 40.8 s, on a
 heavily shared machine. Per-scene float64 zone means, clear fractions, pixel
 counts, all 54 cloud receipts (exact clear-fraction values) and the final
 series were bit-identical. Test: `tests/test_app_fetch_speed.py`.
+
+## 2026-09-30 — method-v2 re-runs moved to the fast fetch (b5377c0)
+
+The container restarted at 10:52 UTC and killed the re-runs; Grünheide and
+Saddleworth had finished. They were restarted at 8c1f2e9, then at 11:16 UTC
+moved to b5377c0, which adds only the S2 read speed-up (2a068cf) and the
+import-light web process. The speed-up gives bit-identical per-zone values (the
+agent's 33-scene comparison, plus an independent check of 27 real 20 m->10 m
+reads on three tiles at odd window offsets: 27 identical). So verdicts from
+8c1f2e9 and b5377c0 are the same procedure on the same numbers, and blind v3
+records b5377c0.
