@@ -206,9 +206,9 @@
     </section>
     </div>
 
-  <div class="panel-section" id="air-analysis-panel" style="display:none;">
-      <div class="label">Air policy lab</div>
-      <p class="showcase-note">Ground NO₂ from London Air Quality Network is weather-normalised with ERA5, then compared with same-type DEFRA AURN monitors in other UK cities. Published ULEZ findings are attached only after estimation.</p>
+  <div class="panel-section" id="air-analysis-panel" class="workflow-step" style="display:none;">
+      <div class="form-kicker">Air policy lab</div>
+      <p class="workflow-note air-intro">Ground NO₂ from London Air Quality Network is weather-normalised with ERA5, then compared with same-type DEFRA AURN monitors in other UK cities. Published ULEZ findings are attached only after estimation.</p>
       <form id="air-run-form" style="margin-top:12px;">
         <div class="field-row">
           <label class="field" for="air-case">Policy / event</label>
@@ -226,7 +226,7 @@
           <label class="field" for="air-label">Label <span class="muted">(optional)</span></label>
           <input type="text" id="air-label" maxlength="120" placeholder="e.g. Independent ULEZ replication">
         </div>
-        <button class="btn" id="air-submit-btn" type="submit" style="width:100%;">Test the policy</button>
+        <button class="primary-action submit-action" id="air-submit-btn" type="submit">Test the policy</button>
         <div id="air-run-error" style="color:var(--notreal);font-size:13px;margin-top:10px;display:none;"></div>
       </form>
       <div id="air-progress-block" style="display:none;margin-top:14px;">
