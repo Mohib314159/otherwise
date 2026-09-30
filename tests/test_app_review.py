@@ -270,9 +270,32 @@ def test_results_endpoint_reports_three_numbers_and_no_case_answers(client):
 
 # ------------------------------------------------------------- annotations ---
 
-def test_annotation_round_trip_and_validation(client):
+TOKEN = "s3cret-token"
+
+
+@pytest.fixture
+def analyst(monkeypatch):
+    monkeypatch.setenv("APP_REVIEW_TOKEN", TOKEN)
+    return {"X-Review-Token": TOKEN}
+
+
+def test_annotation_write_gate(client, monkeypatch, analyst):
+    body = {"run_id": "xyz", "call": "changed"}
+    monkeypatch.delenv("APP_REVIEW_TOKEN")
+    assert client.post("/api/review/annotations", json=body).status_code == 403
+    assert client.post("/api/review/annotations", json=body, headers={"X-Review-Token": ""}).status_code == 403
+    monkeypatch.setenv("APP_REVIEW_TOKEN", "")
+    assert client.post("/api/review/annotations", json=body, headers={"X-Review-Token": ""}).status_code == 403
+    monkeypatch.setenv("APP_REVIEW_TOKEN", TOKEN)
+    assert client.post("/api/review/annotations", json=body).status_code == 403
+    assert client.post("/api/review/annotations", json=body, headers={"X-Review-Token": "wrong"}).status_code == 403
+    assert client.post("/api/review/annotations", json=body, headers=analyst).status_code == 200
+    assert len(client.get("/api/review/annotations/xyz").json()["annotations"]) == 1   # GET stays open
+
+
+def test_annotation_round_trip_and_validation(client, analyst):
     assert client.get("/api/review/annotations/xyz").json()["annotations"] == []
-    r = client.post("/api/review/annotations", json={
+    r = client.post("/api/review/annotations", headers=analyst, json={
         "run_id": "xyz", "call": "changed", "status": "confirmed", "author": "MM",
         "note": "Planet basemap shows the same block cleared.",
         "links": ["https://example.org/report", "javascript:alert(1)"]}).json()
@@ -281,8 +304,8 @@ def test_annotation_round_trip_and_validation(client):
     assert len(got["annotations"]) == 1
     assert got["annotations"][0]["call"] == "changed" and got["annotations"][0]["status"] == "confirmed"
     assert "does not change the statistical verdict" in got["note"]
-    assert client.post("/api/review/annotations", json={"run_id": "xyz", "call": "nonsense"}).status_code == 400
-    assert client.post("/api/review/annotations", json={"run_id": "xyz"}).status_code == 400
+    assert client.post("/api/review/annotations", headers=analyst, json={"run_id": "xyz", "call": "nonsense"}).status_code == 400
+    assert client.post("/api/review/annotations", headers=analyst, json={"run_id": "xyz"}).status_code == 400
 
 
 def test_review_page_is_served(client, monkeypatch):

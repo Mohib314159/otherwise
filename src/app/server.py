@@ -82,6 +82,23 @@ def _find_run(rid: str) -> str | None:
     return None
 
 
+def _showcase_meta(rid: str, run: dict) -> dict:
+    """Showcase provenance for a run: its index entry (confirmed / expected), or,
+    for a showcase-folder run that is no longer in the index, the id of the
+    current entry with the same label."""
+    idx = _showcase_index()
+    entry = next((e for e in idx if e.get("id") == rid), None)
+    if entry is not None:
+        return {"showcase": {"key": entry.get("key"), "expected": entry.get("expected"),
+                             "confirmed": bool(entry.get("confirmed"))}}
+    if os.path.exists(os.path.join(SHOWCASE_DIR, f"{rid}.json")):
+        label = run.get("label")
+        new = next((e["id"] for e in idx if label and e.get("label") == label), None)
+        if new:
+            return {"superseded_by": new}
+    return {}
+
+
 def _load_run(rid: str) -> dict:
     p = _find_run(rid)
     if not p:
@@ -89,6 +106,7 @@ def _load_run(rid: str) -> dict:
     with open(p) as f:
         out = json.load(f)
     out["imagery"] = {}
+    out.update(_showcase_meta(rid, out))
     for d in (RUNS_DIR, SHOWCASE_DIR):
         cj = os.path.join(d, f"{rid}_change.json")
         if os.path.exists(cj) and os.path.exists(os.path.join(d, f"{rid}_change.png")):
@@ -275,7 +293,11 @@ def track_record():
     p = os.path.join(SHOWCASE_DIR, "track_record.json")
     if not os.path.exists(p):
         return {"runs": [], "summary": None}
-    return json.load(open(p))
+    out = json.load(open(p))
+    confirmed = {e.get("id"): bool(e.get("confirmed")) for e in _showcase_index()}
+    for r in out.get("runs", []):
+        r["confirmed"] = confirmed.get(r.get("id"), bool(r.get("confirmed")))
+    return out
 
 
 def _require_air():
