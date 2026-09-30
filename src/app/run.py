@@ -56,24 +56,13 @@ def _analyse(dates, values, event_np, donor_all_idx, cov, signal, sensor, expect
     if D.shape[0] < 3:
         return None
     progress(f"{signal}: fitting", 0, 1)
-    f = fit_ascm(y, D, b.pre)
-    point = float(np.mean(f.effect[~b.pre]))
-    ci = conformal_interval(y, D, b.pre, f.lam, point, max(f.pre_rmse, 1e-3), alpha=ALPHA)
-    progress(f"{signal}: placebo", 0, 1)
     # Placebo units are drawn from the whole candidate pool, and each one re-runs
     # the treated unit's donor selection on itself. See DECISIONS.md, CRITIQUE #4.
     cell_of_col = np.where(b.donor_cov >= 0.70)[0]
-    sp = space_placebo(y, D, b.pre, f.lam, point, max_units=60, pool=pool,
-                       select_for=_placebo_selector(pool, b.pre, cell_of_col, cov, donor_k))
-    tp = time_placebos(y, D, b.pre, f.lam, n=3, min_effect=MIN_EFFECT[signal], alpha=ALPHA)
-    res = SignalResult(signal=signal, sensor=sensor, expected_sign=expected_sign,
-                       point=point, lo=ci.lo, hi=ci.hi, p_zero=ci.p_zero, pre_rmse=f.pre_rmse,
-                       placebo_pre_rmse_median=float(np.median(sp.pre_rmses)),
-                       n_pre=int(b.pre.sum()), n_post=int((~b.pre).sum()), n_donors=int(D.shape[0]),
-                       placebo_p=sp.p_value, placebo_p_effect=sp.p_effect, placebo_n=int(len(sp.ratios)),
-                       time_placebo_flags=[t.flagged for t in tp],
-                       placebo_effect_median=float(np.median(sp.effects)),
-                       placebo_symmetric=bool(sp.symmetric))
+    res, f, ci, sp, tp = signal_result(
+        y, D, b.pre, signal, sensor, expected_sign, pool=pool,
+        select_for=_placebo_selector(pool, b.pre, cell_of_col, cov, donor_k),
+        progress=lambda: progress(f"{signal}: placebo", 0, 1))
     band_lo = np.percentile(sp.effect_series, 5, axis=0)
     band_hi = np.percentile(sp.effect_series, 95, axis=0)
     chart = {
@@ -95,6 +84,33 @@ def _analyse(dates, values, event_np, donor_all_idx, cov, signal, sensor, expect
               "weights": np.round(f.weights, 4).tolist(), "pre_rmse": np.round(sel.pre_rmse, 4).tolist(),
               "notes": sel.notes, "counts": sel.counts}
     return res, chart, donors
+
+
+def signal_result(y, D, pre, signal, sensor, expected_sign, pool=None, select_for=None,
+                  progress=lambda: None):
+    """Estimator outputs -> the SignalResult `verdict.decide` judges.
+
+    The one place a SignalResult is built from a fit, its conformal interval, the
+    in-space placebo and the in-time placebos, with the product's settings
+    (ALPHA, 60 placebo units, 3 fake dates). `scripts/power.py` calls this too,
+    so the power table measures the rule the app ships (CRITIQUE #9).
+    Returns (SignalResult, Fit, Conformal, SpacePlacebo, [TimePlacebo]).
+    """
+    f = fit_ascm(y, D, pre)
+    point = float(np.mean(f.effect[~pre]))
+    ci = conformal_interval(y, D, pre, f.lam, point, max(f.pre_rmse, 1e-3), alpha=ALPHA)
+    progress()
+    sp = space_placebo(y, D, pre, f.lam, point, max_units=60, pool=pool, select_for=select_for)
+    tp = time_placebos(y, D, pre, f.lam, n=3, min_effect=MIN_EFFECT[signal], alpha=ALPHA)
+    res = SignalResult(signal=signal, sensor=sensor, expected_sign=expected_sign,
+                       point=point, lo=ci.lo, hi=ci.hi, p_zero=ci.p_zero, pre_rmse=f.pre_rmse,
+                       placebo_pre_rmse_median=float(np.median(sp.pre_rmses)),
+                       n_pre=int(pre.sum()), n_post=int((~pre).sum()), n_donors=int(D.shape[0]),
+                       placebo_p=sp.p_value, placebo_p_effect=sp.p_effect, placebo_n=int(len(sp.ratios)),
+                       time_placebo_flags=[t.flagged for t in tp],
+                       placebo_effect_median=float(np.median(sp.effects)),
+                       placebo_symmetric=bool(sp.symmetric))
+    return res, f, ci, sp, tp
 
 
 def _placebo_selector(pool: np.ndarray, pre: np.ndarray, cell_of_col: np.ndarray,
