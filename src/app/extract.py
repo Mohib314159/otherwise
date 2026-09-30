@@ -7,7 +7,8 @@ That keeps a run to a few HTTP range requests per scene instead of hundreds.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+import threading
+from dataclasses import dataclass, field
 
 import numpy as np
 import rasterio
@@ -41,6 +42,12 @@ class Zones:
     polygons: list
     epsg: int
     bounds: tuple[float, float, float, float]
+    # Label images already rasterised for this Zones, keyed by (transform, shape).
+    # Every scene of one CRS whose window is not clipped by a tile edge has the
+    # same transform and shape, so a run rasterises a handful of label images
+    # instead of one per scene. Not part of equality or repr.
+    _labels: dict = field(default_factory=dict, repr=False, compare=False)
+    _lock: object = field(default_factory=threading.Lock, repr=False, compare=False)
 
     @classmethod
     def build(cls, polygons_utm: list, src_epsg: int, dst_epsg: int, pad_m: float = 20.0,
@@ -77,27 +84,96 @@ def labels_for(zones: Zones, transform, shape) -> np.ndarray:
                      dtype="int32", all_touched=False)
 
 
+def window_geometry(ds, zones: Zones, out_res: float | None = None):
+    """Where the zone window sits in an open dataset and what `read_window`
+    returns for it: (window, transform, out_shape), or None when the
+    window falls entirely outside the dataset. `out_shape` is None for a
+    native-resolution read. Same arithmetic `read_window` has always used."""
+    if ds.crs is None or ds.crs.to_epsg() != zones.epsg:
+        raise ValueError(f"scene CRS {ds.crs} != zones EPSG:{zones.epsg}")
+    win = _window(ds, zones.bounds)
+    if win is None:
+        return None
+    if out_res and (abs(ds.res[0] - out_res) > 1e-9 or abs(ds.res[1] - out_res) > 1e-9):
+        fy, fx = ds.res[1] / out_res, ds.res[0] / out_res
+        out_shape = (max(int(round(win.height * fy)), 1), max(int(round(win.width * fx)), 1))
+        tr = ds.window_transform(win)
+        tr = rasterio.Affine(out_res, 0, tr.c, 0, -out_res, tr.f)
+        return win, tr, out_shape
+    return win, ds.window_transform(win), None
+
+
+def upsample_factor(win, out_shape) -> int | None:
+    """k when `out_shape` is exactly the window upsampled k x k (k >= 2)."""
+    if out_shape is None or win.height < 1:
+        return None
+    k = out_shape[0] // win.height
+    return k if k >= 2 and out_shape == (win.height * k, win.width * k) else None
+
+
+def read_geometry(ds, geom):
+    """Read the window described by `window_geometry` from an open dataset.
+
+    An integer upsample (20 m SCL/B12 to 10 m) is read at native resolution and
+    replicated k x k in numpy. For an integer factor, GDAL's nearest-neighbour
+    RasterIO maps output pixel i to source pixel floor((i + 0.5) / k) = i // k,
+    which is exactly this replication, so the array is identical. Letting GDAL
+    do it was the single largest cost of a run: its resampled read decoded the
+    window's blocks over and over through a 32 MB block cache shared by all
+    worker threads (measured: 12.5 s CPU and up to minutes of wall per B12
+    read, against a fraction of a second for the same window at native
+    resolution). Downsampling still goes through GDAL, which uses overviews.
+    """
+    win, tr, out_shape = geom
+    k = upsample_factor(win, out_shape)
+    if k is not None:
+        return np.repeat(np.repeat(ds.read(1, window=win), k, axis=0), k, axis=1)
+    if out_shape is not None:
+        return ds.read(1, window=win, out_shape=out_shape,
+                       resampling=rasterio.enums.Resampling.nearest)
+    return ds.read(1, window=win)
+
+
 def read_window(href: str, zones: Zones, out_res: float | None = None):
     """Read the zone window from a COG. Returns (array, transform, nodata) or None
     when the window falls entirely outside the dataset."""
     with rasterio.Env(**GDAL_ENV):
         with rasterio.open(href) as ds:
-            if ds.crs is None or ds.crs.to_epsg() != zones.epsg:
-                raise ValueError(f"scene CRS {ds.crs} != zones EPSG:{zones.epsg}")
-            win = _window(ds, zones.bounds)
-            if win is None:
+            geom = window_geometry(ds, zones, out_res)
+            if geom is None:
                 return None
-            if out_res and (abs(ds.res[0] - out_res) > 1e-9 or abs(ds.res[1] - out_res) > 1e-9):
-                fy, fx = ds.res[1] / out_res, ds.res[0] / out_res
-                out_shape = (max(int(round(win.height * fy)), 1), max(int(round(win.width * fx)), 1))
-                arr = ds.read(1, window=win, out_shape=out_shape,
-                              resampling=rasterio.enums.Resampling.nearest)
-                tr = ds.window_transform(win)
-                tr = rasterio.Affine(out_res, 0, tr.c, 0, -out_res, tr.f)
-            else:
-                arr = ds.read(1, window=win)
-                tr = ds.window_transform(win)
-            return arr, tr, ds.nodata
+            return read_geometry(ds, geom), geom[1], ds.nodata
+
+
+def cached_labels(zones: Zones, transform, shape):
+    """`labels_for` plus the `zone_bbox` of zone 1 (the first polygon),
+    memoised on the Zones object. Returns (labels, bbox). The label image is
+    shared between threads and marked read-only."""
+    key = (tuple(transform)[:6], tuple(shape))
+    with zones._lock:
+        hit = zones._labels.get(key)
+    if hit is not None:
+        return hit
+    lab = labels_for(zones, transform, shape)
+    lab.flags.writeable = False
+    entry = (lab, zone_bbox(lab, 1))
+    with zones._lock:
+        if key not in zones._labels and len(zones._labels) >= LABEL_CACHE_MAX:
+            zones._labels.pop(next(iter(zones._labels)))
+        return zones._labels.setdefault(key, entry)
+
+
+LABEL_CACHE_MAX = 4    # distinct windows per CRS (tile edges clip some); 24 MB each at 6 Mpx
+
+
+def zone_bbox(labels: np.ndarray, zone: int = 1):
+    """(row0, row1, col0, col1), half-open, of the pixels labelled `zone` in a
+    label image, or None if it has none."""
+    rows = np.flatnonzero((labels == zone).any(axis=1))
+    if rows.size == 0:
+        return None
+    cols = np.flatnonzero((labels[rows[0]:rows[-1] + 1] == zone).any(axis=0))
+    return int(rows[0]), int(rows[-1]) + 1, int(cols[0]), int(cols[-1]) + 1
 
 
 ROW_CHUNK = 512      # rows reduced at a time, so transients stay bounded
