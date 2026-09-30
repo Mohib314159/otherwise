@@ -632,7 +632,7 @@ severity overstates it) / **wrong**.
 |---|---|---|---|---|
 | 1 | BLOCKER | valid | Verified: `verdict.py:68` does bypass the pre-fit gate at `4×`, and the two commits that add the rescuing rules are titled for the behaviour they rescue; Rhodes/Sindh control radii are hand-set in `run_sites.py:23,31` and unreachable from the UI. | No method change. Blind validation (track D) is the only real answer; 34 event runs exist, 0 control runs. Open. |
 | 2 | BLOCKER | partly valid | The unapplied red-team fixes are a logged HANDOFF item, not a hidden flaw — but it is true that `docs/METHOD.md` §9 "Known limits" omits the two failures the repo's own red team calls "breaks", and `README.md` never links `docs/REDTEAM.md`. That gap is the credibility problem, not the backlog. | **Doing now:** publish both breaks in METHOD.md §9 and link REDTEAM.md from README. |
-| 3 | BLOCKER | valid | Independently measured before reading the critique; same root cause. | **Fixed** this session (live profile). Its second half — live runs are threads *inside* the web process, so an OOM kills the showcase too — is valid and **not** fixed. Open: run jobs in a subprocess. |
+| 3 | BLOCKER | valid | Independently measured before reading the critique; same root cause. | **Fixed** this session (live profile). Its second half — live runs are threads *inside* the web process, so an OOM kills the showcase too — is valid and **not** fixed. Open: run jobs in a subprocess. **Update 2026-09-30:** second half fixed, live runs now execute in a spawned child process (see "live runs leave the web process" below). |
 | 4 | MAJOR | valid, and the sharpest finding here | Donors are ranked by pre-event fit **to the treated unit** and truncated to the best K (`donors.py:63-67`), then the in-space placebo is computed over that same treated-optimised pool. That breaks the exchangeability Abadie's placebo test rests on, in the treated unit's favour, so the reported p is anti-conservative on every published run. | No change yet, deliberately. Correct fix is to re-select donors for each placebo unit (each placebo unit gets its own best-K pool), or to drop truncation for the placebo distribution. Highest-priority method question. Open. |
 | 5 | MAJOR | partly valid | Spatial clustering inflating effective n is real and matters (Rhodes' 42 cells sit in 6 compact buckets by construction). But "p = 1/43 is exactly its own floor" describes *resolution*, not bias: with 42 donors 0.023 is the smallest attainable p, and reaching it means no donor beat the treated unit — the strongest available evidence. The defect is presenting it as 42 independent draws. | Open: report effective n / cluster-aware p, or state the resolution limit on the page. |
 | 6 | MAJOR | valid, and it now applies to my own live profile | Wide mode reads the treated area at 10 m and each donor group from its own STAC search at 40 m, giving up co-observation and mixing supports with no intercept. The live profile I added this session does the same thing by design. | Open, and this is precisely what the live-vs-full comparison must quantify. Logged above under the memory fix. |
@@ -1619,3 +1619,52 @@ pointer events. The drawing test passes (21.4 ha), with screenshots of both draw
 **V6 was requested but does not exist on the remote.** Only `uiv4` and `uiv5` were pushed.
 
 Suite 368 passed; screenshots in `docs/screenshots/2026-09-25-ui-v5/`.
+
+## 2026-09-30 — live runs leave the web process (CRITIQUE #3, second half; #18 timeout)
+
+**Problem.** `_worker` ran each live job as a thread inside the uvicorn process. A job
+that exhausted memory got the whole web process OOM-killed, taking the showcase and every
+permalink with it, and a wedged job could only be stopped cooperatively at a progress
+checkpoint.
+
+**Decision.** Each live job now runs in its own child process (`multiprocessing`, `spawn`
+context; entry point `src/app/jobrunner.py:child_main`). The parent thread in `_worker`
+only supervises: it holds the `MAX_LIVE_JOBS` semaphore as before, relays
+`("progress", stage, done, total)` messages from a `multiprocessing.Queue` into `_jobs`
+(so `/api/jobs/<id>` is unchanged), and records the single terminal message.
+
+- **Crash or OOM kills only the job.** The child raises its own `oom_score_adj` to 1000,
+  so when memory runs out the kernel picks it and not the web process. A child that dies
+  without reporting is read from its exit code: SIGKILL (not sent by us) is reported as
+  "ran out of memory on the server"; any other signal or non-zero exit code is reported
+  as such.
+- **Time limit enforced twice.** The child still stops cleanly at its next progress
+  checkpoint past `APP_JOB_TIMEOUT_S`; the parent now kills the child outright
+  `APP_JOB_KILL_GRACE_S` (default 60 s) later. The grace also covers child start-up, which
+  is slow on a 0.1-CPU instance.
+- **Same outputs.** The child calls the same `run_verdict` / `run_air_verdict` with
+  `save=True` and writes the same thumbnails and their metadata, into the parent's
+  `RUNS_DIR` (passed explicitly). Air dispatch is unchanged.
+- **Why spawn, not fork.** The parent has live threads (uvicorn, the queue feeder, other
+  supervisors); forking a threaded process can deadlock the child on a lock held at fork
+  time. Spawn costs a fresh interpreter import per job, which is acceptable at one job at a
+  time.
+- **Tests.** The run function is a module-level `"module:function"` string
+  (`server.JOB_RUNNER`), so tests can point the real spawned child at fakes in
+  `tests/fake_job_runners.py`. It is deliberately not settable from the environment. The
+  cooperative-cancel regression test and the air-domain test were moved onto this
+  mechanism with their assertions kept.
+
+**Memory cost: this makes a 512 MB live run tighter, not looser.** Measured locally
+(import-only RSS, Python 3.11, not on Render): the web process is about 190 MB after
+`import src.app.server`, because it still imports the pipeline. `review`, `run` and `air`
+each pull in rasterio/scipy/pandas (+90 to +120 MB each over a 38 MB FastAPI baseline);
+`geometry` adds 26 MB. A spawned child is about 170 MB after importing the pipeline, before
+it reads any imagery. Track A above measured a whole live run at 339 MB peak RSS in one
+process. That figure already includes one set of imports. Parent plus child is therefore
+roughly 190 + 339 ≈ 530 MB, over the 512 MB instance. That sum is my arithmetic, not a
+measurement. What the change buys is that running out of memory now fails the job, not the
+site. It does not make live runs fit. **Before live runs are offered on a 512 MB instance:**
+make the web process stop importing the pipeline (lazy imports in `server.py`, and in
+`review.py` / `air/__init__.py`, which import it eagerly), or set `APP_LIVE_RUNS=0`. Then
+measure parent plus child peak under an enforced 512 MiB cgroup.

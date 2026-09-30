@@ -7,7 +7,10 @@ from __future__ import annotations
 import glob
 import html as _html
 import json
+import multiprocessing
 import os
+import queue
+import signal
 import threading
 import time
 import traceback
@@ -19,13 +22,14 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 
-from .fetch import MemoryBudgetError
+from .jobrunner import (DEFAULT_RUNNER, OOM_MESSAGE, JobTimeout,  # noqa: F401 (re-exported)
+                        child_main, timeout_message)
 from .geometry import PolygonError, validate_polygon
 from .report import (SIGNAL_LABEL, render_report, fmt_p, fmt_signal,
                      interval_str as report_interval)
 from .review import router as review_router
-from .run import RUNS_DIR, run_id, run_verdict
-from .air import AIR_CASES, air_run_id, run_air_verdict, fetch_case_boundary
+from .run import RUNS_DIR, run_id
+from .air import AIR_CASES, air_run_id, fetch_case_boundary
 from .air.providers import CachedHTTP
 from .verdict import SIGNALS
 
@@ -37,11 +41,17 @@ MAX_LIVE_JOBS = int(os.environ.get("APP_MAX_LIVE_JOBS", "1"))
 # are produced offline in "full". See DECISIONS.md for the measured difference.
 LIVE_PROFILE = os.environ.get("APP_LIVE_PROFILE", "live")
 LIVE_RUNS_ENABLED = os.environ.get("APP_LIVE_RUNS", "1") == "1"
-# A wedged run used to hold the one live-run slot for the life of the process,
-# so a single bad job blocked every later run until a restart. Threads cannot be
-# killed safely, so cancellation is cooperative: run_verdict calls back on
-# progress often (once per scene), and the callback raises past the deadline.
+# Each live run executes in its own spawned child process (see jobrunner.py), so
+# an OOM or crash kills only that job and never the web process serving the
+# showcase and permalinks. The time limit is enforced twice: the child stops at
+# its next progress checkpoint past JOB_TIMEOUT_S, and the parent kills the
+# child outright JOB_KILL_GRACE_S later (the grace also covers child start-up).
 JOB_TIMEOUT_S = float(os.environ.get("APP_JOB_TIMEOUT_S", "2400"))
+JOB_KILL_GRACE_S = float(os.environ.get("APP_JOB_KILL_GRACE_S", "60"))
+JOB_POLL_S = 0.5
+# "module:function" the child calls as fn(req_dict, progress, runs_dir=, profile=)
+# and which returns the saved run id. Tests point it at fakes; not env-settable.
+JOB_RUNNER = DEFAULT_RUNNER
 # Air/ULEZ is off unless explicitly enabled. It has no validated known-answer set
 # or false-alarm test yet (SPEC-v2 rule 3), so a default deploy must not offer it.
 # Off means: /api/air/* return 404, air runs are refused, the landing tab stays
@@ -55,10 +65,6 @@ app.include_router(review_router)
 _jobs: "OrderedDict[str, dict]" = OrderedDict()
 _lock = threading.Lock()
 _sem = threading.Semaphore(MAX_LIVE_JOBS)
-
-
-class JobTimeout(RuntimeError):
-    """A live run exceeded APP_JOB_TIMEOUT_S and was cancelled at a checkpoint."""
 
 
 class RunRequest(BaseModel):
@@ -123,49 +129,92 @@ def _load_run(rid: str) -> dict:
     return out
 
 
+def _exit_error(exitcode) -> str:
+    """User-facing message for a child that died without reporting a result."""
+    if exitcode is not None and exitcode == -getattr(signal, "SIGKILL", 9):
+        # SIGKILL we did not send ourselves: on Linux that is the OOM killer.
+        return OOM_MESSAGE
+    if exitcode is not None and exitcode < 0:
+        return f"The run process was stopped by signal {-exitcode}. Try again, or try a smaller area."
+    return f"The run process exited unexpectedly (exit code {exitcode}). Try again, or try a smaller area."
+
+
 def _worker(job_id: str, req: RunRequest):
+    """Run one live job in a spawned child process and mirror its state into _jobs.
+
+    This thread only supervises: it holds the live-run slot, relays progress, and
+    kills the child at the hard deadline. Whatever happens in the child -- an
+    exception, an OOM kill, a hang -- the web process keeps serving.
+    """
     job = _jobs[job_id]
     with _sem:
         job.update(status="running", stage="starting", done=0, total=1, started=time.time())
+        payload = {"req": req.model_dump(), "runner": JOB_RUNNER, "runs_dir": RUNS_DIR,
+                   "profile": LIVE_PROFILE, "timeout_s": JOB_TIMEOUT_S}
+        q = proc = None
+        # The child checks the deadline cooperatively at each progress call and
+        # exits cleanly; the grace covers process start-up, and after it the
+        # parent kills the child outright.
+        hard_deadline = time.monotonic() + JOB_TIMEOUT_S + JOB_KILL_GRACE_S
+        result = None
+        timed_out = False
 
-        deadline = time.monotonic() + JOB_TIMEOUT_S
-
-        def progress(stage, done, total):
-            if time.monotonic() >= deadline:
-                raise JobTimeout(
-                    f"This run passed the {JOB_TIMEOUT_S / 60:.0f}-minute limit and was stopped so "
-                    f"other runs can start. Try a smaller area or a shorter window.")
-            job.update(stage=stage, done=done, total=total)
+        def handle(msg):
+            nonlocal result
+            kind = msg[0]
+            if kind == "progress":
+                _, stage, done, total = msg
+                job.update(stage=stage, done=done, total=total)
+            elif kind in ("done", "error"):
+                result = msg
 
         try:
-            if req.domain == "air":
-                out = run_air_verdict(req.case_id or "", req.post_months, label=req.label[:120],
-                                      progress=progress)
-            else:
-                out = run_verdict(req.geojson, req.event_date, req.change_type, int(req.post_months or 12),
-                                  label=req.label[:120], progress=progress, profile=LIVE_PROFILE)
+            ctx = multiprocessing.get_context("spawn")
+            q = ctx.Queue()
+            proc = ctx.Process(target=child_main, args=(payload, q), daemon=True,
+                               name=f"otherwise-job-{job_id}")
+            proc.start()
+            while result is None:
                 try:
-                    from .imagery import make_thumbnails
-                    progress("imagery", 0, 1)
-                    info = make_thumbnails(req.geojson, req.event_date, RUNS_DIR, out["id"])
-                    for tag, meta in info.items():
-                        with open(os.path.join(RUNS_DIR, f"{out['id']}_{tag}.json"), "w") as f:
-                            json.dump(meta, f)
-                except Exception:
-                    traceback.print_exc()
-            job.update(status="done", run_id=out["id"], stage="done", done=1, total=1)
-        except JobTimeout as e:
-            job.update(status="error", error=str(e)[:300], stage="error")
-        except MemoryBudgetError as e:
-            # deliberate, explained refusal rather than an out-of-memory kill
-            job.update(status="error", error=str(e)[:300], stage="error")
-        except MemoryError:
-            job.update(status="error", stage="error",
-                       error="This run ran out of memory on the server. Try a smaller area "
-                             "or a shorter window; the showcase examples still work.")
+                    handle(q.get(timeout=JOB_POLL_S))
+                    continue
+                except queue.Empty:
+                    pass
+                if not proc.is_alive():
+                    # drain anything the child flushed before it exited
+                    while result is None:
+                        try:
+                            handle(q.get(timeout=0.2))
+                        except queue.Empty:
+                            break
+                    break
+                if time.monotonic() >= hard_deadline:
+                    timed_out = True
+                    proc.kill()
+                    break
+            proc.join(timeout=10)
+            if proc.is_alive():                   # reported a result but will not exit
+                proc.kill()
+                proc.join(timeout=10)
         except Exception as e:
+            # the supervisor itself failed (e.g. could not start a process):
+            # never leave the job "running" forever
             traceback.print_exc()
-            job.update(status="error", error=str(e)[:300], stage="error")
+            if proc is not None and proc.is_alive():
+                proc.kill()
+            result = result or ("error", f"Could not run the job: {str(e)[:250]}")
+        finally:
+            if q is not None:
+                q.close()
+
+        if timed_out:
+            job.update(status="error", error=timeout_message(JOB_TIMEOUT_S), stage="error")
+        elif result is None:
+            job.update(status="error", error=_exit_error(proc.exitcode), stage="error")
+        elif result[0] == "done":
+            job.update(status="done", run_id=result[1], stage="done", done=1, total=1)
+        else:
+            job.update(status="error", error=str(result[1])[:300], stage="error")
 
 
 @app.post("/api/run")

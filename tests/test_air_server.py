@@ -18,17 +18,17 @@ def _air_enabled(monkeypatch):
 
 
 def test_mixed_case_air_domain_reaches_air_worker(monkeypatch):
-    seen = []
+    """The normalised domain reaches the job's child process intact.
+
+    Runs submit() -> _worker -> a real spawned child whose run function echoes
+    the request it received. That the default run function then sends "air" to
+    the air pipeline and never to the land one is checked in-process by
+    tests/test_app_job_process.py::test_default_runner_dispatches_air_and_land.
+    """
     monkeypatch.setattr(server, "_find_run", lambda rid: None)
     monkeypatch.setattr(server, "LIVE_RUNS_ENABLED", True)
     monkeypatch.setattr(server, "_jobs", OrderedDict())
-
-    def fake_air(case_id, months, **kwargs):
-        seen.append((case_id, months))
-        return {"id": "air-result"}
-
-    def wrong_land(*args, **kwargs):
-        raise AssertionError("Air request reached land pipeline")
+    monkeypatch.setattr(server, "JOB_RUNNER", "tests.fake_job_runners:echo_request")
 
     class InlineThread:
         def __init__(self, target, args, daemon):
@@ -37,14 +37,11 @@ def test_mixed_case_air_domain_reaches_air_worker(monkeypatch):
         def start(self):
             self.target(*self.args)
 
-    monkeypatch.setattr(server, "run_air_verdict", fake_air)
-    monkeypatch.setattr(server, "run_verdict", wrong_land)
     monkeypatch.setattr(server.threading, "Thread", InlineThread)
     reply = server.submit(server.RunRequest(domain="AiR", case_id="ulez-central-2019", post_months=3))
     job = server._jobs[reply["job_id"]]
-    assert seen == [("ulez-central-2019", 3)]
     assert job["status"] == "done"
-    assert job["run_id"] == "air-result"
+    assert job["run_id"] == f"air|ulez-central-2019|3|{server.LIVE_PROFILE}"
 
 
 def _air_run(rid):
