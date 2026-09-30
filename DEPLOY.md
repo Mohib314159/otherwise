@@ -28,8 +28,8 @@ compute. From their own documentation
 This app needs a **Docker** Space, so it needs PRO, listed at "$9 /month" on
 https://huggingface.co/pricing (read 2026-09-19). The hardware itself (CPU
 Basic: 2 vCPU, 16 GB RAM) still has no hourly cost — it is the account plan that
-costs money. The `hf-sync` workflow in this repo is still correct; only the price
-changed.
+costs money. The `hf-sync` workflow in this repo is still correct and skips cleanly when the
+HF_TOKEN/HF_SPACE secrets are not set; only the price changed.
 
 Worth knowing before you decide: 16 GB of RAM is enough to run the **full**
 profile, which would remove the accuracy caveat that live runs on a 512 MB box

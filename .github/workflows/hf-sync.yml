@@ -1,5 +1,6 @@
 # Pushes main to a Hugging Face Space so the Space rebuilds from the Dockerfile.
 # Needs two repository secrets: HF_TOKEN (write token) and HF_SPACE (e.g. mohib/otherwise).
+# If either secret is empty the job skips the push and exits 0 instead of failing.
 name: Sync to Hugging Face Space
 on:
   push:
@@ -9,11 +10,25 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Check Hugging Face secrets
+        id: gate
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ secrets.HF_SPACE }}
+        run: |
+          if [ -z "${HF_TOKEN}" ] || [ -z "${HF_SPACE}" ]; then
+            echo "HF_TOKEN/HF_SPACE not set; skipping Hugging Face sync"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.gate.outputs.configured == 'true'
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           lfs: true
       - name: Push to the Space
+        if: steps.gate.outputs.configured == 'true'
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_SPACE: ${{ secrets.HF_SPACE }}
