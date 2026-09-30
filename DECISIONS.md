@@ -1768,3 +1768,31 @@ disclosure against full runs.
 
 **Risks.** PC-only; undocumented rate limits (0 errors in ~475 requests); the
 fallback covers outages but at local speed.
+
+## 2026-09-30 — Sentinel-1 donor reads through the PC data API (`src/app/remote_s1.py`)
+
+Once S2 donor reads had moved to the data API, S1 controls took the whole live run: in one
+end-to-end run, 258 scenes cost 2,338 s of CPU. `remote_s1` makes one request per scene for
+`sentinel-1-rtc`. The data API signs the read itself, so no extra parameters are needed. Each
+pixel of VV and VH comes back as dB on a fixed 16-bit scale (−80 to +50 dB, a step of about
+0.002 dB). It is converted back to linear power before the per-cell mean, which keeps the
+local order: mean in linear power, then dB. RATIO = VH_dB − VV_dB. A pixel is valid when it
+is finite, > 0 and not nodata in both polarisations. Cells need VALID_MIN 0.8. Orbit
+selection and dedupe are unchanged because they happen outside the read. The read is wired
+into `_fetch_group` next to S2 and gated by `APP_REMOTE_S1` (default on). A failed request
+falls back to the local read. The live ring and live wide cache keys now carry
+`-remote`/`-rs1`. `providers.search_s1` keeps the grid's `proj:bbox` so the request window
+is clipped exactly as the local read is.
+
+`scripts/bench_remote_s1.py` ran 3 sites × 30 live scenes: Richmond Park, Grünheide and
+Austin. All numbers are measured on this box.
+- Accuracy per cell: the median |diff| was 3–6e-5 dB for VV, VH and RATIO. For each of the
+  three, 8,970 of 8,973 cell values agreed within 0.001 dB. Values off by more than 0.01 dB:
+  3 VV, 2 VH and 3 RATIO cells (max 0.13 dB), all in 2 Grünheide scenes where the window was
+  clipped. At those, titiler's nearest-row choice differed from local GDAL by one source row
+  for 3 output rows. Valid-fraction decisions agreed for 9,840 of 9,840 cells, and keep/drop
+  decisions for 90 of 90 scenes.
+- CPU per scene: 8.9–9.8 s locally (median) against 0.058–0.061 s remote sequential and
+  0.064–0.082 s with 8–16 requests in flight. 270 requests returned 0 errors and needed 0
+  retries. Wall time was 1.1–1.3 s per scene sequential and 0.18–0.20 s with 8 in flight.
+  Each PNG was about 1.2–1.3 MB, because speckle compresses poorly.

@@ -26,6 +26,10 @@ LIVE_WORKERS = int(os.environ.get("APP_LIVE_FETCH_WORKERS", "2"))
 # switches back to local reads. See DECISIONS.md, 2026-09-30 "remote donor reads".
 REMOTE_S2 = os.environ.get("APP_REMOTE_S2", "1") == "1"
 REMOTE_WORKERS = int(os.environ.get("APP_REMOTE_S2_WORKERS", "8"))
+# The same for Sentinel-1 RTC donor reads (remote_s1); APP_REMOTE_S1=0 switches
+# back to local reads. Measured locally at ~8-10 s CPU per scene, which made S1
+# controls the whole cost of a live run once S2 had moved to the API.
+REMOTE_S1 = os.environ.get("APP_REMOTE_S1", "1") == "1"
 USER_RECEIPTS = ("cloud", "haze", "duplicate", "orbit", "edge", "read-error")   # shown on the verdict page
 Progress = Callable[[str, int, int], None]
 
@@ -210,11 +214,23 @@ def _to_series(obs, sensor: str, keys: tuple[str, ...], meta: dict) -> SensorSer
     return SensorSeries(sensor, dates, values, [o.scene_id for o in obs], meta)
 
 
-def _use_remote(cfg, prov, require_zone0) -> bool:
+def _use_remote(cfg, prov, require_zone0, sensor: str = "S2") -> bool:
     """Remote reads only for the live profile's donor-only groups on Planetary
     Computer. The treated area (require_zone0) is always read locally at 10 m."""
-    return (REMOTE_S2 and cfg.get("donor_res") is not None and not require_zone0
+    flag = REMOTE_S2 if sensor == "S2" else REMOTE_S1
+    return (flag and cfg.get("donor_res") is not None and not require_zone0
             and getattr(prov, "name", "") == "planetary-computer")
+
+
+def _s1_remote_or_local(sc, zones, sign, res=None, require_zone0=False):
+    """One donor-group S1 RTC scene via the data API (one request: VV and VH as
+    fixed-scale dB, averaged back in linear power), falling back to the local
+    read if the API fails."""
+    from . import remote_s1, remote_s2
+    try:
+        return remote_s1.process_scene_remote(sc, zones, sign, res=res)
+    except remote_s2.RemoteError:
+        return s1mod.process_scene(sc, zones, sign, res=res, require_zone0=require_zone0)
 
 
 def _s2_remote_or_local(sc, zones, sign, res=None, require_zone0=False):
@@ -270,9 +286,11 @@ def _fetch_group(polys_utm, src_epsg, group_wgs84, start, end, prov, s1_prov, se
         s2_series = _to_series(obs, "S2", s2mod.INDICES, {"provider": prov.name, "n_scenes": len(s2_scenes)})
     if s1_scenes:
         groups = _group_by_crs(s1_scenes, s1_prov.sign)
-        obs, rec = _run(groups, polys_utm, src_epsg, s1_prov.sign, s1mod.process_scene, progress,
+        remote1 = _use_remote(cfg, s1_prov, require_zone0, sensor="S1")
+        obs, rec = _run(groups, polys_utm, src_epsg, s1_prov.sign,
+                        _s1_remote_or_local if remote1 else s1mod.process_scene, progress,
                         f"sentinel-1{tag}", res=res, require_zone0=require_zone0,
-                        workers=cfg["workers"])
+                        workers=REMOTE_WORKERS if remote1 else cfg["workers"])
         obs, rec2 = s1mod.dedupe_by_minute(obs)
         if require_zone0:
             receipts += [asdict(r) for r in rec + rec2]
@@ -465,6 +483,9 @@ def _fetch_wide(area_geojson, start, end, *, providers, inner_m, outer_m, max_ce
     area = validate_polygon(area_geojson)
     grid_sig = (f"wide-{inner_m}-{outer_m}-{max_cells}-{n_groups}-{group_km}-{donor_res}-{cov_year}-"
                 f"{''.join(sensors)}-p{cfg['max_cloud']}-{cfg['per_bin']}-{int(cfg['one_tile_per_minute'])}")
+    if cfg.get("donor_res") is not None:
+        # live-profile donor groups may be read through the data API (_use_remote)
+        grid_sig += ("-remote" if REMOTE_S2 else "") + ("-rs1" if REMOTE_S1 else "")
     key = cache_key(area.geojson, start, end, grid_sig)
     cdir = os.path.join(cache_dir, key)
     if use_cache and os.path.exists(os.path.join(cdir, "meta.json")):
@@ -600,7 +621,7 @@ def _fetch_live_ring(area_geojson, start, end, *, providers, inner_m, outer_m, m
         donor_res = max(choose_donor_res([area.utm] + [grid.cells[i] for i in b]) for b in buckets)
 
     grid_sig = (f"live-{inner_m}-{outer_m}-{max_cells}-{donor_res}-{cov_year}-{''.join(sensors)}"
-                f"-c{cfg['max_cloud']}-b{cfg['per_bin']}" + ("-remote" if REMOTE_S2 else ""))
+                f"-c{cfg['max_cloud']}-b{cfg['per_bin']}" + ("-remote" if REMOTE_S2 else "") + ("-rs1" if REMOTE_S1 else ""))
     key = cache_key(area.geojson, start, end, grid_sig)
     cdir = os.path.join(cache_dir, key)
     if use_cache and os.path.exists(os.path.join(cdir, "meta.json")):
