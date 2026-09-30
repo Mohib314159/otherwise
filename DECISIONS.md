@@ -1641,3 +1641,52 @@ Measured: wall 623.6 s -> 47.8 s, CPU (user+sys) 565.7 s -> 40.8 s, on a
 heavily shared machine. Per-scene float64 zone means, clear fractions, pixel
 counts, all 54 cloud receipts (exact clear-fraction values) and the final
 series were bit-identical. Test: `tests/test_app_fetch_speed.py`.
+
+## 2026-09-30 — live runs leave the web process (CRITIQUE #3, second half; #18 timeout)
+
+**Problem.** `_worker` ran each live job as a thread inside the uvicorn process. A job
+that exhausted memory got the whole web process OOM-killed, taking the showcase and every
+permalink with it, and a wedged job could only be stopped cooperatively at a progress
+checkpoint.
+
+**Decision.** Each live job now runs in its own child process (`multiprocessing`, `spawn`
+context; entry point `src/app/jobrunner.py:child_main`). The parent thread in `_worker`
+only supervises: it holds the `MAX_LIVE_JOBS` semaphore as before, relays
+`("progress", stage, done, total)` messages from a `multiprocessing.Queue` into `_jobs`
+(so `/api/jobs/<id>` is unchanged), and records the single terminal message.
+
+- **Crash or OOM kills only the job.** The child raises its own `oom_score_adj` to 1000,
+  so when memory runs out the kernel picks it and not the web process. A child that dies
+  without reporting is read from its exit code: SIGKILL (not sent by us) is reported as
+  "ran out of memory on the server"; any other signal or non-zero exit code is reported
+  as such.
+- **Time limit enforced twice.** The child still stops cleanly at its next progress
+  checkpoint past `APP_JOB_TIMEOUT_S`; the parent now kills the child outright
+  `APP_JOB_KILL_GRACE_S` (default 60 s) later. The grace also covers child start-up, which
+  is slow on a 0.1-CPU instance.
+- **Same outputs.** The child calls the same `run_verdict` / `run_air_verdict` with
+  `save=True` and writes the same thumbnails and their metadata, into the parent's
+  `RUNS_DIR` (passed explicitly). Air dispatch is unchanged.
+- **Why spawn, not fork.** The parent has live threads (uvicorn, the queue feeder, other
+  supervisors); forking a threaded process can deadlock the child on a lock held at fork
+  time. Spawn costs a fresh interpreter import per job, which is acceptable at one job at a
+  time.
+- **Tests.** The run function is a module-level `"module:function"` string
+  (`server.JOB_RUNNER`), so tests can point the real spawned child at fakes in
+  `tests/fake_job_runners.py`. It is deliberately not settable from the environment. The
+  cooperative-cancel regression test and the air-domain test were moved onto this
+  mechanism with their assertions kept.
+
+**Memory cost: this makes a 512 MB live run tighter, not looser.** Measured locally
+(import-only RSS, Python 3.11, not on Render): the web process is about 190 MB after
+`import src.app.server`, because it still imports the pipeline. `review`, `run` and `air`
+each pull in rasterio/scipy/pandas (+90 to +120 MB each over a 38 MB FastAPI baseline);
+`geometry` adds 26 MB. A spawned child is about 170 MB after importing the pipeline, before
+it reads any imagery. Track A above measured a whole live run at 339 MB peak RSS in one
+process. That figure already includes one set of imports. Parent plus child is therefore
+roughly 190 + 339 ≈ 530 MB, over the 512 MB instance. That sum is my arithmetic, not a
+measurement. What the change buys is that running out of memory now fails the job, not the
+site. It does not make live runs fit. **Before live runs are offered on a 512 MB instance:**
+make the web process stop importing the pipeline (lazy imports in `server.py`, and in
+`review.py` / `air/__init__.py`, which import it eagerly), or set `APP_LIVE_RUNS=0`. Then
+measure parent plus child peak under an enforced 512 MiB cgroup.

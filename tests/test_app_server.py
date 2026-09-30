@@ -76,42 +76,41 @@ def test_submit_returns_existing_run_without_a_job(client, monkeypatch):
     assert r.status_code == 200 and r.json() == {"run_id": rid, "done": True}
 
 
-def test_a_wedged_job_is_cancelled_at_the_next_checkpoint(monkeypatch):
+def _queue_job(srv, job_id):
+    srv._jobs[job_id] = {"status": "queued", "stage": "queued", "done": 0, "total": 1,
+                         "rid": "deadbeef", "created": time.time()}
+
+
+_REQ_GEOJSON = {"type": "Polygon", "coordinates": [[[0, 0], [0, 1], [1, 1], [0, 0]]]}
+
+
+def test_a_wedged_job_is_cancelled_at_the_next_checkpoint(monkeypatch, tmp_path):
     """Regression: one wedged run held the single live-run slot forever.
 
-    Cancellation is cooperative -- the progress callback raises once the
-    deadline passes -- so a run that keeps reporting progress gets stopped and
-    the slot is released, instead of blocking every later run until restart.
+    The run executes in a child process whose progress callback raises once the
+    deadline passes, so a run that keeps reporting progress stops at its next
+    checkpoint (well before the parent's hard kill) and the slot is released,
+    instead of blocking every later run until restart.
     """
     from src.app import server as srv
 
+    counter = tmp_path / "checkpoints"
+    monkeypatch.setenv("FAKE_JOB_COUNTER", str(counter))    # inherited by the child
+    monkeypatch.setattr(srv, "RUNS_DIR", str(tmp_path))
     monkeypatch.setattr(srv, "JOB_TIMEOUT_S", 0.0)
-    # Equal clock readings still meet a zero-length deadline (Windows can
-    # execute all checkpoints within one wall-clock tick).
-    monkeypatch.setattr(srv.time, "monotonic", lambda: 100.0)
-
-    calls = {"n": 0}
-
-    def fake_run_verdict(*a, **kw):
-        progress = kw["progress"]
-        for i in range(100):
-            calls["n"] += 1
-            progress("sentinel-2", i, 100)      # raises JobTimeout on the first call
-        raise AssertionError("should have been cancelled")
-
-    monkeypatch.setattr(srv, "run_verdict", fake_run_verdict)
+    monkeypatch.setattr(srv, "JOB_KILL_GRACE_S", 120.0)     # prove the checkpoint, not the kill
+    monkeypatch.setattr(srv, "JOB_RUNNER", "tests.fake_job_runners:checkpoint_forever")
 
     job_id = "t" * 12
-    srv._jobs[job_id] = {"status": "queued", "stage": "queued", "done": 0, "total": 1,
-                         "rid": "deadbeef", "created": time.time()}
-    req = srv.RunRequest(geojson={"type": "Polygon", "coordinates": [[[0, 0], [0, 1], [1, 1], [0, 0]]]},
-                         event_date="2020-01-01")
-    srv._worker(job_id, req)
+    _queue_job(srv, job_id)
+    t0 = time.monotonic()
+    srv._worker(job_id, srv.RunRequest(geojson=_REQ_GEOJSON, event_date="2020-01-01"))
 
     job = srv._jobs.pop(job_id)
     assert job["status"] == "error"
     assert "limit" in job["error"]
-    assert calls["n"] == 1, "cancelled at the first checkpoint, not after the whole run"
+    assert counter.read_text() == "x", "cancelled at the first checkpoint, not after the whole run"
+    assert time.monotonic() - t0 < 60, "stopped by the checkpoint, not the hard kill"
     # the slot is free again
     assert srv._sem.acquire(blocking=False)
     srv._sem.release()
