@@ -52,7 +52,10 @@ The area and every donor cell share the treated footprint's shape
 (side = sqrt(area), `src/app/geometry.py`), for comparable noise. Donor
 cells sit in a ring 1–12 km out (`inner_m = 1000.0`, `outer_m = 12000.0`):
 the inner gap is a spillover buffer, the outer ring keeps climate and
-phenology shared.
+phenology shared. The inner gap is measured edge to edge (no part of a
+donor cell comes within `inner_m` of the drawn polygon); the outer limit
+is measured from the cell's centre. Wide mode applies the same edge-to-edge
+rule to its per-site inner radius.
 
 Series are binned into 10-day windows anchored on the event date
 (`bin_days = 10`, `src/app/prep.py`), median per bin. The treated column is

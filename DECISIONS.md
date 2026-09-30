@@ -645,7 +645,7 @@ severity overstates it) / **wrong**.
 | 13 | MAJOR | partly valid | "This area burned" is taken from the user's dropdown and stated as a finding, which is a real wording fault. But the method never claims to identify the mechanism and the page's frame is "you told us what happened, we test whether it moved more than expected", so this is a copy problem, not the causal over-claim the title implies. | UI copy. **Awaiting go-ahead.** |
 | 14 | MAJOR | valid | The largest number on the page is `point / mean(|counterfactual|)` as a percentage, with no interval and no definition anywhere in the UI. | UI. **Awaiting go-ahead.** |
 | 15 | MAJOR | valid | Reproduced: collection aborted on missing `httpx`; with those files skipped, `test_known_answer.py` failed on committed data. | **Fixed** this session. Suite is now 233 passed, 3 skipped, 8 xfailed, 0 failed. |
-| 16 | MINOR | valid | `donor_grid:109` measures `inner_m` centroid-to-polygon, so at ≥200 ha the nearest kept control can share an edge with the treated area — contradicting METHOD.md §3. Costs power rather than causing false alarms. | Open: switch to edge-to-edge distance. Changes donor eligibility and therefore published numbers, so not a silent edit. |
+| 16 | MINOR | valid | `donor_grid:109` measures `inner_m` centroid-to-polygon, so at ≥200 ha the nearest kept control can share an edge with the treated area — contradicting METHOD.md §3. Costs power rather than causing false alarms. | **Fixed in code** (2026-09-30, see entry below): inner gap is edge-to-edge in `donor_grid` and `wide_candidates`. Published showcase numbers predate it and need a re-run. |
 | 17 | MINOR | valid | Both halves true. | **Fixed for live runs** (cloud < 60; controls at 40 m). SCL is still upsampled to 10 m on the treated pass, but that window is now ~3 kpx, so the cost is immaterial. Docs should stop claiming 20 m. |
 | 18 | MINOR | valid | No rate limit, no job timeout, in-memory job state on a tier that spins down. The job timeout is the dangerous one: `_worker` holds the semaphore of 1 for the life of a run, so one wedged job blocks every future live run until restart. | Open. The job timeout is cheap and I recommend doing it before any public link goes out. |
 | 19 | MINOR | valid | `conformal_interval:167` infers whether it is in index units or dB from the magnitude of the pre-RMSE (`1.0 if scale < 0.3 else 10.0`). Fragile by construction. | Open: pass the signal's units explicitly. Method-adjacent, so logged rather than done. |
@@ -1637,3 +1637,31 @@ Suite 368 passed; screenshots in `docs/screenshots/2026-09-25-ui-v5/`.
 - Published numbers (showcase, power table, red-team tables) predate both
   fixes and must be re-run before METHOD.md section 9 and REDTEAM.md are
   updated to say the fixes are applied.
+
+## 2026-09-30 — spillover buffer measured edge to edge (CRITIQUE #16, REDTEAM E2)
+
+- `geometry.donor_grid`: a cell is eligible only if `cell.distance(area.utm) >= inner_m`
+  (nearest boundary to nearest boundary, local UTM). Previously the test was the cell
+  *centroid* to the polygon, which let cells within half a cell-side of the area in,
+  and at >= ~200 ha let cells sharing an edge in (kept or dropped by float rounding).
+- Outer limit unchanged: cell centroid within `outer_m` of the polygon. That is a
+  consistent ring (it can only include cells, never break the inner rule), so it
+  was left alone. `distances_m` keeps its meaning (centroid to polygon) so the
+  published `distance_m` fields and the thinning order are unchanged in kind.
+- `geometry.wide_candidates` applies the same edge rule: a draw whose cell comes
+  within `inner_m` of the polygon is rejected and redrawn from the same RNG stream,
+  so a draw with no rejections is identical to before. The placement radius stays
+  centroid to centroid, which is why the old code could put a cell edge inside
+  `inner_m` (by up to half a cell diagonal plus the polygon's extent).
+- Finding: the leak was not confined to >= 200 ha. Real drawn polygons are not
+  squares aligned to the grid, so for the eight ring showcase sites the old rule's
+  nearest kept cell edge was 607-939 m from the area at seven of them (Jaú, 1107 m,
+  was the exception). Because `max_cells = 400` thinning is an even stride over
+  the distance-sorted list, removing even a few inner cells changes which cells
+  survive thinning across the whole ring: 71-305 of 400 candidate cells are shared
+  old vs new at those seven sites (Jaú: all 400). Wide mode: 1 (Rhodes) and 2
+  (Sindh) of 600 candidates replaced.
+- Consequence: donor eligibility changed for every ring site, so the published
+  showcase numbers (and track record / power tables built from them) are stale
+  until `scripts/run_sites.py` is re-run. Not re-run here.
+
