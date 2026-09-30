@@ -20,6 +20,12 @@ from .series import AreaData, SensorSeries, cache_key
 CACHE_DIR = os.environ.get("APP_CACHE_DIR", "data/cache")
 WORKERS = int(os.environ.get("APP_FETCH_WORKERS", "16"))
 LIVE_WORKERS = int(os.environ.get("APP_LIVE_FETCH_WORKERS", "2"))
+# Live donor reads through the Planetary Computer data API (remote_s2): the server
+# decodes the COGs, so a scene costs ~0.03 s of our CPU instead of ~10 s. The
+# requests wait on the network, hence more of them in flight. APP_REMOTE_S2=0
+# switches back to local reads. See DECISIONS.md, 2026-09-30 "remote donor reads".
+REMOTE_S2 = os.environ.get("APP_REMOTE_S2", "1") == "1"
+REMOTE_WORKERS = int(os.environ.get("APP_REMOTE_S2_WORKERS", "8"))
 USER_RECEIPTS = ("cloud", "haze", "duplicate", "orbit", "edge", "read-error")   # shown on the verdict page
 Progress = Callable[[str, int, int], None]
 
@@ -204,6 +210,28 @@ def _to_series(obs, sensor: str, keys: tuple[str, ...], meta: dict) -> SensorSer
     return SensorSeries(sensor, dates, values, [o.scene_id for o in obs], meta)
 
 
+def _use_remote(cfg, prov, require_zone0) -> bool:
+    """Remote reads only for the live profile's donor-only groups on Planetary
+    Computer. The treated area (require_zone0) is always read locally at 10 m."""
+    return (REMOTE_S2 and cfg.get("donor_res") is not None and not require_zone0
+            and getattr(prov, "name", "") == "planetary-computer")
+
+
+def _s2_remote_or_local(sc, zones, sign, res=None, require_zone0=False):
+    """One donor-group scene via the data API, falling back to the local read if
+    the API fails. Two requests, because a PNG carries at most two indices:
+    NDVI + NDWI (both needed by the haze despike) and NBR."""
+    from . import remote_s2
+    try:
+        o, r = remote_s2.process_scene_remote(sc, zones, sign, res=res, indices=("NDVI", "NDWI"))
+        if o is not None:
+            nbr = remote_s2.fetch_scene_cells(sc, zones.epsg, zones.polygons, res, index="NBR", zones=zones)
+            o.values["NBR"] = nbr.values["NBR"]
+        return o, r
+    except remote_s2.RemoteError:
+        return s2mod.process_scene(sc, zones, sign, res=res, require_zone0=require_zone0)
+
+
 def _fetch_group(polys_utm, src_epsg, group_wgs84, start, end, prov, s1_prov, sensors, progress,
                  receipts, res, require_zone0, tag, cfg=None, bin_anchor=None, bin_days=10):
     """Search and read one group of polygons (the treated area, or a cluster of
@@ -231,9 +259,11 @@ def _fetch_group(polys_utm, src_epsg, group_wgs84, start, end, prov, s1_prov, se
     s2_series = s1_series = None
     if s2_scenes:
         groups = _group_by_crs(s2_scenes, prov.sign)
-        obs, rec = _run(groups, polys_utm, src_epsg, prov.sign, s2mod.process_scene, progress,
+        remote = _use_remote(cfg, prov, require_zone0)
+        obs, rec = _run(groups, polys_utm, src_epsg, prov.sign,
+                        _s2_remote_or_local if remote else s2mod.process_scene, progress,
                         f"sentinel-2{tag}", res=res, require_zone0=require_zone0,
-                        workers=cfg["workers"])
+                        workers=REMOTE_WORKERS if remote else cfg["workers"])
         obs, rec2 = s2mod.dedupe_by_minute(obs)
         if require_zone0:
             receipts += [asdict(r) for r in rec + rec2]
@@ -570,7 +600,7 @@ def _fetch_live_ring(area_geojson, start, end, *, providers, inner_m, outer_m, m
         donor_res = max(choose_donor_res([area.utm] + [grid.cells[i] for i in b]) for b in buckets)
 
     grid_sig = (f"live-{inner_m}-{outer_m}-{max_cells}-{donor_res}-{cov_year}-{''.join(sensors)}"
-                f"-c{cfg['max_cloud']}-b{cfg['per_bin']}")
+                f"-c{cfg['max_cloud']}-b{cfg['per_bin']}" + ("-remote" if REMOTE_S2 else ""))
     key = cache_key(area.geojson, start, end, grid_sig)
     cdir = os.path.join(cache_dir, key)
     if use_cache and os.path.exists(os.path.join(cdir, "meta.json")):
