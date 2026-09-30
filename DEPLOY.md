@@ -102,6 +102,17 @@ uvicorn src.app.server:app --reload --port 8000
    the before/after thumbnails and updates `showcase/index.json`.
 3. Commit `showcase/` and push. The landing page reads `index.json` in order.
 
+## Outreach runs (unlisted)
+
+`python -m scripts.run_outreach --bbox=minlon,minlat,maxlon,maxlat --event YYYY-MM-DD --type clearing --post 12 --label "..."`
+runs the full profile, writes `showcase/<id>.json` and thumbnails, and appends an
+entry to `showcase/index.json` with `"listed": false`, `"expected": null`,
+`"confirmed": false`. The run is served at `/v/<id>` and `/api/runs/<id>` but is
+left out of the landing page list, map dots, mosaic and `/api/track-record`.
+
+On the free host the disk is not persistent, so a permalink is only permanent if
+`showcase/` (the run JSON, thumbnails and `index.json`) is committed and deployed.
+
 ## Adding a site to the track record
 
 `python -m scripts.track_record` rebuilds `showcase/track_record.json` from
