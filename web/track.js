@@ -11,13 +11,14 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
-function summaryLine(summary) {
-  const parts = [];
-  if (summary.n !== undefined) parts.push(`${summary.n} sites`);
-  if (summary.hits !== undefined) parts.push(`${summary.hits} correct`);
-  if (summary.false_alarms !== undefined) parts.push(`${summary.false_alarms} false alarms`);
-  if (summary.cant_tell !== undefined) parts.push(`${summary.cant_tell} can't tell`);
-  return parts.join(" · ");
+/** Documented events and null sites are scored apart; every figure is counted from the rows. */
+function summaryLine(runs) {
+  const counted = (runs || []).filter((r) => r.counted !== false);
+  const events = counted.filter((r) => r.expected === "REAL");
+  const nulls = counted.filter((r) => r.expected === "NOT_REAL");
+  const n = (rows, st) => rows.filter((r) => r.status === st).length;
+  return `${n(events, "REAL")} of ${events.length} documented events detected, ${n(events, "CANT_TELL")} can't tell, ${n(events, "NOT_REAL")} missed (called NOT REAL); ` +
+    `${nulls.length} null sites: ${n(nulls, "REAL")} false alarms, ${n(nulls, "CANT_TELL")} can't tell`;
 }
 
 function renderRow(r) {
@@ -27,7 +28,7 @@ function renderRow(r) {
     : "—";
   return `
     <tr>
-      <td data-label="Site"><a href="/v/${encodeURIComponent(r.id)}">${escapeHtml(r.label || r.id)}</a></td>
+      <td data-label="Site"><a href="/v/${encodeURIComponent(r.id)}">${escapeHtml(r.label || r.id)}</a>${r.confirmed === false ? `<span class="candidate-badge">candidate — not yet independently confirmed</span>` : ""}</td>
       <td data-label="Type">${escapeHtml(CHANGE_TYPE_LABEL[r.type] || r.type || "—")}</td>
       <td data-label="Expected">${escapeHtml(r.expected || "—")}</td>
       <td data-label="Verdict" class="verdict-cell v-${r.status}">${statusLabel}</td>
@@ -58,7 +59,7 @@ async function boot() {
       <section class="page-head">
         <h1>Track record</h1>
         <p>Every known-answer site the tool has been run on, misses included. Expected answers come from the documented sources linked in each row.</p>
-        <div class="summary-line tnum">${summaryLine(data.summary)}</div>
+        <div class="summary-line tnum">${summaryLine(data.runs)}</div>
       </section>
       <div class="table-wrap">
         <table class="track-table track-record-table">
@@ -177,7 +178,7 @@ async function renderBlind() {
       <dd>${reviewed
         ? `${escapeHtml(String(d.reviews))} blind judgements from ${escapeHtml(String(d.reviewers))} reviewer${d.reviewers === 1 ? "" : "s"}, over ${escapeHtml(String(d.cases_prepared_for_review))} cases prepared for review.`
         : `No blind reviews have been recorded yet. ${escapeHtml(String(d.cases_prepared_for_review))} cases are prepared for review; the human and tool + human columns will stay empty until someone reviews them.`}
-        <a href="/review">Review cases</a>.</dd>
+       </dd>
     </dl>`;
   contentEl.appendChild(section);
 }

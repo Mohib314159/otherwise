@@ -32,6 +32,7 @@ written by `scripts/blind_validation.py` and `scripts/blind_review_prep.py`.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import math
 import os
@@ -42,7 +43,7 @@ import threading
 import uuid
 from datetime import date, datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -470,8 +471,16 @@ def get_annotations(run_id: str):
             "note": "Human annotation. It does not change the statistical verdict."}
 
 
+def _check_review_token(supplied: str | None) -> None:
+    """Writes are closed unless APP_REVIEW_TOKEN is set and the caller sends it."""
+    token = os.environ.get("APP_REVIEW_TOKEN", "")
+    if not token or not supplied or not hmac.compare_digest(supplied.encode(), token.encode()):
+        raise HTTPException(403, "Annotations are restricted to analysts.")
+
+
 @router.post("/api/review/annotations")
-def add_annotation(req: AnnotationRequest):
+def add_annotation(req: AnnotationRequest, x_review_token: str | None = Header(default=None)):
+    _check_review_token(x_review_token)
     if req.call not in ANNOTATION_CALLS:
         raise HTTPException(400, f"call must be one of {sorted(ANNOTATION_CALLS)}")
     if req.status not in ANNOTATION_STATUS:
