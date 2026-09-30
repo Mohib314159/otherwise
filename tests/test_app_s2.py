@@ -112,6 +112,48 @@ def test_despike_step_change_not_flagged():
     assert not suspect.any()
 
 
+def test_despike_keeps_dip_with_ndwi_water_rise():
+    """E7: a one-observation NDVI dip whose NDWI rises above its neighbours
+    and above 0 is water, not haze, and is kept."""
+    dates = _dates(12)
+    ndvi = np.full(12, 0.6); ndvi[5] = -0.1
+    ndwi = np.full(12, -0.45); ndwi[5] = 0.3
+    assert not despike(dates, ndvi, ndwi=ndwi).any()
+    assert despike(dates, ndvi).tolist() == [i == 5 for i in range(12)]   # NDVI alone still drops it
+
+
+def test_despike_still_drops_haze_dip_without_ndwi_rise():
+    dates = _dates(12)
+    ndvi = np.full(12, 0.6); ndvi[5] = 0.2
+    ndwi = np.full(12, -0.45)                        # NDWI flat: no water signal
+    assert despike(dates, ndvi, ndwi=ndwi).tolist() == [i == 5 for i in range(12)]
+
+
+def test_despike_still_drops_haze_that_raises_ndwi_but_stays_below_zero():
+    """Haze pulls NDWI up towards 0 (a rise well past the threshold) but not
+    above it; that is still haze."""
+    dates = _dates(12)
+    ndvi = np.full(12, 0.6); ndvi[5] = 0.2
+    ndwi = np.full(12, -0.45); ndwi[5] = -0.05
+    assert despike(dates, ndvi, ndwi=ndwi).tolist() == [i == 5 for i in range(12)]
+
+
+def test_despike_positive_ndwi_without_rise_is_still_dropped():
+    """A permanently wet area (NDWI always > 0): an NDVI dip with no NDWI rise
+    relative to its neighbours is treated as haze, as before."""
+    dates = _dates(12)
+    ndvi = np.full(12, 0.3); ndvi[5] = -0.1
+    ndwi = np.full(12, 0.25); ndwi[5] = 0.28
+    assert despike(dates, ndvi, ndwi=ndwi).tolist() == [i == 5 for i in range(12)]
+
+
+def test_despike_nan_ndwi_falls_back_to_ndvi_only():
+    dates = _dates(12)
+    ndvi = np.full(12, 0.6); ndvi[5] = -0.1
+    ndwi = np.full(12, np.nan)
+    assert despike(dates, ndvi, ndwi=ndwi).tolist() == [i == 5 for i in range(12)]
+
+
 def test_despike_all_nan_is_all_false():
     dates = _dates(12)
     ndvi = np.full(12, np.nan)

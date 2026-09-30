@@ -270,9 +270,10 @@ def _despike_donors(ss: SensorSeries | None, col0: int) -> None:
     if ss is None or "NDVI" not in ss.values:
         return
     nd = ss.values["NDVI"]
+    nw = ss.values.get("NDWI")
     dts = ss.dates.astype("datetime64[D]")
     for j in range(col0, nd.shape[1]):
-        sj = s2mod.despike(dts, nd[:, j])
+        sj = s2mod.despike(dts, nd[:, j], ndwi=nw[:, j] if nw is not None else None)
         for k in ss.values:
             ss.values[k][sj, j] = np.nan
 
@@ -377,7 +378,8 @@ def fetch_area(area_geojson: dict, start: str, end: str, *,
         s2_series = _to_series(obs, "S2", s2mod.INDICES, {"provider": prov.name, "n_scenes": len(s2_scenes)})
         if s2_series is not None:
             # residual cloud/haze on the treated series -> drop the observation
-            sus = s2mod.despike(s2_series.dates.astype("datetime64[D]"), s2_series.treated("NDVI"))
+            sus = s2mod.despike(s2_series.dates.astype("datetime64[D]"), s2_series.treated("NDVI"),
+                                ndwi=s2_series.treated("NDWI") if "NDWI" in s2_series.values else None)
             for i in np.where(sus)[0]:
                 receipts.append(asdict(s2mod.Receipt("S2", str(s2_series.dates[i]), s2_series.scene_ids[i], "haze",
                     f"NDVI {s2_series.treated('NDVI')[i]:.2f} sits well below its neighbours in time; "
@@ -387,9 +389,10 @@ def fetch_area(area_geojson: dict, start: str, end: str, *,
                                      [s for s, k in zip(s2_series.scene_ids, keep) if k], s2_series.meta)
             # and the same test on every donor cell, cell by cell (NaN out, no receipt)
             nd = s2_series.values["NDVI"]
+            nw = s2_series.values.get("NDWI")
             dts = s2_series.dates.astype("datetime64[D]")
             for j in range(1, nd.shape[1]):
-                sj = s2mod.despike(dts, nd[:, j])
+                sj = s2mod.despike(dts, nd[:, j], ndwi=nw[:, j] if nw is not None else None)
                 for k in s2_series.values:
                     s2_series.values[k][sj, j] = np.nan
         timing["s2_s"] = round(time.time() - t, 1)
@@ -452,7 +455,8 @@ def _fetch_wide(area_geojson, start, end, *, providers, inner_m, outer_m, max_ce
                                         sensors, progress, receipts, None, True, "",
                                         cfg=cfg, bin_anchor=event_date)
     if s2_t is not None:
-        sus = s2mod.despike(s2_t.dates.astype("datetime64[D]"), s2_t.treated("NDVI"))
+        sus = s2mod.despike(s2_t.dates.astype("datetime64[D]"), s2_t.treated("NDVI"),
+                            ndwi=s2_t.treated("NDWI") if "NDWI" in s2_t.values else None)
         for i in np.where(sus)[0]:
             receipts.append(asdict(s2mod.Receipt("S2", str(s2_t.dates[i]), s2_t.scene_ids[i], "haze",
                 f"NDVI {s2_t.treated('NDVI')[i]:.2f} sits well below its neighbours in time; likely cloud or haze.")))
@@ -589,7 +593,8 @@ def _fetch_live_ring(area_geojson, start, end, *, providers, inner_m, outer_m, m
                                         sensors, progress, receipts, None, True, "",
                                         cfg=cfg, bin_anchor=event_date)
     if s2_t is not None:
-        sus = s2mod.despike(s2_t.dates.astype("datetime64[D]"), s2_t.treated("NDVI"))
+        sus = s2mod.despike(s2_t.dates.astype("datetime64[D]"), s2_t.treated("NDVI"),
+                            ndwi=s2_t.treated("NDWI") if "NDWI" in s2_t.values else None)
         for i in np.where(sus)[0]:
             receipts.append(asdict(s2mod.Receipt("S2", str(s2_t.dates[i]), s2_t.scene_ids[i], "haze",
                 f"NDVI {s2_t.treated('NDVI')[i]:.2f} sits well below its neighbours in time; "

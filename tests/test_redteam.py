@@ -143,11 +143,9 @@ def test_seasonal_shift_20_days_is_not_real():
 
 
 # ---------------------------------------------------------------------------
-# BREAKS (desired behaviour, xfail strict)
+# BREAKS (desired behaviour, xfail strict). E5, E7 and E8 are fixed (METHOD.md
+# section 9) and their markers removed; the rest still fail today.
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(strict=True, reason="E5: a drift that began a year before the claimed date is called REAL "
-                                       "for that date; the in-time placebo flags it but decide() only softens "
-                                       "the wording (verdict.decide, time_placebo_flags branch)")
 def test_pretrend_with_flagged_time_placebos_is_not_real():
     dates, V, ev = synth_panel(seed=0)
     t = np.arange(len(dates)); n_pre = int(np.sum(dates < ev))
@@ -157,10 +155,11 @@ def test_pretrend_with_flagged_time_placebos_is_not_real():
     assert decide(r, "clearing", "").status != "REAL"
 
 
-def test_pretrend_current_behaviour_is_real_via_4x_rescue():
-    """Pins the failure mode of the test above so a silent change is noticed:
-    the loose pre-fit gate fails, the 4x rule rescues it, two of three in-time
-    placebos are flagged, and the verdict is still REAL."""
+def test_pretrend_4x_rescue_is_disabled_when_time_placebos_flag():
+    """Pins the mechanism of the E5 fix on the same panel. Before the fix the
+    loose pre-fit gate failed, the 4x rule rescued it, two of three in-time
+    placebos were flagged and the verdict was still REAL. Now the flags switch
+    the 4x rescue off (pre_fit_ok is False) and the verdict is CAN'T TELL."""
     dates, V, ev = synth_panel(seed=0)
     t = np.arange(len(dates)); n_pre = int(np.sum(dates < ev))
     V[:, 0] += np.clip((t - n_pre) * 10 + 365, 0, None) * (-0.2) / 365.0
@@ -168,11 +167,10 @@ def test_pretrend_current_behaviour_is_real_via_4x_rescue():
     loose = r.pre_rmse <= max(1.5 * r.placebo_pre_rmse_median, 0.02)
     assert not loose and abs(r.point) >= 4 * r.pre_rmse
     assert sum(r.time_placebo_flags) >= 2
-    assert decide(r, "clearing", "").status == "REAL"
+    assert not r.pre_fit_ok
+    assert decide(r, "clearing", "").status == "CANT_TELL"
 
 
-@pytest.mark.xfail(strict=True, reason="E8: three in-time false alarms only change the wording "
-                                       "(verdict.decide lines 146-149)")
 def test_all_time_placebos_flagged_blocks_real():
     assert decide(make(time_placebo_flags=[True, True, True]), "clearing", "").status != "REAL"
 
@@ -203,23 +201,26 @@ def test_donor_cells_keep_one_km_edge_gap_for_large_areas():
     assert edge.min() >= 1000.0 - 1e-6, f"nearest donor cell edge is {edge.min():.0f} m from the area"
 
 
-@pytest.mark.xfail(strict=True, reason="E7: the one-sided NDVI despike deletes every observation of a flood "
-                                       "shorter than ~30 days, and fetch_area drops NDWI with it (s2.despike; "
-                                       "fetch.fetch_area haze block)")
 def test_despike_keeps_short_flood_observations():
+    """E7 fix: given the NDWI series, the despike sees the water and keeps the
+    flood. (Dry vegetation NDWI about -0.45, standing water about +0.3.)"""
     rng = np.random.default_rng(0)
     days = np.arange(0, 400, 5)
     days = days[rng.random(len(days)) < 0.5]
     ndvi = 0.6 + rng.normal(0, 0.03, len(days))
     flooded = (days >= 200) & (days < 220)
     ndvi[flooded] = -0.1 + rng.normal(0, 0.03, flooded.sum())       # standing water, not cloud
-    sus = s2mod.despike(days.astype("datetime64[D]"), ndvi)
+    ndwi = -0.45 + rng.normal(0, 0.03, len(days))
+    ndwi[flooded] = 0.3 + rng.normal(0, 0.03, flooded.sum())
+    sus = s2mod.despike(days.astype("datetime64[D]"), ndvi, ndwi=ndwi)
     assert flooded.sum() >= 2
     assert sus[flooded].mean() < 0.5, f"{sus[flooded].sum()} of {flooded.sum()} flooded observations flagged as haze"
 
 
-def test_despike_current_behaviour_deletes_the_whole_short_flood():
-    """Pins the failure the test above describes."""
+def test_despike_without_ndwi_still_deletes_the_whole_short_flood():
+    """NDVI alone cannot tell water from haze: without the NDWI series the
+    despike behaves exactly as before the E7 fix. Every caller in fetch.py now
+    passes NDWI."""
     rng = np.random.default_rng(0)
     days = np.arange(0, 400, 5)
     days = days[rng.random(len(days)) < 0.5]

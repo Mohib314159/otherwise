@@ -68,9 +68,15 @@ class SignalResult:
         The conformal interval and the RMSPE-ratio placebo already scale with
         the pre-event residuals, so this absolute gate is a safety net for
         marginal effects, not a veto on an effect 4x larger than the fit error.
+
+        The 4x bypass is disabled when any in-time placebo is flagged (REDTEAM
+        E5, METHOD.md section 9): a decline that began before the claimed date
+        inflates both the pre-event error and the "effect", so a large ratio is
+        then evidence of a pre-trend, not of a sharp step the fit cannot track.
         """
         loose = self.pre_rmse <= max(1.5 * self.placebo_pre_rmse_median, PRE_RMSE_FLOOR[self.signal])
-        return loose or abs(self.point) >= 4.0 * self.pre_rmse
+        bypass = abs(self.point) >= 4.0 * self.pre_rmse and not any(self.time_placebo_flags)
+        return loose or bypass
 
     def excludes_zero_in_direction(self) -> bool:
         s = self.expected_sign
@@ -156,9 +162,14 @@ def decide(r: SignalResult, change_type: str, post_label: str) -> Verdict:
     # --- evidence for the claimed change ---
     if r.excludes_zero_in_direction() and abs(r.point) >= r.min_effect:
         if r.placebo_p <= PLACEBO_P_MAX:
+            # REDTEAM E5 / METHOD.md section 9: a flagged in-time placebo means the
+            # same test finds a "change" at a fake date before the event, i.e. the
+            # shift was already under way. That is CAN'T TELL, not a softer REAL.
             if any(r.time_placebo_flags):
-                reasons.append("a fake event date in the pre-period also produced a 'significant' effect; "
-                               "treat the confidence as lower than the interval suggests")
+                reasons.append("the same test finds a 'change' at a fake date before the event, so the "
+                               "shift began before the date given")
+                return Verdict("CANT_TELL", "Can't tell", core + " " + placebo + " But: " + reasons[-1] + ".",
+                               reasons, r.signal)
             return Verdict("REAL", "Real change", core + " " + placebo, reasons, r.signal)
         reasons.append(f"the placebo check found divergences this large in untouched cells too often "
                        f"(placebo p = {r.placebo_p:.2f})")
