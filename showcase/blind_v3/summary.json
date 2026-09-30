@@ -1,0 +1,266 @@
+{
+ "seed": 20260918,
+ "sample_generated": "2026-09-18T23:29:35+00:00",
+ "sample_n": 247,
+ "sample_git_commit": "6d8776d",
+ "git_commit": "b5377c0",
+ "generated": "2026-09-30T12:50:08+00:00",
+ "completed": 9,
+ "pending": 238,
+ "median_seconds": 493.0,
+ "overall": {
+  "n": 9,
+  "n_events": 5,
+  "n_nulls": 4,
+  "errors": 0,
+  "events": {
+   "n": 5,
+   "hit": 0,
+   "miss": 0,
+   "cant_tell": 5,
+   "error": 0,
+   "detection_rate": 0.0,
+   "miss_rate": 0.0,
+   "cant_tell_rate": 1.0
+  },
+  "nulls": {
+   "n": 4,
+   "false_alarm": 0,
+   "correct": 3,
+   "cant_tell": 1,
+   "error": 0,
+   "false_alarm_rate": 0.0,
+   "correct_rate": 0.75,
+   "cant_tell_rate": 0.25
+  }
+ },
+ "by": {
+  "type": {
+   "clearing": {
+    "n": 9,
+    "n_events": 5,
+    "n_nulls": 4,
+    "errors": 0,
+    "events": {
+     "n": 5,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 5,
+     "error": 0,
+     "detection_rate": 0.0,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 1.0
+    },
+    "nulls": {
+     "n": 4,
+     "false_alarm": 0,
+     "correct": 3,
+     "cant_tell": 1,
+     "error": 0,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 0.75,
+     "cant_tell_rate": 0.25
+    }
+   }
+  },
+  "source": {
+   "hansen": {
+    "n": 9,
+    "n_events": 5,
+    "n_nulls": 4,
+    "errors": 0,
+    "events": {
+     "n": 5,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 5,
+     "error": 0,
+     "detection_rate": 0.0,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 1.0
+    },
+    "nulls": {
+     "n": 4,
+     "false_alarm": 0,
+     "correct": 3,
+     "cant_tell": 1,
+     "error": 0,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 0.75,
+     "cant_tell_rate": 0.25
+    }
+   }
+  },
+  "size_bucket": {
+   "<50 ha": {
+    "n": 7,
+    "n_events": 4,
+    "n_nulls": 3,
+    "errors": 0,
+    "events": {
+     "n": 4,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 4,
+     "error": 0,
+     "detection_rate": 0.0,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 1.0
+    },
+    "nulls": {
+     "n": 3,
+     "false_alarm": 0,
+     "correct": 2,
+     "cant_tell": 1,
+     "error": 0,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 0.667,
+     "cant_tell_rate": 0.333
+    }
+   },
+   "50-150 ha": {
+    "n": 2,
+    "n_events": 1,
+    "n_nulls": 1,
+    "errors": 0,
+    "events": {
+     "n": 1,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 1,
+     "error": 0,
+     "detection_rate": 0.0,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 1.0
+    },
+    "nulls": {
+     "n": 1,
+     "false_alarm": 0,
+     "correct": 1,
+     "cant_tell": 0,
+     "error": 0,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 1.0,
+     "cant_tell_rate": 0.0
+    }
+   }
+  },
+  "climate": {
+   "tropical": {
+    "n": 4,
+    "n_events": 2,
+    "n_nulls": 2,
+    "errors": 0,
+    "events": {
+     "n": 2,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 2,
+     "error": 0,
+     "detection_rate": 0.0,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 1.0
+    },
+    "nulls": {
+     "n": 2,
+     "false_alarm": 0,
+     "correct": 1,
+     "cant_tell": 1,
+     "error": 0,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 0.5,
+     "cant_tell_rate": 0.5
+    }
+   },
+   "temperate": {
+    "n": 2,
+    "n_events": 1,
+    "n_nulls": 1,
+    "errors": 0,
+    "events": {
+     "n": 1,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 1,
+     "error": 0,
+     "detection_rate": 0.0,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 1.0
+    },
+    "nulls": {
+     "n": 1,
+     "false_alarm": 0,
+     "correct": 1,
+     "cant_tell": 0,
+     "error": 0,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 1.0,
+     "cant_tell_rate": 0.0
+    }
+   },
+   "boreal": {
+    "n": 3,
+    "n_events": 2,
+    "n_nulls": 1,
+    "errors": 0,
+    "events": {
+     "n": 2,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 2,
+     "error": 0,
+     "detection_rate": 0.0,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 1.0
+    },
+    "nulls": {
+     "n": 1,
+     "false_alarm": 0,
+     "correct": 1,
+     "cant_tell": 0,
+     "error": 0,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 1.0,
+     "cant_tell_rate": 0.0
+    }
+   }
+  },
+  "date_precision": {
+   "year": {
+    "n": 9,
+    "n_events": 5,
+    "n_nulls": 4,
+    "errors": 0,
+    "events": {
+     "n": 5,
+     "hit": 0,
+     "miss": 0,
+     "cant_tell": 5,
+     "error": 0,
+     "detection_rate": 0.0,
+     "miss_rate": 0.0,
+     "cant_tell_rate": 1.0
+    },
+    "nulls": {
+     "n": 4,
+     "false_alarm": 0,
+     "correct": 3,
+     "cant_tell": 1,
+     "error": 0,
+     "false_alarm_rate": 0.0,
+     "correct_rate": 0.75,
+     "cant_tell_rate": 0.25
+    }
+   }
+  }
+ },
+ "run_order_seed": 20260918,
+ "definitions": {
+  "detection_rate": "REAL verdicts / finished event runs",
+  "miss_rate": "NOT_REAL verdicts / finished event runs",
+  "false_alarm_rate": "REAL verdicts / finished null runs",
+  "correct_rate": "NOT_REAL verdicts / finished null runs",
+  "cant_tell_rate": "CAN'T TELL verdicts / finished runs of that kind",
+  "error": "the run raised or timed out; excluded from the rates"
+ }
+}
