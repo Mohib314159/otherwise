@@ -1796,3 +1796,13 @@ Austin. All numbers are measured on this box.
   0.064–0.082 s with 8–16 requests in flight. 270 requests returned 0 errors and needed 0
   retries. Wall time was 1.1–1.3 s per scene sequential and 0.18–0.20 s with 8 in flight.
   Each PNG was about 1.2–1.3 MB, because speckle compresses poorly.
+
+## 2026-09-30 — live run end to end with remote S1 + S2 donor reads
+
+Same live run (Richmond Park 29 ha, clearing, 2022-06-01, 12 months), one core
+(taskset), load average ~34 on 4 cores, fresh cache:
+- local donor reads: 3015 s wall, 2375 s CPU (S1 controls alone 2646 s wall)
+- remote S2 + S1 donor reads: **420 s wall, 57 s CPU**, peak RSS 390 MB
+- verdict and numbers identical: CAN'T TELL, NDVI +0.011, 40 donors, 51 pre / 15 post bins.
+Scaling 57 CPU-seconds to Render's 0.1 CPU suggests about 10 minutes against the
+40-minute limit; confirmed or refuted by the Render probe after this deploy.
