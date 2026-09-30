@@ -442,6 +442,9 @@ details.receipt-group summary:hover { color: var(--counter); }
   display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
 }
 .big-number .unit { font-size: 20px; font-weight: 500; letter-spacing: 0; color: var(--muted); }
+.big-number .unit.unit-lead { order: -1; font-size: 0.42em; color: inherit; opacity: .7; }
+.big-sub.big-pct { font-size: 13px; }
+.hero-sure { margin: 10px auto 0; font-size: 14px; line-height: 1.4; max-width: 680px; }
 .big-sub { margin-top: 12px; font-size: 15px; line-height: 1.5; }
 .big-sub + .big-sub { margin-top: 4px; }
 @media (max-width: 640px) { .big-number { font-size: 52px; } }

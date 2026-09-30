@@ -231,7 +231,7 @@ def _post_counterfactual_mean(run: dict) -> float:
     return sum(post) / len(post)
 
 
-def test_the_hero_percentage_carries_its_interval_through_the_same_divisor(load):
+def test_the_hero_leads_with_index_units_and_the_percentage_is_secondary(load):
     run = showcase_run("REAL")
     lead = run["verdict"]["lead_signal"]
     if lead in ("VV", "VH", "RATIO"):
@@ -242,16 +242,22 @@ def test_the_hero_percentage_carries_its_interval_through_the_same_divisor(load)
     sig = run["signals"][lead]
     expect = {k: round(sig[k] / base * 100) for k in ("point", "lo", "hi")}
 
-    hero = text_of(pg, "#big-number")
-    assert hero.replace("−", "-") == f"{expect['point']:+d}%".replace("+", "+")
+    hero = text_of(pg, "#big-number").replace("\n", " ")
+    assert "%" not in hero
+    assert lead in hero and f"{sig['point']:.2f}".replace("-", "\u2212") in hero
+    assert hero.index(lead) < hero.index(f"{abs(sig['point']):.2f}"), "the index name leads the number"
 
-    interval = text_of(pg, "#big-interval").replace("−", "-")
+    interval = text_of(pg, "#big-interval").replace("\u2212", "-")
     assert "90% interval" in interval
-    got = [int(t) for t in re.findall(r"[-+]?\d+", interval.replace("90% interval", ""))]
-    assert got == [expect["lo"], expect["hi"]]
+    got = [float(t) for t in re.findall(r"[-+]?\d+\.\d+", interval)]
+    assert got == [round(sig["lo"], 2), round(sig["hi"], 2)]
 
-    # the index-unit effect is still on the page, and the definition is one tap away
-    assert f"{sig['point']:.2f}".replace("-", "−") in text_of(pg, "#big-index")
+    # the percentage is still there, through the same divisor, and smaller
+    pct = text_of(pg, "#big-pct").replace("\u2212", "-")
+    got = [int(t) for t in re.findall(r"[-+]?\d+(?=%)", pct.replace("90%", ""))]
+    assert got == [expect["point"], expect["lo"], expect["hi"]]
+    size = lambda sel: float(pg.eval_on_selector(sel, "e => parseFloat(getComputedStyle(e).fontSize)"))
+    assert size("#big-pct") < size("#big-number .value")
     definition = dom_text(pg, "#what-num")
     assert "average level the control trajectory predicted" in definition
     assert not pg.errors
@@ -270,9 +276,35 @@ def test_the_hero_falls_back_to_index_units_when_the_divisor_is_near_zero(load):
 
     hero = text_of(pg, "#big-number")
     assert "%" not in hero, "a near-zero divisor must not produce a percentage"
+    assert pg.query_selector("#big-pct") is None
     assert f"{abs(run['signals'][lead]['point']):.2f}" in hero
-    assert lead in hero or lead in text_of(pg, ".big-sub")
+    assert lead in hero
     assert "too close to zero" in dom_text(pg, "#what-num")
+    assert not pg.errors
+
+
+def test_the_hero_carries_the_two_placebo_counts_from_the_lead_signal(load):
+    run = copy.deepcopy(showcase_run("REAL"))
+    lead = run["verdict"]["lead_signal"]
+    sig = run["signals"][lead]
+    sig["placebo_n"] = 40
+    sig["placebo_p_effect"] = 3 / 41           # k = 2
+    sig["time_placebo_flags"] = [True, False, False]
+    pg = load(run)
+    assert text_of(pg, "#hero-sure") == \
+        "2 of 40 comparable untouched places moved this much \u00b7 1 of 3 fake earlier dates fired"
+    # it sits directly under the headline
+    assert pg.eval_on_selector("#hero-sure", "e => e.previousElementSibling.classList.contains('verdict-word')")
+    assert not pg.errors
+
+
+def test_the_hero_line_omits_missing_halves(load):
+    run = copy.deepcopy(showcase_run("REAL"))
+    sig = run["signals"][run["verdict"]["lead_signal"]]
+    sig["placebo_n"] = 0
+    sig["time_placebo_flags"] = []
+    pg = load(run)
+    assert text_of(pg, "#hero-sure") == "no fake-date test was possible"
     assert not pg.errors
 
 

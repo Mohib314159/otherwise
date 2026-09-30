@@ -25,7 +25,11 @@
   .brand-mark { width: 23px; height: 23px; }
   .landing-nav-links { padding: 4px; }
   .landing-nav-links > a, .landing-nav-links .nav-link { display: none; }
-  .nav-install { min-height: 36px; padding: 0 12px; font-size: 11px; }
+  /* ghost: the primary fill belongs to "Start" (hero-actions), not to Install */
+  .nav-install, .nav-install:hover {
+    min-height: 32px; padding: 0 11px; font-size: 11px; font-weight: 500;
+    background: transparent; color: rgba(255,255,255,.72); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22);
+  }
 
   .map-style {
     top: max(60px, calc(env(safe-area-inset-top) + 50px)); right: var(--phone-gutter);

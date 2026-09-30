@@ -271,10 +271,16 @@ def _showcase_index() -> list[dict]:
         return json.load(f)
 
 
+def _listed_showcase_index() -> list[dict]:
+    """Index entries that appear in public listings. `"listed": false` marks an
+    unlisted outreach run: still served at /v/<id> and /api/runs/<id>, never listed."""
+    return [e for e in _showcase_index() if e.get("listed", True) is not False]
+
+
 @app.get("/api/showcase")
 def showcase():
     out = []
-    for entry in _showcase_index():
+    for entry in _listed_showcase_index():
         p = _find_run(entry["id"])
         if not p:
             continue
@@ -294,6 +300,8 @@ def track_record():
     if not os.path.exists(p):
         return {"runs": [], "summary": None}
     out = json.load(open(p))
+    unlisted = {e.get("id") for e in _showcase_index() if e.get("listed", True) is False}
+    out["runs"] = [r for r in out.get("runs", []) if r.get("id") not in unlisted]
     confirmed = {e.get("id"): bool(e.get("confirmed")) for e in _showcase_index()}
     for r in out.get("runs", []):
         r["confirmed"] = confirmed.get(r.get("id"), bool(r.get("confirmed")))

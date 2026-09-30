@@ -453,6 +453,20 @@ const QUICK_CHECK_NOTE =
   "are not read from the same scenes — weaker evidence than a full run, which " +
   "reads everything at 10 m from one search and is done offline.";
 
+/** One line from the lead signal's own fields: in-space placebo count, then fake-date count. */
+function heroSureLine(d) {
+  const sig = d.signals[d.verdict.lead_signal] || {};
+  const parts = [];
+  const n = sig.placebo_n;
+  const k = Number.isFinite(n) && n > 0 ? placeboCount(sig.placebo_p_effect, n) : null;
+  if (k !== null) parts.push(`${k} of ${n} comparable untouched places moved this much`);
+  const flags = Array.isArray(sig.time_placebo_flags) ? sig.time_placebo_flags : [];
+  parts.push(flags.length
+    ? `${flags.filter(Boolean).length} of ${flags.length} fake earlier dates fired`
+    : "no fake-date test was possible");
+  return parts.join(" · ");
+}
+
 function renderVerdictTop(d) {
   const st = d.verdict.status;
   const quick = isQuickCheck(d);
@@ -461,6 +475,7 @@ function renderVerdictTop(d) {
       ${supersededHtml(d)}
       <p class="verdict-kicker muted">${escapeHtml(claimSentence(d))}</p>
       <div class="verdict-word v-${st}">${escapeHtml(headlineFor(d))}</div>
+      <p class="hero-sure tnum muted" id="hero-sure">${escapeHtml(heroSureLine(d))}</p>
       ${candidateBadgeHtml(d)}
       ${quick ? `<p class="quick-mark" id="quick-mark">Quick check</p>` : ""}
       <p class="verdict-plain">${escapeHtml(findingSentence(d))}</p>
@@ -510,7 +525,8 @@ function relativeChange(d) {
     unit: unitFor(lead),
     sub: `${name} relative to the control trajectory, ${months} months after the event`,
     interval: hasInterval ? `90% interval ${fmtSigned(lead, sig.lo)} to ${fmtSigned(lead, sig.hi)}` : "",
-    index: "",
+    pct: "",
+    unitFirst: !isDb,
     detail: "",
   };
   if (isDb || !Number.isFinite(sig.point)) return absolute;
@@ -525,16 +541,18 @@ function relativeChange(d) {
     };
   }
   const pct = (sig.point / base) * 100;
+  // Lead with the index units the method estimates in; the percentage is secondary.
   return {
-    text: fmtPct(pct),
-    unit: "",
-    sub: `change in ${name} against the average level the control trajectory predicted for the ${months} months after the event`,
-    interval: hasInterval ? `90% interval ${fmtPct((sig.lo / base) * 100)} to ${fmtPct((sig.hi / base) * 100)}` : "",
-    index: `In ${lead} units: ${fmtSigned(lead, sig.point)}${hasInterval ? ` (90% ${fmtSigned(lead, sig.lo)} to ${fmtSigned(lead, sig.hi)})` : ""}`,
+    ...absolute,
+    text: fmtBare(lead, sig.point),
+    unit: lead,
+    unitFirst: true,
+    pct: `${fmtPct(pct)} of the control level`
+      + (hasInterval ? ` (90% ${fmtPct((sig.lo / base) * 100)} to ${fmtPct((sig.hi / base) * 100)})` : ""),
     detail: `The gap between this area and the control trajectory is ${fmtSigned(lead, sig.point)} ${lead}. `
-      + `That is divided by ${fmtSignalValue(lead, base)} — the average level the control trajectory predicted over the ${months} months after the event — and shown as a percentage; `
+      + `The percentage is that gap divided by ${fmtSignalValue(lead, base)} — the average level the control trajectory predicted over the ${months} months after the event; `
       + `the interval is the same division applied to both ends of the 90% interval. `
-      + `${lead} is an index, not a physical quantity, so read this as a comparison with the control level rather than as a percentage of anything measurable.`,
+      + `${lead} is an index, not a physical quantity, so read the percentage as a comparison with the control level rather than as a percentage of anything measurable.`,
   };
 }
 
@@ -542,10 +560,10 @@ function renderNumber(d) {
   const st = d.verdict.status;
   const rc = relativeChange(d);
   return `
-    <div class="big-number v-${st}" id="big-number"><span class="value">${escapeHtml(rc.text)}</span>${rc.unit ? `<span class="unit">${escapeHtml(rc.unit)}</span>` : ""}</div>
+    <div class="big-number v-${st}" id="big-number">${rc.unitFirst ? `<span class="unit unit-lead">${escapeHtml(rc.unit)}</span>` : ""}<span class="value">${escapeHtml(rc.text)}</span>${rc.unit && !rc.unitFirst ? `<span class="unit">${escapeHtml(rc.unit)}</span>` : ""}</div>
     <div class="big-sub">${escapeHtml(rc.sub)}</div>
     ${rc.interval ? `<div class="big-sub tnum muted" id="big-interval">${escapeHtml(rc.interval)}</div>` : ""}
-    ${rc.index ? `<div class="big-sub tnum muted" id="big-index">${escapeHtml(rc.index)}</div>` : ""}
+    ${rc.pct ? `<div class="big-sub big-pct tnum muted" id="big-pct">${escapeHtml(rc.pct)}</div>` : ""}
     ${rc.detail ? `<details class="what-num" id="what-num"><summary>What this number means</summary><p>${escapeHtml(rc.detail)}</p></details>` : ""}`;
 }
 
