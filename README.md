@@ -21,9 +21,10 @@ areas and fake dates to show how often the method finds effects that are not the
   generated tables in [`docs/METHOD.md`](docs/METHOD.md) §10.
 - Blind validation has event runs only and **no false-alarm rate yet**.
 - Live runs on the free tier are a "quick check" (coarser controls), not
-  equivalent to the showcase runs, and **currently do not finish** there: on
-  30 Sep 2026 a live run had read 28 of its 204 control scenes after 24
-  minutes, against a 40-minute limit. Making them fit is the current work.
+  equivalent to the showcase runs. On 30 Sep 2026 a 29 ha live run finished
+  on the free host in 18 minutes (40-minute limit), after the control scenes
+  moved to server-side reads; earlier that day the same kind of run had read
+  only 60 of 242 control scenes before hitting the limit.
 
 ### In development, not public: air pollution (ground NO₂ / London ULEZ)
 
@@ -67,8 +68,8 @@ and get every feature run through the same pipeline as a single draw-an-area
 request — no manual repeats. Each run, batch or single, can be exported as a
 Markdown report (`report.md`) or the raw numbers behind it (`run.json`), so a
 verdict can be filed, attached or diffed without screenshotting the page.
-Batch runs use the same pipeline as a live run, so on the free host they hit
-the same limit (above); for now they are for self-hosted use.
+Batch runs use the same pipeline as a live run, one area at a time on the free
+host, so a batch of N areas takes roughly N live runs back to back.
 
 ## Run it
 
