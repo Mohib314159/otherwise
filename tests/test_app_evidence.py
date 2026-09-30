@@ -194,3 +194,22 @@ def test_secondary_optical_index_does_not_count_as_evidence():
     assert ev.optical is None
     assert ev.optical_status == "unavailable"
     assert ev.agreement == "radar-only"
+
+
+# --- REDTEAM E9: the sentence may not be stronger than the verdict ------------
+
+@pytest.mark.parametrize("over", [dict(n_donors=19), dict(pre_rmse=0.2),
+                                  dict(placebo_effect_median=-0.3),
+                                  dict(time_placebo_flags=[True, False, False])])
+def test_status_is_not_supportive_when_a_verdict_gate_fails(over):
+    assert status_of(optical(**over)) != "supportive"
+
+
+def test_clear_but_small_move_is_reported_with_numbers_not_as_no_change():
+    """Saddleworth's shape: VH interval excludes zero but misses the 1 dB minimum."""
+    ev = assess({"NDVI": optical(point=-0.01, lo=-0.05, hi=0.03),
+                 "VH": radar(point=-0.91, lo=-1.3, hi=-0.5)}, "clearing")
+    assert ev.agreement == "none"
+    assert "Neither optical nor radar passes every test" in ev.sentence
+    assert "−0.9 dB, interval −1.3 to −0.5" in ev.sentence
+    assert "beyond what the controls did" not in ev.sentence

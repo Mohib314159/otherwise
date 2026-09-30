@@ -325,7 +325,7 @@ def run_verdict(area_geojson: dict, event_date: str, change_type: str = "other",
         "mode": used_mode, "profile": profile, "escalation": escalation,
         "controls": {"mode": used_mode, "inner_m": data.summary.get("inner_m", 1000.0),
                      "outer_m": data.summary.get("outer_m", 12000.0), "n_groups": data.summary.get("n_groups", 1)},
-        "signals": {k: {**v.__dict__, "min_effect": v.min_effect, "pre_fit_ok": v.pre_fit_ok,
+        "signals": {k: {**v.__dict__, "min_effect": v.min_effect, "pre_fit_ok": v.pre_fit_ok, "pre_fit_loose": v.pre_fit_loose,
                         # missing on runs that predate the leak-free in-time placebo
                         "time_placebo_reselected": bool((charts.get(k) or {}).get("time_placebo_reselected", False))}
                     for k, v in results.items()},

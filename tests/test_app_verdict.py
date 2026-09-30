@@ -127,3 +127,17 @@ def test_pre_fit_ok_property():
 def test_min_effect_property():
     assert make(signal="NDVI").min_effect == 0.05
     assert make(signal="VV").min_effect == 1.0
+
+
+def test_real_through_the_4x_rule_says_so():
+    """CRITIQUE #1 / audit B7: a REAL that passed the fit check only via the 4x
+    rule discloses it; one with a normal fit does not."""
+    from src.app.verdict import SignalResult, decide
+    base = dict(signal="NDVI", sensor="S2", expected_sign=-1, point=-0.6, lo=-0.7, hi=-0.5,
+                p_zero=0.01, placebo_pre_rmse_median=0.014, n_pre=40, n_post=10, n_donors=50,
+                placebo_p=0.02, placebo_p_effect=0.02, placebo_n=60, time_placebo_flags=[False] * 3)
+    bypass = decide(SignalResult(pre_rmse=0.043, **base), "clearing", "")
+    normal = decide(SignalResult(pre_rmse=0.015, **base), "clearing", "")
+    assert bypass.status == normal.status == "REAL"
+    assert "passed only because the change is more than 4 times that error" in bypass.statement
+    assert "4 times" not in normal.statement

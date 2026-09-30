@@ -143,7 +143,7 @@ def test_seasonal_shift_20_days_is_not_real():
 
 
 # ---------------------------------------------------------------------------
-# BREAKS (desired behaviour, xfail strict). E5, E7 and E8 are fixed (METHOD.md
+# BREAKS (desired behaviour, xfail strict). E5, E7, E8 and E9 are fixed (METHOD.md
 # section 9) and their markers removed; the rest still fail today.
 # ---------------------------------------------------------------------------
 def test_pretrend_with_flagged_time_placebos_is_not_real():
@@ -175,9 +175,6 @@ def test_all_time_placebos_flagged_blocks_real():
     assert decide(make(time_placebo_flags=[True, True, True]), "clearing", "").status != "REAL"
 
 
-@pytest.mark.xfail(strict=True, reason="E9: evidence.status_of applies neither MIN_DONORS, the pre-fit gate nor "
-                                       "the controls-shifted rule, so the page can say 'optical and radar agree' "
-                                       "under a CAN'T TELL verdict (evidence.status_of)")
 @pytest.mark.parametrize("over", [dict(n_donors=19), dict(pre_rmse=0.2), dict(placebo_effect_median=-0.3)])
 def test_evidence_status_respects_verdict_gates(over):
     r = make(**over)

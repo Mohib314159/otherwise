@@ -7,9 +7,9 @@ are then combined with a Bonferroni correction over the sensors that were
 actually available, which is conservative by construction.
 
 Statuses per sensor:
-  supportive     interval excludes zero in the expected direction (either side
-                 when expected_sign is 0), |point| >= MIN_EFFECT and the
-                 in-space placebo p <= PLACEBO_P_MAX
+  supportive     the signal on its own gets REAL from verdict.decide (every gate:
+                 donors, pre bins, pre-fit, controls shifted, interval, minimum
+                 effect, in-space and in-time placebos)
   contradicting  interval excludes zero on the opposite side
   neutral        anything else
   unavailable    signal missing or fewer than MIN_POST_BINS post-event bins
@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .verdict import MIN_POST_BINS, PLACEBO_P_MAX, SIGNAL_WORDS, SIGNALS, SignalResult
+from .verdict import MIN_POST_BINS, SIGNAL_WORDS, SIGNALS, SignalResult, decide
 
 RADAR = ("VV", "VH", "RATIO")
 
@@ -34,10 +34,14 @@ class Evidence:
     sentence: str            # one plain-English sentence for the verdict page
 
 
-def status_of(r: SignalResult | None) -> str:
+def status_of(r: SignalResult | None, change_type: str = "other") -> str:
+    """'supportive' only when this signal on its own would get a REAL from
+    `verdict.decide`: the same donor, pre-bin, pre-fit, controls-shifted, placebo
+    and in-time-placebo gates the verdict applies. Anything weaker let the page
+    say "optical and radar agree" under a CAN'T TELL (REDTEAM E9)."""
     if r is None or r.n_post < MIN_POST_BINS:
         return "unavailable"
-    if r.excludes_zero_in_direction() and abs(r.point) >= r.min_effect and r.placebo_p <= PLACEBO_P_MAX:
+    if decide(r, change_type, "").status == "REAL":
         return "supportive"
     if r.opposite_direction():
         return "contradicting"
@@ -92,6 +96,14 @@ def _sentence(ev_optical: SignalResult | None, ev_radar: SignalResult | None,
     if agreement == "conflict":
         return (f"Optical and radar disagree: {_moved(ev_optical)} while {_moved(ev_radar)}; "
                 "treat the result with caution.")
+    moved = [r for r in (ev_optical, ev_radar)
+             if r is not None and r.n_post >= MIN_POST_BINS and r.excludes_zero_in_direction()]
+    if moved:
+        # A signal can move clearly yet fail a gate (effect below the minimum, a
+        # poor pre-event fit, too few controls). Saying "no change" there would
+        # be false, so give the numbers and leave the reason to the verdict.
+        return ("Neither optical nor radar passes every test on its own: "
+                + "; ".join(_inconclusive(r) for r in moved) + ".")
     return "Neither optical nor radar shows a change beyond what the controls did."
 
 
@@ -108,8 +120,8 @@ def assess(results: dict[str, SignalResult], change_type: str) -> Evidence:
     optical = results.get(optical_sig)
     radar = results.get(radar_sig)
 
-    o_status = status_of(optical)
-    r_status = status_of(radar)
+    o_status = status_of(optical, change_type)
+    r_status = status_of(radar, change_type)
 
     available = [r for r, s in ((optical, o_status), (radar, r_status)) if s != "unavailable"]
     k = len(available)

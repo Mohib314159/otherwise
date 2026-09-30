@@ -74,9 +74,15 @@ class SignalResult:
         inflates both the pre-event error and the "effect", so a large ratio is
         then evidence of a pre-trend, not of a sharp step the fit cannot track.
         """
-        loose = self.pre_rmse <= max(1.5 * self.placebo_pre_rmse_median, PRE_RMSE_FLOOR[self.signal])
-        bypass = abs(self.point) >= 4.0 * self.pre_rmse and not any(self.time_placebo_flags)
-        return loose or bypass
+        return self.pre_fit_loose or self.pre_fit_bypass
+
+    @property
+    def pre_fit_loose(self) -> bool:
+        return self.pre_rmse <= max(1.5 * self.placebo_pre_rmse_median, PRE_RMSE_FLOOR[self.signal])
+
+    @property
+    def pre_fit_bypass(self) -> bool:
+        return abs(self.point) >= 4.0 * self.pre_rmse and not any(self.time_placebo_flags)
 
     def excludes_zero_in_direction(self) -> bool:
         s = self.expected_sign
@@ -170,7 +176,16 @@ def decide(r: SignalResult, change_type: str, post_label: str) -> Verdict:
                                "shift began before the date given")
                 return Verdict("CANT_TELL", "Can't tell", core + " " + placebo + " But: " + reasons[-1] + ".",
                                reasons, r.signal)
-            return Verdict("REAL", "Real change", core + " " + placebo, reasons, r.signal)
+            # A REAL that got past the fit check only through the 4x rule says so on
+            # the page: that rule was added after it blocked a showcase site
+            # (CRITIQUE #1), so a reader should see when a verdict depends on it.
+            fit_note = ""
+            if not r.pre_fit_loose:
+                fit_note = (f" The control trajectory tracked the area less closely than usual before the "
+                            f"event (pre-event error {_fmt(r.pre_rmse, r.signal)} vs typical "
+                            f"{_fmt(r.placebo_pre_rmse_median, r.signal)}); the fit check passed only because "
+                            f"the change is more than 4 times that error.")
+            return Verdict("REAL", "Real change", core + " " + placebo + fit_note, reasons, r.signal)
         reasons.append(f"the placebo check found divergences this large in untouched cells too often "
                        f"(placebo p = {r.placebo_p:.2f})")
         return Verdict("CANT_TELL", "Can't tell", core + " " + placebo + " " + reasons[-1].capitalize() + ".",
