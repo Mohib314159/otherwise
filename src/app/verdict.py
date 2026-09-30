@@ -185,7 +185,12 @@ def decide(r: SignalResult, change_type: str, post_label: str) -> Verdict:
                             f"event (pre-event error {_fmt(r.pre_rmse, r.signal)} vs typical "
                             f"{_fmt(r.placebo_pre_rmse_median, r.signal)}); the fit check passed only because "
                             f"the change is more than 4 times that error.")
-            return Verdict("REAL", "Real change", core + " " + placebo + fit_note, reasons, r.signal)
+            # With fewer than 24 pre-event periods no fake-date test runs
+            # (estimator.time_placebos), so a pre-trend could not have been caught.
+            tp_note = ("" if r.time_placebo_flags else
+                       " No fake-date test was possible here (too few observation periods before the "
+                       "event), so a decline that began before the date given cannot be ruled out.")
+            return Verdict("REAL", "Real change", core + " " + placebo + fit_note + tp_note, reasons, r.signal)
         reasons.append(f"the placebo check found divergences this large in untouched cells too often "
                        f"(placebo p = {r.placebo_p:.2f})")
         return Verdict("CANT_TELL", "Can't tell", core + " " + placebo + " " + reasons[-1].capitalize() + ".",

@@ -1750,3 +1750,40 @@ placebo.
 own pipeline and still call the old path (they already used the asymmetric
 space placebo too). Committed showcase/validation runs carry the old in-time
 placebo and no `time_placebo_reselected` field until re-run.
+
+## 2026-09-30 — method v2: one batch, then one set of re-runs
+
+The fixes found by CRITIQUE and REDTEAM land together as "method v2", so that
+the public site never mixes verdicts from two procedures:
+
+- E5: a flagged in-time placebo gives CAN'T TELL, and it switches off the 4x bypass.
+- E7: the haze despike keeps NDVI dips that are water (NDWI rise and NDWI > 0).
+- #16 / E2: the 1 km spillover gap is measured edge to edge (ring and wide mode).
+- #4 follow-up: each fake date re-selects donors and re-tunes lambda on data
+  before that date only.
+- E9: the evidence sentence calls a signal supportive only if `decide` would
+  give it REAL on its own; a clear but gated move is reported with its numbers.
+- #1 disclosure: a REAL that passed the fit check only via the 4x rule says so,
+  and the run JSON records `pre_fit_loose`.
+- #9: `power.py` counts the product's verdict (shared `run.signal_result`).
+- REDTEAM E5 item 3 (lower the 24-bin skip for in-time placebos to 20) is
+  **not** taken. With 20 pre bins the fake pre-windows would be 5, 10 and 15
+  bins, and the leak-free placebo already flags 17% of null fake dates without
+  the effect gate at the current lengths; shorter windows would make the
+  in-time test mostly noise, and under E5 a flag is decisive. Instead, a REAL
+  with no in-time test at all now says so on the page.
+
+Consequences:
+- #16 changes which control cells are fetched at every ring site, so cached
+  fetches cannot be reused: every showcase site and every blind item is re-run
+  from a fresh fetch. (Storing pre-despike data in the cache, so future despike
+  changes can be re-evaluated without refetching, was considered and deferred:
+  it touches `fetch.py` while the fetch speed-up work is in flight, and #16
+  forces a refetch now regardless.)
+- Blind validation "v2" (100 of 247 items, method at 4c98145) is stopped and
+  kept as a superseded partial record. The same sample and seed (20260918) are
+  re-run in full under method v2 as `showcase/blind_v3/`. Same items, same
+  order, same rules for what counts as correct; only the method changes.
+- Order of CPU use on the 4-core box: showcase re-run, then the power table,
+  then blind v3; each at nice 19, OPENBLAS_NUM_THREADS=1.
+- `main` keeps method v1 until the showcase and power re-runs are published.

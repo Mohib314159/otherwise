@@ -141,3 +141,15 @@ def test_real_through_the_4x_rule_says_so():
     assert bypass.status == normal.status == "REAL"
     assert "passed only because the change is more than 4 times that error" in bypass.statement
     assert "4 times" not in normal.statement
+
+
+def test_real_without_any_fake_date_test_says_so():
+    from src.app.verdict import SignalResult, decide
+    base = dict(signal="NDVI", sensor="S2", expected_sign=-1, point=-0.6, lo=-0.7, hi=-0.5,
+                p_zero=0.01, pre_rmse=0.015, placebo_pre_rmse_median=0.014, n_pre=22, n_post=10,
+                n_donors=50, placebo_p=0.02, placebo_p_effect=0.02, placebo_n=60)
+    none = decide(SignalResult(time_placebo_flags=[], **base), "clearing", "")
+    three = decide(SignalResult(time_placebo_flags=[False] * 3, **base), "clearing", "")
+    assert none.status == three.status == "REAL"
+    assert "No fake-date test was possible" in none.statement
+    assert "No fake-date test" not in three.statement
