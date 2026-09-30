@@ -112,7 +112,10 @@ class PlanetaryComputer:
                              props={"baseline": p.get("s2:processing_baseline", "00.00"),
                                     "cloud_cover": p.get("eo:cloud_cover"),
                                     "tile": p.get("s2:mgrs_tile"),
-                                    "platform": p.get("platform")},
+                                    "platform": p.get("platform"),
+                                    # tile extent in its own CRS: remote_s2 clips its
+                                    # request window to it, as a local read is clipped
+                                    "tile_bounds": a["SCL"].get("proj:bbox")},
                              provider=self.name, geometry=_geom(it), epsg=_epsg(p)))
         return out
 

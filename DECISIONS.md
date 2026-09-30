@@ -1958,3 +1958,34 @@ scenes each.
   values (the overview is roughly a 4x4 mean), so it is not a drop-in replacement.
 - Not wired in. Wiring it in needs the provider to keep the SCL asset's `proj:bbox`, because
   the local read clips its window to the tile.
+
+## 2026-09-30 — remote donor reads for the live profile (wired in)
+
+**Problem.** On Render (0.1 CPU) a live run read its control ring at about 1.2-1.4
+scenes a minute (two probes, 28 of 204 and 33 of 242 after 24 min), so it could not
+finish inside the 40-minute limit. The 13x S2 speed-up (2a068cf) does not help here:
+it fixes 20 m -> 10 m reads, while the live donor pass reads at 40 m, and GDAL
+decodes the native 10 m tiles for that because the window is rarely a multiple of
+the 40 m overview (about 10 s CPU per clear scene).
+
+**Decision.** Under the live profile, donor-only groups on Planetary Computer are
+read through the PC data API (`remote_s2`, prototype 08cd04b): one request per
+scene per two indices returns the cloud-masked index image for the ring window at
+the same grid the local read uses; per-cell means are taken locally. Two requests
+per clear scene (NDVI + NDWI, then NBR). Our CPU per scene drops from ~10 s to
+~0.03 s (measured on 90 scenes at three sites). On any API failure the scene is
+read locally as before. The treated area and the full profile are unchanged.
+`APP_REMOTE_S2=0` turns it off; the live cache key carries "-remote" so the two
+paths never share cached data.
+
+**What differs from the local live read (measured, 90 scenes, 3 sites):** per-cell
+NDVI median |diff| ~4e-7, 98.9% of cell values within 1e-4, keep/drop agreed
+90/90, CLEAR_MIN decisions 8518/8520, pixel counts identical. The rest comes from
+one rule: the API treats a pixel with DN 0 in any band (ESA's no-data value) as
+missing, where the local read took it as data (NDVI then ±1). That is mostly
+baseline-03.00 scenes; max |diff| 0.094 NDVI. The remote rule is the correct one,
+so this is not disclosed as a weakness; live runs already carry the "quick check"
+disclosure against full runs.
+
+**Risks.** PC-only; undocumented rate limits (0 errors in ~475 requests); the
+fallback covers outages but at local speed.
