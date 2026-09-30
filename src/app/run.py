@@ -19,17 +19,12 @@ from .geometry import validate_polygon, donor_grid
 from .prep import binned, binned_groups
 from .verdict import ALPHA, SIGNALS, SignalResult, Verdict, combine, MIN_EFFECT
 
-RUNS_DIR = os.environ.get("APP_RUNS_DIR", "data/runs")
+from .ids import RUNS_DIR, run_id  # noqa: F401  (re-exported; defined light for the web process)
 PRE_YEARS = 3
 MAX_POST_MONTHS = 18
 BIN_DAYS = 10
 DONOR_K = 80
 LIVE_DONOR_K = 40          # live runs read fewer, coarser control cells; see DECISIONS.md
-
-
-def run_id(area_geojson, event_date, change_type, post_months) -> str:
-    from .series import cache_key
-    return cache_key(area_geojson, str(event_date), str(post_months), change_type, version="run1")
 
 
 def _window(event: date, post_months: int) -> tuple[str, str]:
