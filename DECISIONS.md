@@ -1921,3 +1921,40 @@ agent's 33-scene comparison, plus an independent check of 27 real 20 m->10 m
 reads on three tiles at odd window offsets: 27 identical). So verdicts from
 8c1f2e9 and b5377c0 are the same procedure on the same numbers, and blind v3
 records b5377c0.
+
+## 2026-09-30 — prototype: server-side control-ring reads (`src/app/remote_s2.py`), not wired in
+
+Render (0.1 CPU) could not finish the live profile's "sentinel-2 controls" stage inside the
+40-minute limit. `remote_s2.fetch_scene_cells` asks the Planetary Computer data API (titiler)
+for one PNG per scene covering the whole ring window at 40 m, already cloud-masked and turned
+into an index, and then takes the per-cell means locally. `scripts/bench_remote_s2.py`
+compares it with `s2.process_scene(res=40)` on Richmond Park, Grünheide and Austin, 30 live
+scenes each.
+
+- **Same pixels as the local read.** When titiler gets the same bbox and output size, it
+  samples the same source pixels and applies the expression to each pixel, so the rasters
+  match to float32 rounding. Per cell, the NDVI median |diff| was about 4e-7. 5,493 of the
+  5,556 cell values (98.9%) agreed within 1e-4. 8,518 of 8,520 cell CLEAR_MIN decisions
+  agreed, and all 90 keep/drop decisions for scenes agreed.
+- **One known deviation.** The API masks every pixel where any input band has DN 0 (ESA's
+  NO_DATA value). The `nodata` override returns HTTP 500, so this cannot be switched off.
+  Those pixels come back as "not clear". The local path uses DN 0 as data. This caused the
+  remaining 63 differing cells, which came from 3 scenes with baseline 03.00 (max |ΔNDVI|
+  0.094) plus one cell in one 05.10 scene.
+- **Wire format.** For an expression, titiler returns an uncompressed float64 GeoTIFF with no
+  dtype option: 12 MB for the ring window. Each index is therefore sent as a 16-bit code split
+  into two uint8 PNG bands, with a step of 3e-5 in index units. That made each scene
+  0.28–0.66 MB for NDVI alone. PNG allows at most 4 bands, so each request carries at most 2
+  indices. Controls only need the primary index plus NDVI for the despike.
+- **Cost, measured on this box.** Local reads took 9.6–10.1 s CPU per clear scene (median).
+  Remote reads took 0.025–0.030 s CPU per scene run one at a time, and 0.036–0.046 s with 8
+  or 16 concurrent requests. Across 450 benchmark requests there were 0 errors and 0 retries.
+  Wall time per scene was 0.85–1.07 s sequential, 0.15–0.18 s with 8 in flight and
+  0.09–0.11 s with 16.
+- **Side finding.** The live read does not use the 40 m COG overview. With the 60 m window
+  snap, the window's pixel count is usually not a multiple of 4, so GDAL decodes native 10 m
+  tiles and samples them. With a 120 m snap, the same read comes straight from the overview.
+  In one test that cost about 0.01–0.02 s CPU per band instead of about 2.3 s. It changes the
+  values (the overview is roughly a 4x4 mean), so it is not a drop-in replacement.
+- Not wired in. Wiring it in needs the provider to keep the SCL asset's `proj:bbox`, because
+  the local read clips its window to the tile.
