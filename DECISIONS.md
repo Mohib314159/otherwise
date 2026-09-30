@@ -1619,3 +1619,21 @@ pointer events. The drawing test passes (21.4 ha), with screenshots of both draw
 **V6 was requested but does not exist on the remote.** Only `uiv4` and `uiv5` were pushed.
 
 Suite 368 passed; screenshots in `docs/screenshots/2026-09-25-ui-v5/`.
+
+## 2026-09-30 — red-team fixes E5 and E7 implemented (METHOD.md section 9)
+
+- **E5: a flagged in-time placebo now forces CAN'T TELL.** `verdict.decide`
+  returns CAN'T TELL with the reason "the same test finds a 'change' at a fake
+  date before the event, so the shift began before the date given" instead of
+  REAL with a caveat, and `SignalResult.pre_fit_ok` no longer applies the 4x
+  bypass when any in-time placebo is flagged. The 24-bin skip in
+  `estimator.time_placebos` (REDTEAM E5 item 3) is not changed here.
+- **E7: the haze despike is NDWI-aware.** `s2.despike(..., ndwi=)` keeps an NDVI
+  dip when that observation's NDWI rises above its neighbours' median by more
+  than the same threshold the NDVI dip cleared, *and* is above 0. The absolute
+  condition is what separates water from haze: haze raises NDWI towards but not
+  above about 0. Without NDWI the rule is unchanged. All five despike call sites
+  in `fetch.py` now pass NDWI.
+- Published numbers (showcase, power table, red-team tables) predate both
+  fixes and must be re-run before METHOD.md section 9 and REDTEAM.md are
+  updated to say the fixes are applied.

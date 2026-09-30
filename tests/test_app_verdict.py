@@ -74,11 +74,41 @@ def test_expected_sign_zero_accepts_either_direction():
     assert v.status == "REAL"
 
 
-def test_time_placebo_flag_still_real_but_noted():
+def test_time_placebo_flag_is_cant_tell():
+    """REDTEAM E5 / METHOD.md section 9: one flagged in-time placebo turns an
+    otherwise-REAL result into CAN'T TELL, with the reason named."""
     v = decide(make(time_placebo_flags=[True, False, False]), "clearing", POST_LABEL)
-    assert v.status == "REAL"
-    assert v.reasons
-    assert any("fake event date" in r for r in v.reasons)
+    assert v.status == "CANT_TELL"
+    assert v.headline == "Can't tell"
+    assert any("fake date before the event" in r and "began before the date given" in r for r in v.reasons)
+    assert "began before the date given" in v.statement
+
+
+def test_unflagged_time_placebos_leave_real_unchanged():
+    v = decide(make(time_placebo_flags=[False, False, False]), "clearing", POST_LABEL)
+    assert v.status == "REAL" and v.reasons == []
+    assert decide(make(time_placebo_flags=[]), "clearing", POST_LABEL).status == "REAL"
+
+
+def test_4x_bypass_applies_without_flags():
+    # loose gate fails (0.05 > 1.5 x 0.02) but |point| 0.30 >= 4 x 0.05
+    r = make(point=-0.30, lo=-0.36, hi=-0.24, pre_rmse=0.05, placebo_pre_rmse_median=0.02)
+    assert r.pre_fit_ok is True
+    assert decide(r, "clearing", POST_LABEL).status == "REAL"
+
+
+def test_4x_bypass_disabled_when_time_placebo_flagged():
+    r = make(point=-0.30, lo=-0.36, hi=-0.24, pre_rmse=0.05, placebo_pre_rmse_median=0.02,
+             time_placebo_flags=[False, True, False])
+    assert r.pre_fit_ok is False
+    v = decide(r, "clearing", POST_LABEL)
+    assert v.status == "CANT_TELL"
+    assert any("does not track the area well enough" in x for x in v.reasons)
+
+
+def test_flag_does_not_touch_loose_pre_fit_gate():
+    # a fit that passes the loose gate stays ok when a placebo is flagged
+    assert make(pre_rmse=0.03, placebo_pre_rmse_median=0.03, time_placebo_flags=[True]).pre_fit_ok is True
 
 
 def test_radar_signal_reports_db():
