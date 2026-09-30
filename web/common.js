@@ -52,10 +52,10 @@ export async function apiGet(path) {
   return res.json();
 }
 
-export async function apiPost(path, body) {
+export async function apiPost(path, body, extraHeaders = {}) {
   const res = await fetch(path, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...extraHeaders },
     body: JSON.stringify(body),
   });
   let json = null;

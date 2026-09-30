@@ -483,3 +483,13 @@ body.draw-area-too-large .draw-coach { border-color: rgba(255,143,134,.34); box-
 .sc-card.is-linked-active .sc-thumb { transform: scale(1.045); }
 .draw-live[data-state="cross"] { color: #ffaaa3; background: rgba(255,143,134,.10); border-color: rgba(255,143,134,.24); }
 .draw-live[data-state="cross"] i { background: #ff8f86; box-shadow: 0 0 0 3px rgba(255,143,134,.08); }
+
+/* air policy lab: same workbench step look as step 1 / the run form */
+#air-analysis-panel { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--landing-rule); }
+#air-analysis-panel .air-intro { margin: 2px 0 14px; }
+#air-analysis-panel .draw-hint { margin: -4px 0 13px; color: var(--landing-muted); font-size: 11px; line-height: 1.5; }
+#air-analysis-panel .muted { color: #93948d; }
+#air-run-error { font-size: 11px !important; line-height: 1.45; margin-top: 9px !important; }
+#air-progress-block .progress-stage { font-size: 13px; font-weight: 650; text-align: center; margin-top: 10px; }
+#air-progress-block .progress-note { margin-top: 12px; }
+#air-progress-block .progress-link { font-size: 11px; text-align: center; margin-top: 10px; }

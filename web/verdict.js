@@ -380,7 +380,23 @@ const CLAIM_PHRASE = {
 /** What the user told us, stated as a claim and nothing more. */
 function claimSentence(d) {
   const what = CLAIM_PHRASE[d.change_type] || "a change";
+  if (d.showcase) {
+    const nothing = d.showcase.expected === "NOT_REAL" || d.showcase.expected === "no_change";
+    return `Claim tested: ${what} on ${fmtDate(d.event_date)}${nothing ? " (false-alarm check: nothing documented here)" : ""}`;
+  }
   return `You reported ${what} here on ${fmtDate(d.event_date)}`;
+}
+
+/** Banner for an old showcase run that a newer run of the same case replaced. */
+function supersededHtml(d) {
+  if (!d.superseded_by) return "";
+  return `<p class="superseded-note" id="superseded-note">Superseded: this is an older run of this case. Current version: <a href="/v/${encodeURIComponent(d.superseded_by)}">/v/${escapeHtml(d.superseded_by)}</a></p>`;
+}
+
+/** Known-answer sites are candidates until someone independent confirms them. */
+function candidateBadgeHtml(d) {
+  if (!d.showcase || d.showcase.confirmed) return "";
+  return `<p class="candidate-badge" id="candidate-badge">candidate — not yet independently confirmed</p>`;
 }
 
 /** Magnitude only, unsigned, with the unit: "0.47", "0.9 dB". */
@@ -442,8 +458,10 @@ function renderVerdictTop(d) {
   const quick = isQuickCheck(d);
   return `
     <section class="verdict-top reveal in" id="verdict-top">
+      ${supersededHtml(d)}
       <p class="verdict-kicker muted">${escapeHtml(claimSentence(d))}</p>
       <div class="verdict-word v-${st}">${escapeHtml(headlineFor(d))}</div>
+      ${candidateBadgeHtml(d)}
       ${quick ? `<p class="quick-mark" id="quick-mark">Quick check</p>` : ""}
       <p class="verdict-plain">${escapeHtml(findingSentence(d))}</p>
       ${quick ? `<p class="quick-note muted" id="quick-note">${escapeHtml(QUICK_CHECK_NOTE)}</p>` : ""}
@@ -1143,6 +1161,11 @@ const ANALYST_STYLE = `
 
 const CALL_WORDS = { changed: "Analyst: changed", not_changed: "Analyst: not changed", unsure: "Analyst: unsure" };
 
+/** The analyst token from ?analyst=..., or "" for everyone else. */
+function analystToken() {
+  try { return new URLSearchParams(location.search).get("analyst") || ""; } catch (_) { return ""; }
+}
+
 function annotationHtml(a) {
   const links = (a.links || [])
     .map((u) => `<a href="${escapeHtml(u)}" target="_blank" rel="noopener">${escapeHtml(u)}</a>`)
@@ -1178,6 +1201,7 @@ async function initAnalystLayer(d) {
   contentEl.appendChild(section);
 
   let annotations = data.annotations || [];
+  const token = analystToken();
 
   function draw() {
     section.innerHTML = `
@@ -1187,7 +1211,7 @@ async function initAnalystLayer(d) {
       ${annotations.length
         ? annotations.map(annotationHtml).join("")
         : `<p class="analyst-sub" style="margin-top:12px">No analyst has annotated this run yet.</p>`}
-      <form id="ann-form">
+      ${token ? `<form id="ann-form">
         <div class="analyst-row">
           <label>Call
             <select name="call">
@@ -1212,9 +1236,10 @@ async function initAnalystLayer(d) {
           <button class="btn" type="submit">Attach annotation</button>
           <span class="analyst-msg" id="ann-msg"></span>
         </div>
-      </form>`;
+      </form>` : ""}`;
     const form = section.querySelector("#ann-form");
     const msg = section.querySelector("#ann-msg");
+    if (!form) return;
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const f = new FormData(form);
@@ -1227,7 +1252,7 @@ async function initAnalystLayer(d) {
           note: (f.get("note") || "").toString().slice(0, 4000),
           links: (f.get("links") || "").toString().split(/\s+/).filter(Boolean),
           author: (f.get("author") || "").toString().slice(0, 80),
-        });
+        }, { "X-Review-Token": token });
         annotations = [res.annotation].concat(annotations);
         draw();
       } catch (err) {

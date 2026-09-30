@@ -28,8 +28,8 @@ compute. From their own documentation
 This app needs a **Docker** Space, so it needs PRO, listed at "$9 /month" on
 https://huggingface.co/pricing (read 2026-09-19). The hardware itself (CPU
 Basic: 2 vCPU, 16 GB RAM) still has no hourly cost — it is the account plan that
-costs money. The `hf-sync` workflow in this repo is still correct; only the price
-changed.
+costs money. The `hf-sync` workflow in this repo is still correct and skips cleanly when the
+HF_TOKEN/HF_SPACE secrets are not set; only the price changed.
 
 Worth knowing before you decide: 16 GB of RAM is enough to run the **full**
 profile, which would remove the accuracy caveat that live runs on a 512 MB box
@@ -120,3 +120,7 @@ The ground-NO₂ path makes outbound HTTPS requests to the public LAQN/Imperial 
 Set `APP_AIR_CACHE_DIR` to a writable location. The Docker/Render configuration uses `/data/air_cache`; `data/air_cache/` is ignored locally. The cache is an optimisation/provenance copy, not part of the estimator state.
 
 Run IDs include the air protocol version, so upgrading the method does not reuse an older permalink. A host without persistent storage may lose locally generated run JSON after restart; attach persistent storage if durable production permalinks are required beyond the committed showcase artefacts.
+
+## Analyst annotations
+
+`POST /api/review/annotations` is closed unless `APP_REVIEW_TOKEN` is set to a non-empty value: unset or empty, it always returns 403. When set, the request must carry the header `X-Review-Token` with the same value. Reading annotations (`GET`) stays public. The verdict page shows the annotation form only when the URL carries `?analyst=<token>`, and sends that value as the header. Set the variable in the Render dashboard; never commit it.
