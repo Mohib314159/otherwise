@@ -1688,3 +1688,65 @@ Suite 368 passed; screenshots in `docs/screenshots/2026-09-25-ui-v5/`.
   (0, −0.5, −1, −2) dB. Before this, VH was run with the NDVI sizes.
 - **Not re-run.** `showcase/power.json` and the METHOD.md table still show the old gate's
   numbers, and say so. Re-running is a separate publish step.
+
+## 2026-09-30 — CRITIQUE #4 follow-up: leak-free in-time placebo
+
+This is the defect logged under "Deliberately NOT changed in the same step" in
+the 2026-09-19 CRITIQUE #4 entry, fixed on its own so any movement in the
+published numbers can be attributed to it alone.
+
+**The leak.** `time_placebos` fakes three event dates inside the real
+pre-period (at 1/4, 1/2 and 3/4 of it) and asks whether the method "finds" an
+effect there. It fitted every fake date on the treated unit's donors, which
+`select_donors` had chosen by pre-event similarity over the *whole* real
+pre-period, including the window after each fake date: the window the
+fake-date test scores. It also inherited the ridge penalty tuned on the whole
+pre-period. Donors picked partly for fitting the fake "post" window fit it well
+by construction, so fake-date effects were shrunk towards zero and genuine
+pre-event divergence was less likely to be flagged.
+
+**The fix.** For each fake date, `run._time_selector` re-runs `select_donors`
+for the treated unit (same land-cover and elevation filters, same k, same
+relaxation) with the similarity ranking restricted to the bins before that fake
+date, drawing from the full covered candidate pool; `fit_ascm` then re-chooses
+lambda (`lam=None`) by the usual holdout inside that window. Same pattern as the
+symmetric space placebo (`pool` + selector callable). Fake-date placement is
+unchanged. The coverage filter is not re-run per fake date: it is a
+data-availability rule, not an outcome comparison, and it defines the
+candidate set that both placebos draw from. Air (`air/analysis.py`) already
+re-selected per fake date; this brings land in line.
+
+**Recorded.** `TimePlacebo.reselected`; `charts[sig].time_placebo_reselected`
+and `signals[sig].time_placebo_reselected` in the run JSON. Missing/false means
+the run predates this fix. (`SignalResult` in `verdict.py` was left untouched
+because verdict.py was being changed concurrently; the flag is added to the
+signal dict in `run_verdict` instead.)
+
+**What it did on synthetic panels** (the `tests/test_redteam.py` panel shape,
+60 candidates, k = 20, 3 fake dates each; measured, not asserted exactly):
+
+| Panel | Fake-date tests | Flagged, old | Flagged, new |
+|---|---|---|---|
+| null, production `MIN_EFFECT` gate | 600 (200 seeds) | 0 | 1 |
+| null, no effect gate (conformal only) | 600 (200 seeds) | 84 (14.0%) | 103 (17.2%) |
+| pre-trend (-0.2 NDVI/yr from 1 yr before) | 120 (40 seeds) | 66 | 71 |
+
+Decomposing the raw null rise on the same 600 tests: re-selection alone 91,
+re-tuned lambda alone 83, both 103. So the leak was suppressing flags, as the
+defect description predicted, and removing it raises the raw conformal flag
+rate on nulls by about 3 points. The rate was already above the nominal 10%
+under the old procedure too; that is a property of the short fake pre-windows,
+not of this change, and is noted for later rather than tuned now. Behind the
+production effect gate the null rate stays essentially zero, and pre-trends are
+flagged more often. Fake-date point effects on the pre-trend panels grew in
+magnitude (less flattered fits).
+
+**Cost.** Per signal: 3 extra `select_donors` calls and 18 extra NNLS fits (6
+per fake date for the lambda holdout). Timed at about +0.02–0.03 s per signal
+at n = 120 / k = 40 and n = 400 / k = 80, i.e. negligible next to the space
+placebo.
+
+**Not changed:** `scripts/redteam.py` and `tests/test_redteam.py` build their
+own pipeline and still call the old path (they already used the asymmetric
+space placebo too). Committed showcase/validation runs carry the old in-time
+placebo and no `time_placebo_reselected` field until re-run.

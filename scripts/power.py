@@ -29,7 +29,7 @@ import time
 import numpy as np
 
 from src.app.prep import binned
-from src.app.run import BIN_DAYS, _placebo_selector, signal_result
+from src.app.run import BIN_DAYS, _placebo_selector, _time_selector, signal_result
 from src.app.verdict import MIN_EFFECT, PLACEBO_P_MAX, combine
 
 OPTICAL_EFFECTS = (0.0, -0.05, -0.10, -0.20)     # index units
@@ -67,8 +67,11 @@ def judge_unit(dates, M, event, signal: str, eff: float, symmetric: bool = True)
     D = pool[np.argsort(rm)[:N_BEST]]
     kw = {}
     if symmetric:
+        # With no covariates select_donors is "N_BEST best pre-fit cells", the rule
+        # used for D above, so both placebos re-run exactly this unit's selection.
         kw = {"pool": pool,
-              "select_for": _placebo_selector(pool, b.pre, np.arange(pool.shape[0]), None, N_BEST)}
+              "select_for": _placebo_selector(pool, b.pre, np.arange(pool.shape[0]), None, N_BEST),
+              "select_at": _time_selector(b.matrix, np.ones(pool.shape[0]), None, N_BEST)}
     sensor = "S1" if signal.upper() in RADAR else "S2"
     res, *_ = signal_result(y, D, b.pre, signal, sensor, int(np.sign(eff)), **kw)
     v = combine(res, None, "other", "after the injected step")

@@ -297,24 +297,56 @@ class TimePlacebo:
     lo: float
     hi: float
     flagged: bool
+    reselected: bool = False       # donors and lambda re-chosen from data before the fake date only
 
 
-def time_placebos(y, D, pre, lam: float, n: int = 3, min_effect: float = 0.0,
-                  alpha: float = 0.10) -> list[TimePlacebo]:
+def time_placebos(y, D, pre, lam: float | None, n: int = 3, min_effect: float = 0.0,
+                  alpha: float = 0.10, pool: np.ndarray | None = None,
+                  select_at=None) -> list[TimePlacebo]:
     """Pretend the event happened at fake dates inside the pre-period, using
-    only pre-period data. A method that 'finds' effects here is not trustworthy."""
+    only pre-period data. A method that 'finds' effects here is not trustworthy.
+
+    `pool` (n, T) is the full candidate set the treated unit's donors `D` were
+    chosen from, and `select_at(mask)` returns row indices into `pool`: the
+    donors the treated unit gets when the SAME selection procedure (same
+    filters, same k, same relaxation) ranks candidates on the periods in `mask`
+    (a (T,) bool) only. Both must be supplied together.
+
+    Why (DECISIONS.md, CRITIQUE #4 follow-up): `D` was selected by pre-event
+    similarity over the WHOLE real pre-period, which includes the window after
+    each fake date -- the window the fake-date test is scoring. So the fake
+    "post" period was already fitted well by construction, flattering the
+    fake-date fit and hiding false alarms. With `pool`/`select_at`, each fake
+    date re-selects donors on the fake pre-window alone and re-chooses its own
+    ridge penalty (lam=None) by the usual holdout inside that window, mirroring
+    `space_placebo`'s symmetric path. Fake dates are placed exactly as before.
+
+    Without them the old (leaky) behaviour is used, with the given `lam`, and
+    every result reports `reselected=False`.
+    """
     idx = np.where(pre)[0]
     Tpre = len(idx)
     out = []
     if Tpre < 24:
         return out
+    reselect = pool is not None and select_at is not None
+    yy = y[idx]
     for k in range(1, n + 1):
         cut = int(Tpre * k / (n + 1))
         fake_pre = np.zeros(Tpre, dtype=bool); fake_pre[:cut] = True
-        yy, DD = y[idx], D[:, idx]
-        f = fit_ascm(yy, DD, fake_pre, lam=lam)
+        if reselect:
+            mask = np.zeros(len(y), dtype=bool); mask[idx[:cut]] = True
+            rows = select_at(mask)
+            if rows is None or len(rows) < 3:
+                continue                      # too few valid controls before this fake date
+            DD = pool[np.asarray(rows)][:, idx]
+            lam_k = None
+        else:
+            DD = D[:, idx]
+            lam_k = lam
+        f = fit_ascm(yy, DD, fake_pre, lam=lam_k)
         point = float(np.mean(f.effect[~fake_pre]))
-        ci = conformal_interval(yy, DD, fake_pre, lam, point, f.pre_rmse, alpha=alpha, n_grid=21)
+        ci = conformal_interval(yy, DD, fake_pre, f.lam, point, f.pre_rmse, alpha=alpha, n_grid=21)
         flagged = bool((ci.lo > 0 or ci.hi < 0) and abs(point) >= min_effect)
-        out.append(TimePlacebo(int(idx[cut]), point, ci.lo, ci.hi, flagged))
+        out.append(TimePlacebo(int(idx[cut]), point, ci.lo, ci.hi, flagged, reselect))
     return out

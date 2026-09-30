@@ -62,7 +62,9 @@ def _analyse(dates, values, event_np, donor_all_idx, cov, signal, sensor, expect
     res, f, ci, sp, tp = signal_result(
         y, D, b.pre, signal, sensor, expected_sign, pool=pool,
         select_for=_placebo_selector(pool, b.pre, cell_of_col, cov, donor_k),
+        select_at=_time_selector(b.matrix, b.donor_cov, cov, donor_k),
         progress=lambda: progress(f"{signal}: placebo", 0, 1))
+    tp_reselected = all(t.reselected for t in tp)
     band_lo = np.percentile(sp.effect_series, 5, axis=0)
     band_hi = np.percentile(sp.effect_series, 95, axis=0)
     chart = {
@@ -76,6 +78,7 @@ def _analyse(dates, values, event_np, donor_all_idx, cov, signal, sensor, expect
                            "lo": round(t.lo, 4), "hi": round(t.hi, 4), "flagged": t.flagged} for t in tp],
         "ci_grid": np.round(ci.grid, 4).tolist(), "ci_pvals": np.round(ci.pvals, 3).tolist(),
         "lambda": f.lam,
+        "time_placebo_reselected": tp_reselected,
     }
     # sel.index counts coverage-filtered columns; sel.cell_index maps back to the
     # grid. Using sel.index here drew the wrong cells on the control-areas map
@@ -87,7 +90,7 @@ def _analyse(dates, values, event_np, donor_all_idx, cov, signal, sensor, expect
 
 
 def signal_result(y, D, pre, signal, sensor, expected_sign, pool=None, select_for=None,
-                  progress=lambda: None):
+                  select_at=None, progress=lambda: None):
     """Estimator outputs -> the SignalResult `verdict.decide` judges.
 
     The one place a SignalResult is built from a fit, its conformal interval, the
@@ -101,7 +104,12 @@ def signal_result(y, D, pre, signal, sensor, expected_sign, pool=None, select_fo
     ci = conformal_interval(y, D, pre, f.lam, point, max(f.pre_rmse, 1e-3), alpha=ALPHA)
     progress()
     sp = space_placebo(y, D, pre, f.lam, point, max_units=60, pool=pool, select_for=select_for)
-    tp = time_placebos(y, D, pre, f.lam, n=3, min_effect=MIN_EFFECT[signal], alpha=ALPHA)
+    # With `select_at`, each fake date re-selects the treated unit's donors, and
+    # re-tunes lambda, on data before that fake date only (DECISIONS.md,
+    # CRITIQUE #4 follow-up); without it, the older fixed-donor procedure.
+    tp = time_placebos(y, D, pre, None if select_at is not None else f.lam, n=3,
+                       min_effect=MIN_EFFECT[signal], alpha=ALPHA,
+                       pool=pool if select_at is not None else None, select_at=select_at)
     res = SignalResult(signal=signal, sensor=sensor, expected_sign=expected_sign,
                        point=point, lo=ci.lo, hi=ci.hi, p_zero=ci.p_zero, pre_rmse=f.pre_rmse,
                        placebo_pre_rmse_median=float(np.median(sp.pre_rmses)),
@@ -111,6 +119,26 @@ def signal_result(y, D, pre, signal, sensor, expected_sign, pool=None, select_fo
                        placebo_effect_median=float(np.median(sp.effects)),
                        placebo_symmetric=bool(sp.symmetric))
     return res, f, ci, sp, tp
+
+
+def _time_selector(matrix: np.ndarray, donor_cov: np.ndarray, cov: Covariates | None, k: int):
+    """The treated unit's own donor selection, restricted to a sub-window.
+
+    Returns select_at(mask) -> row indices into the candidate pool
+    (`matrix[:, 1:].T`): exactly `select_donors` as run for the real analysis
+    (same land-cover / elevation filters, same k, same relaxation), except that
+    the pre-event similarity ranking sees only the periods where `mask` is True.
+    `time_placebos` passes the window before each fake date, so no fake-date
+    test is run on donors chosen partly on the window it is scoring.
+
+    The coverage filter is unchanged: it is a data-availability rule over the
+    whole window, not an outcome comparison, and it defines the candidate set
+    itself (the same pool the space placebo draws from).
+    """
+    def select_at(mask: np.ndarray):
+        return select_donors(matrix, mask, donor_cov, cov, k=k).index
+
+    return select_at
 
 
 def _placebo_selector(pool: np.ndarray, pre: np.ndarray, cell_of_col: np.ndarray,
@@ -297,7 +325,10 @@ def run_verdict(area_geojson: dict, event_date: str, change_type: str = "other",
         "mode": used_mode, "profile": profile, "escalation": escalation,
         "controls": {"mode": used_mode, "inner_m": data.summary.get("inner_m", 1000.0),
                      "outer_m": data.summary.get("outer_m", 12000.0), "n_groups": data.summary.get("n_groups", 1)},
-        "signals": {k: {**v.__dict__, "min_effect": v.min_effect, "pre_fit_ok": v.pre_fit_ok} for k, v in results.items()},
+        "signals": {k: {**v.__dict__, "min_effect": v.min_effect, "pre_fit_ok": v.pre_fit_ok,
+                        # missing on runs that predate the leak-free in-time placebo
+                        "time_placebo_reselected": bool((charts.get(k) or {}).get("time_placebo_reselected", False))}
+                    for k, v in results.items()},
         "charts": charts,
         "donors": {**{k: v for k, v in donors.items()},
                    "cells": data.cells_geojson, "distance_m": [round(d) for d in data.cell_distance_m],
