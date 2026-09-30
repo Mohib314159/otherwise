@@ -131,7 +131,10 @@ class PlanetaryComputer:
                              hrefs={"VV": a["vv"]["href"], "VH": a["vh"]["href"]},
                              props={"orbit_state": p.get("sat:orbit_state"),
                                     "relative_orbit": p.get("sat:relative_orbit"),
-                                    "platform": p.get("platform")},
+                                    "platform": p.get("platform"),
+                                    # grid extent in its own CRS: remote_s1 clips its
+                                    # request window to it, as a local read is clipped
+                                    "grid_bounds": a["vv"].get("proj:bbox") or p.get("proj:bbox")},
                              provider=self.name, geometry=_geom(it), epsg=_epsg(p)))
         return out
 
