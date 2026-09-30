@@ -245,7 +245,15 @@ async function loadShowcase() {
     listEl.appendChild(card);
     loadEffectSize(entry.id, card.querySelector("[data-effect]"));
   });
-  if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+  if (bounds.isValid()) {
+    // Phones: frame the sites in the strip above the bottom hero panel.
+    const phone = window.matchMedia("(max-width: 640px)").matches;
+    const panel = document.getElementById("hero-panel");
+    const panelH = phone && panel ? Math.ceil(panel.offsetHeight + 12) : 0;
+    map.fitBounds(bounds, panelH
+      ? { paddingTopLeft: [40, 70], paddingBottomRight: [40, panelH + 24] }
+      : { padding: [40, 40] });
+  }
 }
 
 /** Signal value with sign, using a proper Unicode minus (U+2212) for negatives. */
