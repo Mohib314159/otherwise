@@ -1787,3 +1787,25 @@ Consequences:
 - Order of CPU use on the 4-core box: showcase re-run, then the power table,
   then blind v3; each at nice 19, OPENBLAS_NUM_THREADS=1.
 - `main` keeps method v1 until the showcase and power re-runs are published.
+
+## 2026-09-30 — S2 fetch speed-up, outputs bit-identical
+
+Profiled the Grünheide case (full profile, S2 only, 2019-08-01..2020-05-31,
+87 covering scenes, 33 read in full, 401 zones, 16 threads, cold cache) with
+per-stage thread-CPU timers and py-spy. 90% of active samples sat in GDAL's
+resampled `ds.read(out_shape=...)`: the 20 m -> 10 m nearest upsample of B12
+cost 12.5 s CPU and ~200 s wall per read (native 10 m bands: 0.06 s CPU), and
+SCL 1.0 s CPU per read. Three changes, none altering a number:
+- **Integer upsample in numpy** (`extract.read_geometry`): read native, then
+  `np.repeat` k x k. GDAL's nearest mapping for an integer factor is i -> i // k,
+  so the array is identical (tested against GDAL on random windows/dtypes).
+- **Zone-0 SCL gate** (`s2._zone0_gate`): the 80% gate and the cloud receipt
+  depend only on the treated polygon, so SCL is first read for its bounding
+  box only, counted on the same label image; the donor-window read happens
+  only for scenes that pass. Same integer counts, same receipts.
+- **Label image cached per Zones** (`extract.cached_labels`) instead of
+  re-rasterising 401 polygons per scene; in-place `reflectance`.
+Measured: wall 623.6 s -> 47.8 s, CPU (user+sys) 565.7 s -> 40.8 s, on a
+heavily shared machine. Per-scene float64 zone means, clear fractions, pixel
+counts, all 54 cloud receipts (exact clear-fraction values) and the final
+series were bit-identical. Test: `tests/test_app_fetch_speed.py`.

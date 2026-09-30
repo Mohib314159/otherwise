@@ -13,7 +13,11 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from .extract import Zones, labels_for, read_window, zone_counts, zone_means
+import rasterio
+from rasterio.windows import Window
+
+from .extract import (GDAL_ENV, Zones, cached_labels, read_geometry, read_window,
+                      upsample_factor, window_geometry, zone_counts, zone_means)
 from .providers import Scene
 
 # SCL classes kept as "clear ground": vegetation, bare soil, water. Everything
@@ -38,10 +42,14 @@ def needs_offset(baseline: str) -> bool:
 
 
 def reflectance(dn: np.ndarray, baseline: str) -> np.ndarray:
+    # In place on one float32 buffer: the same float32 operations in the same
+    # order as clip(x - 1000, 0, None) / 10000, without three temporaries.
     x = dn.astype("float32")
     if needs_offset(baseline):
-        x = np.clip(x - DN_OFFSET, 0.0, None)
-    return x / 10000.0
+        np.subtract(x, DN_OFFSET, out=x)
+        np.maximum(x, 0.0, out=x)
+    np.divide(x, 10000.0, out=x)
+    return x
 
 
 def _nd(a, b):
@@ -84,6 +92,53 @@ def scl_breakdown(scl: np.ndarray, labels: np.ndarray) -> dict[str, float]:
     return {SCL_NAMES.get(int(v), str(v)): float(c / tot) for v, c in zip(vals, counts)}
 
 
+def _cloud_receipt(scene: Scene, scl: np.ndarray, labels: np.ndarray, frac0) -> Receipt:
+    bd = scl_breakdown(scl, labels)
+    worst = max(((k, v) for k, v in bd.items() if k not in ("vegetation", "bare", "water")),
+                key=lambda kv: kv[1], default=("cloud", 1 - frac0))
+    return Receipt("S2", scene.date, scene.id, "cloud",
+                   f"Only {frac0:.0%} of the area is clear "
+                   f"({worst[0]} over {worst[1]:.0%}); dropped.",
+                   value=float(frac0))
+
+
+def _zone0_gate(ds, geom, labels: np.ndarray, bbox0, scene: Scene) -> Receipt | None:
+    """Decide the treated-area gate from the SCL pixels under zone 0 alone.
+
+    Most scenes fail the gate (cloud), and the gate depends only on zone 0, yet
+    the whole donor window (~6 Mpx at 10 m) used to be read, upsampled and
+    reduced to find that out. Here only the SCL blocks under zone 0's bounding
+    box are read, at native resolution, and replicated k x k in numpy -- the
+    same pixel mapping the full nearest-neighbour read uses for an integer
+    factor k -- and counted against the same cached label image. The counts are
+    the same integers as the full path's `n_clear[0]` / `n_total[0]`, so the
+    receipt is identical. Returns the receipt when the scene is dropped, None
+    when the full read must go ahead (gate passed, or a non-integer factor).
+    """
+    if bbox0 is None:                                   # n_total[0] == 0
+        return Receipt("S2", scene.date, scene.id, "outside",
+                       "Scene footprint does not cover the area.")
+    win, _, out_shape = geom
+    k = 1 if out_shape is None else upsample_factor(win, out_shape)
+    if k is None:
+        return None
+    r0, r1, c0, c1 = bbox0
+    sr0, sc0, sr1, sc1 = r0 // k, c0 // k, -(-r1 // k), -(-c1 // k)
+    sub = ds.read(1, window=Window(win.col_off + sc0, win.row_off + sr0, sc1 - sc0, sr1 - sr0))
+    if k > 1:
+        sub = np.repeat(np.repeat(sub, k, axis=0), k, axis=1)
+    dr, dc = r0 - sr0 * k, c0 - sc0 * k
+    scl0 = sub[dr:dr + (r1 - r0), dc:dc + (c1 - c0)]
+    lab0 = labels[r0:r1, c0:c1]
+    in0 = lab0 == 1
+    n_total0 = np.int64(np.count_nonzero(in0))
+    n_clear0 = np.int64(np.count_nonzero(in0 & np.isin(scl0, SCL_CLEAR)))
+    frac0 = (np.asarray([n_clear0]) / np.maximum(np.asarray([n_total0]), 1))[0]
+    if frac0 < CLEAR_MIN:
+        return _cloud_receipt(scene, scl0, lab0, frac0)
+    return None
+
+
 def process_scene(scene: Scene, zones: Zones, sign, res: float = 10.0,
                   require_zone0: bool = True) -> tuple[S2Observation | None, Receipt | None]:
     """Extract one S2 scene for all zones. zone 0 is the treated area unless
@@ -96,12 +151,18 @@ def process_scene(scene: Scene, zones: Zones, sign, res: float = 10.0,
     a run; only B08 (needed by all three indices) is kept across steps.
     """
     n = len(zones.polygons)
-    r = read_window(sign(scene.hrefs["SCL"]), zones, out_res=res)
-    if r is None:
-        return None, Receipt("S2", scene.date, scene.id, "outside",
-                             "Scene footprint does not cover the area.")
-    scl, tr, _ = r
-    labels = labels_for(zones, tr, scl.shape)
+    with rasterio.Env(**GDAL_ENV), rasterio.open(sign(scene.hrefs["SCL"])) as ds:
+        geom = window_geometry(ds, zones, res)
+        if geom is None:
+            return None, Receipt("S2", scene.date, scene.id, "outside",
+                                 "Scene footprint does not cover the area.")
+        win, tr, out_shape = geom
+        labels, bbox0 = cached_labels(zones, tr, out_shape or (win.height, win.width))
+        if require_zone0:
+            dropped = _zone0_gate(ds, geom, labels, bbox0, scene)
+            if dropped is not None:
+                return None, dropped
+        scl = read_geometry(ds, geom)
     clear = np.isin(scl, SCL_CLEAR)
     n_clear, n_total = zone_counts(labels, n, clear)
     with np.errstate(invalid="ignore", divide="ignore"):
@@ -113,13 +174,7 @@ def process_scene(scene: Scene, zones: Zones, sign, res: float = 10.0,
         return None, Receipt("S2", scene.date, scene.id, "outside",
                              "Scene footprint does not cover the area.")
     elif clear_frac[0] < CLEAR_MIN:
-        bd = scl_breakdown(scl, labels)
-        worst = max(((k, v) for k, v in bd.items() if k not in ("vegetation", "bare", "water")),
-                    key=lambda kv: kv[1], default=("cloud", 1 - clear_frac[0]))
-        return None, Receipt("S2", scene.date, scene.id, "cloud",
-                             f"Only {clear_frac[0]:.0%} of the area is clear "
-                             f"({worst[0]} over {worst[1]:.0%}); dropped.",
-                             value=float(clear_frac[0]))
+        return None, _cloud_receipt(scene, scl, labels, clear_frac[0])
     del scl
     baseline = scene.props.get("baseline", "00.00")
 
