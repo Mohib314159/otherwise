@@ -148,9 +148,10 @@ def wide_candidates(area: Area, inner_m: float, outer_m: float, n: int = 600,
 
     Placement radius `r` is centroid-to-centroid, but eligibility uses the same
     edge-to-edge spillover rule as `donor_grid`: a cell whose boundary comes
-    within `inner_m` of the drawn polygon is rejected and redrawn. When nothing
-    is rejected (the usual case at 20+ km) the output is identical to plain
-    sampling with the same seed."""
+    within `inner_m` of the drawn polygon is rejected and redrawn from the same
+    RNG stream, so every accepted draw is the one plain sampling with the same
+    seed would have made; only the rejected ones (a thin shell just outside
+    `inner_m`) are replaced."""
     side = max(math.sqrt(area.utm.area), 100.0)
     cx, cy = area.utm.centroid.x, area.utm.centroid.y
     rng = np.random.default_rng(seed)
