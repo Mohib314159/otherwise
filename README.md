@@ -21,7 +21,9 @@ areas and fake dates to show how often the method finds effects that are not the
   generated tables in [`docs/METHOD.md`](docs/METHOD.md) §10.
 - Blind validation has event runs only and **no false-alarm rate yet**.
 - Live runs on the free tier are a "quick check" (coarser controls), not
-  equivalent to the showcase runs, and can be slow.
+  equivalent to the showcase runs, and **currently do not finish** there: on
+  30 Sep 2026 a live run had read 28 of its 204 control scenes after 24
+  minutes, against a 40-minute limit. Making them fit is the current work.
 
 ### In development, not public: air pollution (ground NO₂ / London ULEZ)
 
@@ -51,11 +53,11 @@ or false-alarm test of its own. It will not be shown until both exist and pass.
 - **Verdict rules are explicit** (`src/app/verdict.py`) and every verdict page
   is a permalink.
 - **Full method write-up:** [`docs/METHOD.md`](docs/METHOD.md) — data
-- **What we could not defend:** [`docs/REDTEAM.md`](docs/REDTEAM.md) — an adversarial review of our own method, with numbers. Two of its attacks defeat the method as it stands (pre-trends are still called REAL; floods shorter than about a month are deleted by the haze filter). Both are listed in [`docs/METHOD.md`](docs/METHOD.md) §9 and neither fix is applied yet.
   cleaning, control selection, the estimator and its uncertainty, the placebo
   checks, the verdict thresholds, known limits and validation to date, for
   anyone who wants to check the reasoning rather than take the verdict on
   trust.
+- **What we could not defend:** [`docs/REDTEAM.md`](docs/REDTEAM.md) — an adversarial review of our own method, with numbers. Two of its attacks defeat the method as it stands (pre-trends are still called REAL; floods shorter than about a month are deleted by the haze filter). Both are listed in [`docs/METHOD.md`](docs/METHOD.md) §9 and neither fix is applied yet.
 
 ## For institutional users
 
@@ -65,8 +67,8 @@ and get every feature run through the same pipeline as a single draw-an-area
 request — no manual repeats. Each run, batch or single, can be exported as a
 Markdown report (`report.md`) or the raw numbers behind it (`run.json`), so a
 verdict can be filed, attached or diffed without screenshotting the page.
-These endpoints are being added alongside this document; treat them as
-in-progress until they show up in a showcase link.
+Batch runs use the same pipeline as a live run, so on the free host they hit
+the same limit (above); for now they are for self-hosted use.
 
 ## Run it
 

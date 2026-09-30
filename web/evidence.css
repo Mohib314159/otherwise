@@ -60,3 +60,8 @@
 }
 
 .page-landing[data-domain="air"] #land-showcase { display: none; }
+
+.candidate-badge { display: inline-block; margin: 6px 0 0; padding: 1px 7px; border: 1px solid var(--rule); border-radius: 2px; font-size: 11px; letter-spacing: .02em; color: var(--muted); }
+td .candidate-badge { display: block; width: fit-content; margin-top: 4px; }
+.superseded-note { margin: 0 0 14px; padding: 8px 10px; border: 1px solid var(--rule); border-left: 3px solid var(--canttell); font-size: 13px; }
+.batch-public-note { margin-top: 10px; font-size: 13px; color: var(--muted); }

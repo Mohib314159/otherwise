@@ -193,13 +193,36 @@ def _set_frac(o, v):
 dedupe_by_minute = merge_duplicates
 
 
+# NDWI above this is read as surface water rather than cloud or haze (see despike).
+WATER_NDWI = 0.0
+
+
 def despike(dates: np.ndarray, ndvi: np.ndarray, window_days: int = 40,
-            min_drop: float = 0.12, k_mad: float = 3.0) -> np.ndarray:
+            min_drop: float = 0.12, k_mad: float = 3.0,
+            ndwi: np.ndarray | None = None) -> np.ndarray:
     """Flag residual cloud/haze the SCL missed: an NDVI value far below the
     median of its temporal neighbours. Returns a boolean 'suspect' array.
 
     Cloud contamination only ever lowers NDVI, so the test is one-sided; a real
     clearing also lowers NDVI but stays low, so its neighbours drop with it.
+
+    Standing water lowers NDVI too, so without more information a flood shorter
+    than the +/-window looks exactly like haze and is deleted (REDTEAM E7). When
+    `ndwi` is given, an NDVI dip is NOT flagged if the same observation's NDWI
+    both
+      (a) rises above the median NDWI of the same temporal neighbours by more
+          than the same threshold the NDVI dip had to clear ("a comparable
+          margin"), and
+      (b) is above WATER_NDWI (0) in absolute terms.
+    Reasoning: cloud and haze are bright in green and NIR alike, which pulls
+    NDWI = (G - NIR) / (G + NIR) up from a vegetated -0.4..-0.6 towards, but
+    not above, about 0. So a rise alone (a) is not enough: thick haze can
+    raise NDWI by 0.3-0.5. Open water is dark in NIR and pushes NDWI above 0
+    (typically +0.2 or more), which cloud does not. Requiring both keeps the
+    rule from rescuing haze while letting a genuine water signal through; (a)
+    also stops a permanently wet area (NDWI always > 0) from switching the
+    haze test off for every dip. With `ndwi=None`, or when fewer than two
+    neighbours have a finite NDWI, behaviour is exactly the NDVI-only test.
     """
     n = len(ndvi)
     suspect = np.zeros(n, dtype=bool)
@@ -216,4 +239,10 @@ def despike(dates: np.ndarray, ndvi: np.ndarray, window_days: int = 40,
         thr = max(min_drop, k_mad * mad)
         if med - ndvi[i] > thr:
             suspect[i] = True
+            if ndwi is not None and np.isfinite(ndwi[i]):
+                wnear = near & np.isfinite(ndwi)
+                if wnear.sum() >= 2:
+                    rise = ndwi[i] - np.median(ndwi[wnear])
+                    if rise > thr and ndwi[i] > WATER_NDWI:
+                        suspect[i] = False      # water, not haze
     return suspect
