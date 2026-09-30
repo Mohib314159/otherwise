@@ -187,9 +187,8 @@ def test_evidence_status_respects_verdict_gates(over):
     assert status_of(r) != "supportive"                          # ... so the evidence must not contradict it
 
 
-@pytest.mark.xfail(strict=True, reason="E2: donor_grid measures the 1 km buffer centroid-to-polygon; for areas "
-                                       ">= ~200 ha ring cells can touch the area (geometry.donor_grid)")
 def test_donor_cells_keep_one_km_edge_gap_for_large_areas():
+    """E2 (fixed, CRITIQUE #16): the 1 km buffer is now edge-to-edge."""
     from shapely.geometry import Point, box
     from src.app.geometry import Area, donor_grid, reproject, utm_epsg
     lon, lat, ha = -1.286, 52.908, 500.0

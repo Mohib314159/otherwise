@@ -85,15 +85,21 @@ class DonorGrid:
     cells: list[Polygon]          # in UTM
     epsg: int
     cell_m: float
-    distances_m: np.ndarray       # centroid distance to the treated polygon
+    distances_m: np.ndarray       # ring: cell-centroid distance to the treated polygon;
+                                  # wide: area-centroid to cell-centroid radius
 
 
 def donor_grid(area: Area, inner_m: float = 1000.0, outer_m: float = 12000.0,
                max_cells: int = 400) -> DonorGrid:
     """Regular grid of cells with the treated area's footprint, in a ring around it.
 
-    - Cells inside `inner_m` of the area are excluded: neighbouring land can be
-      affected by the same event (spillover), so it is not a valid control.
+    - Cells closer than `inner_m` to the area are excluded: neighbouring land can
+      be affected by the same event (spillover), so it is not a valid control.
+      The gap is measured EDGE-TO-EDGE (nearest cell boundary to nearest
+      polygon boundary), so no kept cell comes within `inner_m` of the drawn
+      area whatever its size (CRITIQUE #16, REDTEAM E2).
+    - The outer limit is measured from the cell centroid to the polygon: a
+      cell is in the ring if its centre is within `outer_m`.
     - Cells are the same size as the area so their noise level is comparable.
     - If the ring holds more than `max_cells`, cells are thinned evenly by
       distance so the pool still spans the whole ring.
@@ -107,10 +113,10 @@ def donor_grid(area: Area, inner_m: float = 1000.0, outer_m: float = 12000.0,
             x0, y0 = cx + i * side, cy + j * side
             cell = box(x0 - side / 2, y0 - side / 2, x0 + side / 2, y0 + side / 2)
             d = cell.centroid.distance(area.utm)
-            if d < inner_m or d > outer_m:
+            if d > outer_m:
                 continue
-            if cell.intersects(area.utm):
-                continue
+            if cell.intersects(area.utm) or cell.distance(area.utm) < inner_m:
+                continue                              # edge-to-edge spillover gap
             cells.append(cell)
             dists.append(d)
     order = np.argsort(dists)
@@ -138,14 +144,32 @@ def wide_candidates(area: Area, inner_m: float, outer_m: float, n: int = 600,
                     seed: int = 0) -> DonorGrid:
     """Candidate control cells spread uniformly over a wide annulus around the
     area (for events larger than the local ring). Cells keep the area's
-    footprint. Land cover, terrain and pre-event similarity filter them later."""
+    footprint. Land cover, terrain and pre-event similarity filter them later.
+
+    Placement radius `r` is centroid-to-centroid, but eligibility uses the same
+    edge-to-edge spillover rule as `donor_grid`: a cell whose boundary comes
+    within `inner_m` of the drawn polygon is rejected and redrawn. When nothing
+    is rejected (the usual case at 20+ km) the output is identical to plain
+    sampling with the same seed."""
     side = max(math.sqrt(area.utm.area), 100.0)
     cx, cy = area.utm.centroid.x, area.utm.centroid.y
     rng = np.random.default_rng(seed)
-    u = rng.random(n); th = rng.random(n) * 2 * math.pi
-    r = np.sqrt(u * (outer_m ** 2 - inner_m ** 2) + inner_m ** 2)      # uniform by area
-    xs, ys = cx + r * np.cos(th), cy + r * np.sin(th)
-    cells = [box(x - side / 2, y - side / 2, x + side / 2, y + side / 2) for x, y in zip(xs, ys)]
+    cells: list[Polygon] = []
+    rs: list[float] = []
+    for _ in range(50):                              # rejection rounds; bounded
+        need = n - len(cells)
+        if need <= 0:
+            break
+        u = rng.random(need); th = rng.random(need) * 2 * math.pi
+        r = np.sqrt(u * (outer_m ** 2 - inner_m ** 2) + inner_m ** 2)      # uniform by area
+        xs, ys = cx + r * np.cos(th), cy + r * np.sin(th)
+        for x, y, ri in zip(xs, ys, r):
+            cell = box(x - side / 2, y - side / 2, x + side / 2, y + side / 2)
+            if cell.distance(area.utm) < inner_m:     # edge-to-edge spillover gap
+                continue
+            cells.append(cell)
+            rs.append(float(ri))
+    r = np.asarray(rs, dtype=float)
     order = np.argsort(r)
     return DonorGrid(cells=[cells[k] for k in order], epsg=area.epsg, cell_m=side,
                      distances_m=np.asarray(r, dtype=float)[order])
