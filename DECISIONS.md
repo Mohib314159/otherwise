@@ -638,7 +638,7 @@ severity overstates it) / **wrong**.
 | 6 | MAJOR | valid, and it now applies to my own live profile | Wide mode reads the treated area at 10 m and each donor group from its own STAC search at 40 m, giving up co-observation and mixing supports with no intercept. The live profile I added this session does the same thing by design. | Open, and this is precisely what the live-vs-full comparison must quantify. Logged above under the memory fix. |
 | 7 | MAJOR | valid | Verified: the sentence says "*k* of *n* untouched cells showed a divergence this large" (an effect-size count) but computes *k* from `placebo_p`, the RMSPE-**ratio** p. `placebo_p_effect` is computed and stored and never shown. | Quick, but it changes a reported statistic on the verdict page — **awaiting Mohib's go-ahead** on whether to fix the sentence or switch to `p_effect`. |
 | 8 | MAJOR | partly valid | The buckets are defensible (a REAL on a no-change site *does* count as a false alarm, a NOT REAL on a real event *does* count as a miss), so "unfalsifiable" overstates it. What is fair: every *failure to detect* lands in "can't tell", so "0 misses, 0 false alarms" beside "misses included" reads as stronger than it is, with 5 of 9 can't-tell unheadlined. | Open: headline the can't-tell rate next to the record. Blind validation is the substantive fix. |
-| 9 | MAJOR | valid | Verified: `power.py:55` gates on interval + min effect + placebo p only; it omits the pre-fit gate, the controls-shifted gate and the in-time placebo flags that `verdict.decide` applies. The published table therefore characterises a decision rule the product does not use. | Open: either drive `verdict.decide` from `power.py` and re-run, or relabel the table. Re-running changes a published number, so it is not a silent edit. |
+| 9 | MAJOR | valid | Verified: `power.py:55` gates on interval + min effect + placebo p only; it omits the pre-fit gate, the controls-shifted gate and the in-time placebo flags that `verdict.decide` applies. The published table therefore characterises a decision rule the product does not use. | **Code fixed 2026-09-30, table not yet re-run**: `power.py` now builds each unit's `SignalResult` with `run.signal_result` (shared with `_analyse`) and counts `verdict.combine`'s status. See the 2026-09-30 entry. The published `showcase/power.json` still describes the old gate until it is re-run. |
 | 10 | MAJOR | valid | `docs/METHOD.md` §9-10, `showcase/track_record.json` and `showcase/validation.md` disagree on Rhodes and on Grünheide's interval. | Open: regenerate all three from the committed runs, or mark the stale ones stale. Cheap and worth doing next. |
 | 11 | MAJOR | valid | Verified: `select_donors` returns indices into the **coverage-filtered** columns, and `run.py:84` mapped them through an index over **all** cells, so the control-areas map drew the wrong cells whenever any cell was dropped for coverage — most runs. Display only; estimation uses the matrix columns directly and is unaffected. | **Fixed** this session: `DonorSelection.cell_index`, plus a regression test. |
 | 12 | MAJOR | valid | `pollJob` returns silently on every error, forever, so a dead job leaves the UI spinning. | Quick — but it is UI. **Awaiting go-ahead.** |
@@ -1619,3 +1619,26 @@ pointer events. The drawing test passes (21.4 ha), with screenshots of both draw
 **V6 was requested but does not exist on the remote.** Only `uiv4` and `uiv5` were pushed.
 
 Suite 368 passed; screenshots in `docs/screenshots/2026-09-25-ui-v5/`.
+
+## 2026-09-30 — power.py judges units with the product's verdict (CRITIQUE #9)
+
+- **What changed.** The block that built a `SignalResult` inside `run._analyse` is now
+  `run.signal_result` (fit, conformal interval, 60-unit space placebo, three in-time
+  placebos). `_analyse` calls it with no change in behaviour. `scripts/power.py` calls the same helper
+  for each pseudo-treated unit, passes the result to `verdict.combine`, and counts
+  REAL / NOT_REAL / CANT_TELL. `detected` means REAL. The pre-fit gate (with its 4x
+  bypass), the donor, pre-bin and post-bin minima, the controls-shifted rule and the
+  degenerate-interval rule now all apply.
+- **Settings that moved to the product's values as a result.** The space placebo now uses 60 units, up from 30, so the p floor is 1/61. The
+  conformal grid now has 41 points, up from 21. Each unit also gains three in-time placebos. Expected sign = sign of the injected
+  effect, so the null row stays two-sided, as it was under the old gate.
+- **In-time placebo flags do not change the status.** In `verdict.decide` a flagged fake
+  date adds a caution to a REAL verdict but leaves it REAL. The power table reproduces that and reports the count separately
+  (`real_with_time_placebo_flag`). It does not invent a stricter rule than the app's.
+- **Kept for comparison:** `old_gate_detected`, the old three-condition count on the same units.
+- **Still differs from production** (rest of #9): the donors are the 60 best pre-fit cells rather than
+  `select_donors` with filters and a buffer, and the effect is a step.
+- **Radar defaults.** When `VV`, `VH` or `RATIO` is run without `--effects`, the effects are
+  (0, −0.5, −1, −2) dB. Before this, VH was run with the NDVI sizes.
+- **Not re-run.** `showcase/power.json` and the METHOD.md table still show the old gate's
+  numbers, and say so. Re-running is a separate publish step.
