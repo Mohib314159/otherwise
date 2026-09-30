@@ -1690,3 +1690,13 @@ site. It does not make live runs fit. **Before live runs are offered on a 512 MB
 make the web process stop importing the pipeline (lazy imports in `server.py`, and in
 `review.py` / `air/__init__.py`, which import it eagerly), or set `APP_LIVE_RUNS=0`. Then
 measure parent plus child peak under an enforced 512 MiB cgroup.
+
+## 2026-09-30 — live-run memory measured under a 512 MiB cap
+
+With the web process import-light (7f186a3), one cold live run (29.24 ha,
+Richmond Park, clearing, 2022-06-01, 12 months) was run through uvicorn inside a
+cgroup v1 group capped at 512 MiB, on 2 niced cores. Peaks: web parent 76 MB,
+child 295 MB, resource tracker 11 MB; sum 382 MB (conservative: shared library
+pages counted twice). No limit hits, no OOM kill. Memory no longer blocks live
+runs on the free tier; CPU time does (that run took 86 min before the 13x S2
+read speed-up).
