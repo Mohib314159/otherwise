@@ -24,14 +24,18 @@ from pydantic import BaseModel, Field, ValidationError
 
 from .jobrunner import (DEFAULT_RUNNER, OOM_MESSAGE, JobTimeout,  # noqa: F401 (re-exported)
                         child_main, timeout_message)
-from .geometry import PolygonError, validate_polygon
 from .report import (SIGNAL_LABEL, render_report, fmt_p, fmt_signal,
                      interval_str as report_interval)
 from .review import router as review_router
-from .run import RUNS_DIR, run_id
-from .air import AIR_CASES, air_run_id, fetch_case_boundary
-from .air.providers import CachedHTTP
-from .verdict import SIGNALS
+from .ids import RUNS_DIR, run_id
+from .air.cases import AIR_CASES
+
+# The web process stays import-light: nothing above loads numpy, shapely, pyproj,
+# rasterio, scipy or pandas (tests/test_app_server_imports.py holds it to that).
+# Live runs execute in a spawned child (jobrunner.py) that imports the pipeline
+# itself; here the parent only needs polygon validation (shapely/pyproj, loaded
+# on the first submit) and, with air enabled, the air id/boundary helpers. On a
+# 512 MB host the parent's resident size is budget the child needs.
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 WEB_DIR = os.path.join(ROOT, "web")
@@ -78,6 +82,19 @@ class RunRequest(BaseModel):
     post_months: int | None = None
     label: str = ""
     case_id: str | None = None
+
+
+def _polygon_check():
+    """(PolygonError, validate_polygon), imported on first use."""
+    from .geometry import PolygonError, validate_polygon
+    return PolygonError, validate_polygon
+
+
+def fetch_case_boundary(case, http=None):
+    """The official policy boundary for an air case (air stack imported on first use)."""
+    from .air.run import fetch_case_boundary as _fetch
+    from .air.providers import CachedHTTP
+    return _fetch(case, http if http is not None else CachedHTTP())
 
 
 def _find_run(rid: str) -> str | None:
@@ -246,8 +263,11 @@ def submit(req: RunRequest):
         if not req.case_id or req.case_id not in AIR_CASES:
             raise HTTPException(400, "Unknown air-pollution case")
         months = int(min(max(req.post_months or AIR_CASES[req.case_id].default_post_months, 1), 18))
+        from .air.run import air_run_id
         rid = air_run_id(req.case_id, months)
     elif domain == "land":
+        from .verdict import SIGNALS
+        PolygonError, validate_polygon = _polygon_check()
         if req.change_type not in SIGNALS:
             raise HTTPException(400, "Unknown change type")
         if req.geojson is None or req.event_date is None:
@@ -376,7 +396,7 @@ def air_case_boundary(case_id: str):
     if case is None or not case.supported:
         raise HTTPException(404, "Unknown air-pollution case")
     try:
-        boundary = fetch_case_boundary(case, CachedHTTP())
+        boundary = fetch_case_boundary(case, None)
         return boundary or {"type": "FeatureCollection", "features": []}
     except Exception as e:
         raise HTTPException(503, f"Could not read the official policy boundary: {type(e).__name__}")
@@ -615,6 +635,7 @@ def _batch_item_status(item: dict) -> dict:
 def submit_batch(req: BatchRequest):
     if len(req.features) > MAX_BATCH_FEATURES:
         raise HTTPException(413, f"At most {MAX_BATCH_FEATURES} features per batch.")
+    PolygonError, _ = _polygon_check()
     items = []
     for i, feat in enumerate(req.features):
         props = (feat.get("properties") or {}) if isinstance(feat, dict) else {}
