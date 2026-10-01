@@ -2017,3 +2017,15 @@ Austin. All numbers are measured on this box.
   0.064–0.082 s with 8–16 requests in flight. 270 requests returned 0 errors and needed 0
   retries. Wall time was 1.1–1.3 s per scene sequential and 0.18–0.20 s with 8 in flight.
   Each PNG was about 1.2–1.3 MB, because speckle compresses poorly.
+
+## 2026-10-01 — wide fetches checkpoint each stage
+
+Rhodes (full profile, wide mode) needs more than two hours to fetch, longer than
+any single process survives here: the container is reclaimed when idle and a
+tracked task is capped at 2 h. It had restarted six times from zero. `_fetch_wide`
+now pickles the treated-area result and each donor group under
+`<cache>/<key>/partial/` as it finishes (atomic write), and a restart reloads
+them, re-fetching a group only if its cell indices differ. Checkpoints are
+removed once the full AreaData is cached. Output-neutral: a test kills a fetch
+before its last group, resumes, and gets arrays and receipts identical to an
+uninterrupted run.
