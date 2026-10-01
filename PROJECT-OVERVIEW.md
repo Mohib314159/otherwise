@@ -145,7 +145,7 @@ Most of this is **not used by the app**. `scm.py`, `inference.py`, `audit.py`, `
 | Group | Scripts |
 |---|---|
 | Land validation | `run_sites.py` (showcase and known-answer runs), `power.py` (detection power), `redteam.py`, `track_record.py`, `method_tables.py` (generates the table in METHOD.md; a test fails if the table drifts), `refresh_verdicts.py`, `calibration.py`, `validate_app.py`, `compare_profiles.py` (live vs full; results on another branch) |
-| Blind validation | `blind_sample.py` (on main). The runner and review-prep scripts are on another branch. |
+| Blind validation | `blind_sample.py` (seeded draw), `blind_validation.py` (runner; resumable, per-item processes), `blind_review_prep.py`. Results: `showcase/blind_v3/`, report `docs/BLIND_VALIDATION.md`. |
 | Ops | `memtest.py`, `desktop_screenshots.py`, `fetch_area.py` |
 | Air (branch) | `run_air_case.py`, `air_known_answers.py`, `air_redteam.py`, `air_power.py` |
 | Legacy CarbonTwin | `render.py`, `run_on_the_day.py`, `run_real_s2.py`, `validate.py`, `breakdate_demo.py`, `pixel_change.py` |
@@ -175,75 +175,55 @@ Most of this is **not used by the app**. `scm.py`, `inference.py`, `audit.py`, `
 
 ---
 
-## 3. Current state
+## 3. Current state (updated 1 Oct 2026)
 
 ### Branches
 
 | Branch | State |
 |---|---|
-| `main` | The land app, plus (merged 25 Sep, in this order):<br>• `claude/elegant-franklin-en2noi`: the CRITIQUE #4 symmetric-placebo fix, blind validation (`/review`) and the live-vs-full comparison<br>• `codex/air-ulez`: the air/ULEZ pipeline **switched off** (`APP_AIR_ENABLED=0`), Codex's desktop UI, the `p=1.000` fix, and the README/DECISIONS honesty fixes |
-| `codex/air-ulez` | Same content as `main` after the merge. Keep developing air here. |
-| `claude/elegant-franklin-en2noi` | Fully merged. |
-| `track/ui-honesty`, `track/live-runs-design`, `track/blind`, `wip-blind`, `wip-design` | Older work branches. Their useful content reached main through `elegant-franklin`. Don't merge them now: they conflict in the UI files. |
-| `track/hectare`, `track/mobile`, `design`, and other `claude/*` | Already merged. |
+| `main` | Deployed. Land app under **method v2** (merged 1 Oct), with air switched off (`APP_AIR_ENABLED=0`). |
+| `codex/air-ulez` | The working branch. Everything on main plus work in progress; merged to main after each published step. |
+| Older `track/*`, `wip-*`, `claude/*` branches | Merged or superseded. Don't merge them; they conflict in the UI files. |
 
 ### What's deployed
 
-- **Live site: https://otherwise-r1vd.onrender.com.** Render free tier (512 MB RAM, 0.1 CPU, sleeps after 15 idle minutes). Every push to `main` redeploys it.
+- **Live site: https://otherwise-r1vd.onrender.com.** Render free tier (512 MB RAM, 0.1 CPU). Every push to `main` redeploys it.
+- Every showcase run, the power table and the blind validation use method v2 (`DECISIONS.md`, 30 Sep 2026).
+- **Live runs now finish on the free host for small areas.** On 30 Sep a 29 ha live run took 18 minutes against the 40-minute limit, after the control-area reads moved to Planetary Computer's data API. This is one measurement on one small area. Large areas and wide mode on the live host are untested.
 - Land only: the air tab is hidden and `/api/air/*` returns 404.
-- New runs use the symmetric placebo. The committed showcase runs predate that fix, so their pages and reports carry an "older placebo procedure" caveat until they are re-run.
-- The GitHub → Hugging Face sync workflow fails on every push because its secrets are empty. It deploys nothing, and is harmless but noisy.
 
 ### What's tested
 
 | Check | Result |
 |---|---|
-| Full suite on this branch, with browser tests (**re-run today**) | 328 passed, 8 expected failures, 0 skipped |
-| Full suite on `main`, same setup (**re-run today**) | 280 passed, 8 expected failures |
-| Air rendering test and JS syntax checks (**re-run today**) | Pass |
-| Known-answer table in METHOD.md vs committed runs (**re-run today**) | In sync |
-| The branch's change to the shared estimator (**checked today**) | Same results as main's version on 120 random cases, so land's numbers don't move |
-| Land detection power (METHOD.md §10) | NDVI: 0/20 false alarms; −0.05 effect detected 6/20, −0.10 17/20, −0.20 19/20. Radar VH: 0/20 false alarms, −2 dB detected 20/20. **But see §4, weaknesses 1 and 4.** |
-| Land known-answer sites (METHOD.md §10) | 10 sites: 4 correct REAL, 0 missed, 0 false alarms, 6 CAN'T TELL. **None confirmed by you yet** (all 10 have `"confirmed": false` in `showcase/index.json`). |
-| Live vs full (on `elegant-franklin`) | 9 of 10 verdicts agree. The one disagreement (Saddleworth) goes CAN'T TELL → REAL in live mode, on noisier evidence. |
-| Blind validation (on `elegant-franklin`) | 247 items drawn. 34 runs done, **all of them real events, zero control areas**. So there is a detection figure (18/34 REAL) but **no false-alarm rate**. No human review has been done. |
-| Air: Codex's reported tests | 308 passed, 20 skipped, 8 expected failures on Windows; adversarial checks 6/6. |
-| Air: live ULEZ runs | Both **CAN'T TELL, and neither is a completed analysis**:<br>• 2019: 0 London monitors survived, because of LAQN download timeouts. No estimate.<br>• 2023: an estimate exists, but with too few controls and **0 placebo groups**. |
-| Air: false-alarm/power test for the current version (v2.3.1) | **Not run.** |
+| Full test suite (with browser tests) | 545 passed, 1 expected failure |
+| Known-answer sites (METHOD.md §10) | 8 documented events: **5 REAL, 0 missed, 3 CAN'T TELL**. 2 no-change sites: **0 false alarms, 2 CAN'T TELL**. **None confirmed by you yet.** |
+| Detection power (METHOD.md §10, the product's real verdict rules) | NDVI: 0/20 false alarms; −0.05 detected 3/20, −0.10 10/20, −0.20 15/20. Radar VH: 0/20 false alarms; −1 dB 6/20, −2 dB 18/20. One test area (Midlands). |
+| **Blind validation v3** (`docs/BLIND_VALIDATION.md`) | 247 items drawn by script (seed 20260918), all run. Events: **69/130 REAL (53%, 95% CI 45–61%)**, 6 missed, 55 CAN'T TELL. Controls: **1/117 false alarm (0.9%, CI 0.2–4.7%)**, 78 correct, 38 CAN'T TELL. Tropical forest 5/23 detected. Forest loss and US wildfire only. |
+| Speed-ups | S2 read 13x faster with bit-identical outputs; live control reads moved to the PC data API (CPU per scene ~10 s to ~0.03–0.07 s; values match the local read to ~1e-4 NDVI / 0.001 dB in almost all cells). |
+| Air | Switched off. No completed ULEZ result; no false-alarm or power test for the current version. |
 
 ### Half-finished
 
-1. **Placebo fix (CRITIQUE #4).** Now on main, and new runs use it. Still owed: re-running `power.py` and every showcase site under it, and publishing the results even if verdicts weaken. It takes hours per site, because the caches are gone. The in-time placebo's similar leak is not yet fixed.
-2. **Blind validation.** Now on main. The runs on control areas haven't started, so there is no false-alarm rate, and nobody has reviewed anything.
-3. **Air (switched off).** The LAQN downloads need to cope with timeouts, and the AURN station list includes stations that don't measure NO₂ for the years needed.
-   Still to do: the known-answer set (Ratcliffe, COVID, null cities), a v2.3.1 false-alarm/power test, a decision on `ULEZ-DESIGN.md`, and justifying or removing the 3× pre-fit bypass (DECISIONS.md triage #9).
-4. **The SPEC-v2 "plugin" refactor (Part A).** Not done. Air was built beside land, not through a shared plugin interface.
-5. **Small UI items:**
-   - The mobile sheet uses `vh` (should use `dvh`).
-   - The draw hint doesn't explain how to close a polygon.
-   - On a phone the landing map opens framed on the Arctic. This was already the case before the merge (`docs/screenshots/2026-09-25/`).
-
----
+1. **Air** (switched off): LAQN download timeouts, its own known-answer set and false-alarm test, and a decision on `ULEZ-DESIGN.md`.
+2. **Live vs full comparison** was measured before method v2 and before the remote reads (9 of 10 agreed). It should be re-run.
+3. **REDTEAM.md numbers** were measured before the fixes and not re-run; its status note says so.
+4. **Human blind review**: the review page exists, but nobody has reviewed any cases.
+5. **The SPEC-v2 "plugin" refactor**: not done.
 
 ## 4. Known weaknesses and open decisions
 
 ### Method weaknesses in the land product as shipped
 
-1. **CRITIQUE #4: the placebo test flatters the result.**
-   - Controls are picked because they best match *your* area before the event. Then each of those same controls is used as a placebo, but fitted on a group chosen for your area, not for itself. It even reuses your area's tuning setting.
-   - So your area gets a better-than-fair fit before the event, which makes its post/pre ratio look more unusual. **Every published land p-value is therefore too optimistic.**
-   - The fix is on `elegant-franklin`: each placebo unit re-selects its own controls and tuning. The fix was written down in advance, before any results were seen.
-   - On synthetic data it makes the test stricter: the median placebo ratio went from 1.259 to 1.373, and 0 of 12 no-effect panels reached p ≤ 0.05.
-   - **It is not on main.** It hasn't been published, because every showcase site and the power table have to be re-run first. Each site takes hours, because the image caches are gone.
-   - The in-time placebo has the same kind of leak, and is deliberately left for a separate fix.
-2. **A decline that started before the claimed date still gets called REAL** (REDTEAM E5). On synthetic data with a pre-existing downward trend, the verdict came back REAL in 9 of 15 fits (−0.10/yr) and 14 of 15 (−0.20/yr). The in-time placebo notices, but it only adds a caveat.
-3. **Short floods get deleted as "haze"** (REDTEAM E7). The despike filter removes 100% of the observations of a flood lasting under 20 days. On the real Sindh 2022 data it removed the three peak-flood observations.
-4. **The published power table doesn't use the real verdict rules** (CRITIQUE #9). `power.py` leaves out the pre-fit, controls-shifted and in-time checks that the product applies.
-5. **The 4× rule looks tuned after the fact** (CRITIQUE #1). A rule that skips the pre-fit check when the effect is at least 4× the pre-event error was added after it blocked Grünheide. The Rhodes and Sindh wide-mode radii were set by hand and a user can't reach them.
-6. **Nearby cells aren't independent** (CRITIQUE #5). Rhodes' 42 controls sit in 6 clusters, so they are not 42 independent draws.
-7. **Wide mode and live mode lose co-observation** (CRITIQUE #6). The controls come from different scenes and a coarser resolution than your area.
-8. **The spillover buffer is measured from the centre** (CRITIQUE #16). At 200 ha and above, a control cell can share an edge with your area.
-9. **Most runs end in CAN'T TELL.** 6 of the 10 known-answer sites are CAN'T TELL, and a −0.05 NDVI effect is detected only 30% of the time on the cloudiest test area.
+1. **Many runs end in CAN'T TELL.** 42% of blind events and 33% of blind controls. That is the method refusing to guess, not a wrong answer, but it limits usefulness, above all in the tropics (5 of 23 tropical events detected), where cloud leaves too few clear observations.
+2. **The 4x rule** (CRITIQUE #1). It skips the pre-fit check when the effect is at least 4x the pre-event error. It was added after it blocked Grünheide. Grünheide and Rhodes still pass only through it, and their pages say so. It can also be reached on null cells (REDTEAM E6, open).
+3. **The one blind false alarm** had the minimum 20 pre-event periods, so no fake-date test could run. A candidate rule (require a fake-date test before REAL) is logged in DECISIONS and must be tested on fresh data, not applied to this run.
+4. **Nearby cells aren't independent** (CRITIQUE #5). Rhodes' controls sit in a few clusters.
+5. **Wide mode and live mode lose co-observation** (CRITIQUE #6). Controls come from different scenes and, in live mode, at 40 m.
+6. **The Rhodes and Sindh wide-mode radii were set by hand.** A user can't reach that configuration.
+7. **Coverage.** Validated on forest loss and US wildfire only. Floods, construction, regrowth and UK sites have no blind validation; flooding is marked experimental in the UI.
+
+Fixed in method v2 (no longer weaknesses): the placebo fairness bug (CRITIQUE #4), pre-trends called REAL (E5), short floods deleted as haze (E7), the in-time placebo leak, the centroid-measured spillover buffer (#16), the evidence sentence outrunning the verdict (E9), and a power table that didn't use the real rules (#9).
 
 ### Air weaknesses
 
@@ -252,28 +232,18 @@ Most of this is **not used by the app**. `scm.py`, `inference.py`, `audit.py`, `
 - **One confounder can't be identified from this data.** A London-only shock starting on exactly the policy date would look like a policy effect.
 - **Your `ULEZ-DESIGN.md` proposes a different design.** It would change the method, so it needs a decision.
 
-### Hosting / CPU problem
+### Hosting / CPU
 
-- **Memory is solved; CPU is not.**
-  - A live land run peaked at 339 MB resident memory, and 467–471 MB counted by the container, under a 512 MiB limit.
-  - It took **26 minutes for a 27 ha area** on a machine with about two cores. A wide run took **2.81 hours**.
-  - Render free has **0.1 CPU**, and the job timeout is 2400 s (40 min). A live run there may never finish.
-- **Live mode isn't faster.** For wide runs it was about twice as slow as full mode (10,123 s against 3,226 s, one run each). Its only advantage is memory.
-- **GitHub Actions is ruled out for visitor-triggered runs.** GitHub's terms forbid using it as a serverless backend, and the penalty is account suspension. It is fine for owner-triggered batch work.
-- **The options are all your call, because some cost money:**
-  - (a) Set `APP_LIVE_RUNS=0` and offer "request an area"; precomputed permalinks only.
-  - (b) A paid Render instance.
-  - (c) Per-second compute such as Modal, with Render as a thin relay.
-  - (d) A Hugging Face Space, now PRO at $9/month, which gives 16 GB RAM and could run full mode.
-- The SPEC says your audience needs a verdict in about 15 seconds from an email link. That argues for precomputed permalinks over live runs.
+- **Small live runs now fit the free tier.** Measured: one 29 ha run in 18 minutes on Render; locally, parent plus job process peaked at about 382 MB under a 512 MiB cap.
+- **Untested on the live host:** large areas, wide mode, and several visitors at once (there is one job slot).
+- **Long offline runs** (validation, showcase) only progress while this cloud session is awake. A machine that stays on, such as a GitHub Actions workflow for owner-triggered batch work or your laptop, would make them reliable.
 
 ### Open decisions (yours)
 
-1. Hosting option (a)–(d) above.
-2. Confirm, or reject, the 10 land known-answer sites.
-3. When to spend the hours re-running the showcase sites under the fixed placebo.
-4. Whether to adopt the `ULEZ-DESIGN.md` approach for air. This is a method call. Claude should decide it and log it, but you set the priority.
-5. When air is switched on. The bar you set: its own known-answer set and false-alarm test first.
+1. Confirm, or reject, the 10 known-answer sites.
+2. Where long offline runs should live (GitHub Actions, your laptop, or paid compute).
+3. Whether to adopt the `ULEZ-DESIGN.md` approach for air, and when air is switched on (bar: its own known-answer set and false-alarm test).
+4. Codex's V6 UI pass: it isn't on the remote.
 
 ---
 
@@ -281,24 +251,23 @@ Most of this is **not used by the app**. `scm.py`, `inference.py`, `audit.py`, `
 
 ### Claims you can make
 
-- "Otherwise builds a matched counterfactual for a drawn area from Sentinel-1 and Sentinel-2 data, using augmented synthetic control with conformal intervals, and runs a placebo check on every verdict."
-- "It has three possible answers, including CAN'T TELL, and uses it often. On 10 candidate known-answer sites: 4 correct REAL, 0 false alarms, 0 misses, 6 can't tell." Say the can't-tell count in the same sentence, and say the sites are **candidates**.
-- "In a detection-power test on real, untouched cells, it raised 0 false alarms in 20 no-effect cases for NDVI and 0 in 20 for radar." Add that this test used a simplified version of the verdict rules.
-- "Every discarded observation is logged with a reason, and every verdict has a permanent link and a downloadable report."
-- "It publishes its own weaknesses: an adversarial red-team report, an independent critique with a public triage table, and known limits in the method doc." This is true and unusual; use it.
-- "The repo has a test suite of more than 280 passing tests, run on every change."
-- Engineering stories that are true and documented: the live-run memory fix, found by measuring rather than guessing, and the pre-registered placebo fix written down before seeing the results.
+- "Otherwise builds a matched counterfactual for a drawn area from Sentinel-1 and Sentinel-2 data (augmented synthetic control, conformal intervals) and runs placebo tests on untouched places and on fake earlier dates for every verdict."
+- "In a blind test of 247 cases drawn by script before any were run, it called 69 of 130 real forest-loss and wildfire events REAL (53%), and raised 1 false alarm on 117 untouched controls (under 1%). It answered CAN'T TELL rather than guess in 42% of events." Say what it covers (forest loss and US wildfire), and that tropical forest is its weak spot.
+- "On 10 candidate known-answer sites: 5 of 8 documented events detected, 0 false alarms on 2 no-change sites, the rest CAN'T TELL." Say they are **candidates**.
+- "Its own red team found two ways to break it; both are fixed and every published result was re-run under the fix." Then point to REDTEAM.md, and say its numbers predate the fix.
+- "A stranger can draw a small area on the live site and get a verdict in about 18 minutes on a free server." This is one measurement on a 29 ha area; don't promise it for large areas.
+- "Every discarded observation is logged with a reason, every verdict has a permanent link and a report, and every rate is shown with its interval and count."
+- Engineering stories that are true and documented: a 13x read speed-up with bit-identical outputs, found by profiling; moving image decoding to the data provider so live runs fit a 0.1-CPU server; pre-registered fixes and a pre-registered blind sample.
 
 ### Claims you can't make yet
 
-- ✗ Any claim about **how often it's right on unseen cases.** There is no false-alarm rate from blind validation (0 control runs), and the known-answer sites are unconfirmed and were partly used to shape the rules.
-- ✗ That the **published placebo p-values are exact or conservative.** Every committed showcase and known-answer p-value comes from the old procedure, which is too optimistic (CRITIQUE #4). Only runs made after the 25 Sep merge use the fixed one.
-- ✗ That it **detects floods reliably** (REDTEAM E7), or that REAL on a gradually declining area is trustworthy (E5).
-- ✗ That **live runs match the published runs.** They are a "quick check": 9 of 10 agree, and the one that doesn't errs towards REAL.
-- ✗ That a **stranger can draw an area and get a verdict** on the free host in reasonable time. CPU makes that unproven.
-- ✗ **Anything about ULEZ or air pollution** as a working feature: "air is the second signal", "it reproduces the published ULEZ studies", or any ULEZ effect size. No ULEZ run has completed, the air method hasn't been reviewed, and the air citations haven't been checked. The branch README currently says more than this. Fix it before merging.
-- ✗ "Multi-signal", "any signal", "any place", or "in minutes". Only land exists on main, and runs take tens of minutes to hours.
-- ✗ "No public tool does this." SPEC.md says only that you didn't find one. Say "I didn't find a public tool that…".
-- ✗ Any number not traceable to a committed run file. Published tables must be generated by `scripts/method_tables.py` and `scripts/track_record.py`, never typed by hand.
+- ✗ Accuracy on **floods, construction, regrowth or UK sites**. None of those were in the blind sample.
+- ✗ That it **works well in the tropics**. 5 of 23 tropical events were detected.
+- ✗ That the **known-answer sites are confirmed**. You haven't confirmed them.
+- ✗ That **live runs equal published runs**. They are a quick check at coarser resolution, and the live-vs-full comparison predates method v2.
+- ✗ That **live runs are fast for any area**. Only a 29 ha run has been timed on the live host.
+- ✗ **Anything about ULEZ or air pollution** as a working feature.
+- ✗ "No public tool does this." Say "I didn't find a public tool that…".
+- ✗ Any number not traceable to a committed file (`docs/METHOD.md` §10, `showcase/track_record.json`, `showcase/blind_v3/summary.json`).
 
-**Before posting anything,** check that the claim appears in the first list, that its number is in `docs/METHOD.md` §10 or `showcase/track_record.json`, and that the link you're sending opens a full-mode showcase run, not a live one.
+**Before posting anything,** check that the claim appears in the first list, that its number is in `docs/METHOD.md` §10, `showcase/track_record.json` or `docs/BLIND_VALIDATION.md`, and that the link you're sending opens a full-mode showcase run, not a live one.

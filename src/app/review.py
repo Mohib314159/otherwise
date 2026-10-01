@@ -26,7 +26,7 @@ Two things live here, both self-contained so `server.py` only has to do
    rendered *beside* the statistical verdict and never overrides it.
 
 Storage is one SQLite file, `APP_REVIEW_DB` (default `<runs dir>/review.sqlite`).
-Blind cases are read from `APP_BLIND_DIR` (default `showcase/blind`), which is
+Blind cases are read from `APP_BLIND_DIR` (default `showcase/blind_v3`, the method-v2 run), which is
 written by `scripts/blind_validation.py` and `scripts/blind_review_prep.py`.
 """
 from __future__ import annotations
@@ -62,7 +62,7 @@ _cache: dict = {"key": None, "cases": [], "by_id": {}, "truth": {}, "tool": {}}
 
 def blind_dir() -> str:
     """Read the env var per call so tests can point it at a fixture directory."""
-    return os.environ.get("APP_BLIND_DIR", os.path.join(ROOT, "showcase", "blind"))
+    return os.environ.get("APP_BLIND_DIR", os.path.join(ROOT, "showcase", "blind_v3"))
 
 
 def review_db() -> str:
