@@ -52,7 +52,10 @@ The area and every donor cell share the treated footprint's shape
 (side = sqrt(area), `src/app/geometry.py`), for comparable noise. Donor
 cells sit in a ring 1–12 km out (`inner_m = 1000.0`, `outer_m = 12000.0`):
 the inner gap is a spillover buffer, the outer ring keeps climate and
-phenology shared.
+phenology shared. The inner gap is measured edge to edge (no part of a
+donor cell comes within `inner_m` of the drawn polygon); the outer limit
+is measured from the cell's centre. Wide mode applies the same edge-to-edge
+rule to its per-site inner radius.
 
 Series are binned into 10-day windows anchored on the event date
 (`bin_days = 10`, `src/app/prep.py`), median per bin. The treated column is
@@ -159,9 +162,9 @@ reach, never easier.
   caveats a reader should carry: those control radii were set per site by hand
   in `scripts/run_sites.py`, not chosen by the tool, and a user drawing an area
   cannot reach that configuration. Sindh's 2022 flood hits the same limit. Its
-  wide re-run (150–400 km, set by hand) finished on 25 Sep 2026: surface water
-  rose (NDWI +0.58, 90% interval +0.19 to +0.77), but only 12 control cells were
-  usable against the 20 required, so it stays CAN'T TELL.
+  wide re-run (150–400 km, set by hand), last re-run on 30 Sep 2026 under method
+  v2: surface water rose (NDWI +0.61, 90% interval +0.22 to +0.83), but only 12
+  control cells were usable against the 20 required, so it stays CAN'T TELL.
 - **Thin optical archive before 2018.** Saddleworth Moor (2018-06-24): NBR
   had only two usable post-event bins, the UK archive being thin that early;
   VH was the only signal with enough bins (`DECISIONS.md`, milestone 4;
@@ -175,33 +178,33 @@ reach, never easier.
   outside its own interval. An earlier Grünheide run did (-0.61 against -0.57 to
   -0.45, `DECISIONS.md`, milestone 3); the current run's interval contains it.
 
-### Two failures our own red team grades as "breaks"
+### Two failures our own red team graded as "breaks", now fixed
 
 `docs/REDTEAM.md` is an adversarial self-review with numbers. Two of its
-attacks defeat the method as it currently stands. **Neither fix is applied
-yet**, so both are limits of the shipped tool, not hypotheticals:
+attacks defeated the method as it stood. Both are fixed in "method v2"
+(`DECISIONS.md`, 30 Sep 2026), and every published showcase run was re-run
+under it on 30 Sep–1 Oct 2026:
 
-- **A decline that began before the claimed date is still called REAL**
-  (REDTEAM E5). On synthetic pre-trends the verdict came back REAL in 9/15
-  fits at -0.10/yr and 14/15 at -0.20/yr on the Midlands test area (6/15 and
-  9/15 at Austin). The in-time placebo *detects* most of them, but
-  `src/app/verdict.py` appends a caveat sentence and returns REAL anyway. The
-  fix — a flagged in-time placebo forcing CAN'T TELL and disabling the 4x
-  pre-fit bypass — is specified and not yet implemented. Until it is, treat a
-  REAL verdict on a gradually declining area as unproven.
-- **Short floods are deleted by the haze filter** (REDTEAM E7). The NDVI
-  despike is one-sided and NDVI-blind to standing water, so it removes 100% of
-  the observations of a flood lasting under 20 days, 88% at 30 days and 41% at
-  45 days. On the real Sindh 2022 series it deleted the three peak-flood
-  observations (10, 15 and 23 September 2022) as "haze". End to end on a
-  25-day synthetic flood: REAL 5/15 with the despike, 14/15 without. The fix
-  is to make the despike NDWI-aware. Until then, floods shorter than about a
-  month — which is most river and flash flooding — are under-detected.
+- **A decline that began before the claimed date was called REAL** (REDTEAM
+  E5). The in-time placebo detected most such pre-trends, but the verdict
+  appended a caveat and returned REAL anyway. Now a flagged in-time placebo
+  forces CAN'T TELL and switches off the 4x pre-fit bypass. The in-time
+  placebo itself also no longer leaks: each fake date re-selects donors and
+  re-tunes the ridge penalty on data before that date only.
+- **Short floods were deleted by the haze filter** (REDTEAM E7). The NDVI
+  despike now keeps an NDVI dip when the same observation's NDWI rises above
+  its neighbours by the same margin and is above 0 (water, not haze).
 
-Two further limits from the same review, not graded "breaks" but real:
-the 4x pre-fit bypass is reachable on null cells (E6), and the spillover
-buffer is measured centroid-to-polygon, so at 200 ha and above the nearest
-kept control can share an edge with the treated area (E2).
+The red-team tests for both now pass (`tests/test_redteam.py`). The numbers in
+`docs/REDTEAM.md` were measured before the fixes and have not been re-run, so
+they describe the old method.
+
+Also fixed in v2: the spillover buffer is measured edge to edge (E2), so no
+kept control can sit closer than 1 km to the area; and the evidence sentence
+can no longer read "optical and radar agree" under a CAN'T TELL (E9). Still
+open: the 4x pre-fit bypass is reachable on null cells (E6). A REAL that passes
+the fit check only through it now says so on its page; in the current showcase
+that is Grünheide and Rhodes.
 
 ### Limits of the live (in-browser) path specifically
 
@@ -216,22 +219,22 @@ be read as a quick check, not as equivalent to the published runs.
 
 ## 10. Validation to date
 
-**Detection power** (`scripts/power.py`, re-run 25 Sep 2026 under both placebo procedures):
+**Detection power** (`scripts/power.py`, re-run 1 Oct 2026 under method v2, counting the product's own verdict, under both placebo procedures):
 
 <!-- BEGIN power table (generated by scripts/method_tables.py from showcase/power.json) -->
 
-Real, untouched cells around the Midlands test area (bbox [-1.29, 52.905, -1.28, 52.912], 2020-01-01 to 2024-12-31, 400 cells; 95 clear optical and 211 radar observations). 20 randomly chosen real control cells treated as the area; step effect injected after a fake event at 70% of the window; 90% conformal interval, minimum effect and placebo p <= 0.10 (power.py's gate, which omits the pre-fit, controls-shifted and in-time checks: CRITIQUE #9). Both procedures run on the same cache, so the columns differ only in the placebo test. Rebuilt Midlands test area. The cache behind the earlier table (5f0bbacbdf08fe51) is gone and its geometry was not recorded, so this is not the identical area; compare procedures within this file, not against the old table.
+Real, untouched cells around the Midlands test area (bbox [-1.29, 52.905, -1.28, 52.912], 2020-01-01 to 2024-12-31, 400 cells; 95 clear optical and 211 radar observations). 20 randomly chosen real control cells treated as the area; step effect injected after a fake event at 70% of the window; each unit judged by the product's own verdict rules (verdict.combine via run.signal_result: donor, pre-bin, pre-fit, controls-shifted, interval, minimum-effect, in-space and leak-free in-time placebo checks; method v2). 'old_gate_detected' gives the earlier three-condition gate on the same units for comparison. Both procedures run on the same cache, so the columns differ only in the placebo test. Rebuilt Midlands test area. The cache behind the earlier table (5f0bbacbdf08fe51) is gone and its geometry was not recorded, so this is not the identical area; compare procedures within this file, not against the old table.
 
 | Signal | Injected effect | REAL, symmetric placebo (current) | REAL, asymmetric placebo (old) |
 |---|---|---|---|
 | NDVI | +0.00 | 0 / 20 (false alarms) | 0 / 20 (false alarms) |
-| NDVI | -0.05 | 3 / 20 | 3 / 20 |
-| NDVI | -0.10 | 11 / 20 | 13 / 20 |
-| NDVI | -0.20 | 16 / 20 | 18 / 20 |
+| NDVI | -0.05 | 3 / 20 | 4 / 20 |
+| NDVI | -0.10 | 10 / 20 | 13 / 20 |
+| NDVI | -0.20 | 15 / 20 | 15 / 20 |
 | VH | +0.00 dB | 0 / 20 (false alarms) | 0 / 20 (false alarms) |
 | VH | -0.50 dB | 0 / 20 | 0 / 20 |
-| VH | -1.00 dB | 8 / 20 | 8 / 20 |
-| VH | -2.00 dB | 19 / 20 | 19 / 20 |
+| VH | -1.00 dB | 6 / 20 | 6 / 20 |
+| VH | -2.00 dB | 18 / 20 | 18 / 20 |
 
 <!-- END power table -->
 
@@ -244,18 +247,18 @@ for the record; it is superseded by the table above.
 
 | Site | Type | Expected | Verdict | Mode | Lead signal | Effect (90% interval) | Placebo p |
 |---|---|---|---|---|---|---|---|
-| Grünheide, Germany | clearing | REAL | **REAL** | ring | NDVI | -0.61 (-0.71 to -0.55) | 0.016 |
+| Grünheide, Germany | clearing | REAL | **REAL** | ring | NDVI | -0.60 (-0.71 to -0.50) | 0.016 |
 | Rhodes, Greece | burn | REAL | **REAL** | wide | NBR | -0.47 (-0.49 to -0.31) | 0.023 |
-| Cape Town | burn | REAL | **REAL** | ring | NBR | -0.46 (-0.59 to -0.31) | 0.016 |
-| Austin, Texas | construction | REAL | **REAL** | ring | NDVI | -0.19 (-0.21 to -0.14) | 0.016 |
-| Saddleworth Moor, England | burn | REAL | CAN'T TELL | ring | VH | -0.91 dB (-1.01 dB to -0.13 dB) | 0.016 |
-| Lützerath, Germany | clearing | REAL | CAN'T TELL | ring | NDVI | -0.07 (-0.13 to -0.02) | 0.820 |
-| Hasankeyf, Turkey | flood | REAL | CAN'T TELL | ring | NDWI | +0.10 (-0.92 to +1.13) | 0.279 |
-| Sindh, Pakistan | flood | REAL | CAN'T TELL | wide | NDWI | +0.58 (+0.19 to +0.77) | 0.077 |
-| Richmond Park, London | clearing | NOT_REAL | CAN'T TELL | ring | NDVI | -0.01 (-0.05 to +0.04) | 0.934 |
+| Cape Town | burn | REAL | **REAL** | ring | NBR | -0.46 (-0.60 to -0.25) | 0.016 |
+| Austin, Texas | construction | REAL | **REAL** | ring | NDVI | -0.19 (-0.22 to -0.11) | 0.016 |
+| Saddleworth Moor, England | burn | REAL | **REAL** | ring | VH | -1.06 dB (-1.34 dB to -0.04 dB) | 0.033 |
+| Lützerath, Germany | clearing | REAL | CAN'T TELL | ring | NDVI | -0.10 (-0.13 to -0.05) | 0.721 |
+| Hasankeyf, Turkey | flood | REAL | CAN'T TELL | ring | NDWI | +0.47 (-0.56 to +1.49) | 0.082 |
+| Sindh, Pakistan | flood | REAL | CAN'T TELL | wide | NDWI | +0.61 (+0.22 to +0.83) | 0.077 |
+| Richmond Park, London | clearing | NOT_REAL | CAN'T TELL | ring | NDVI | -0.03 (-0.07 to +0.03) | 0.836 |
 | Jaú National Park, Brazil | clearing | NOT_REAL | CAN'T TELL | ring | NDVI | -0.01 (-0.02 to +0.03) | 0.672 |
 
-**10 sites counted: 4 correct, 0 missed, 0 false alarms, 6 can't tell.** The can't-tell count is the honest headline here: it is larger than the number of correct calls, and a clean "0 misses, 0 false alarms" should be read alongside it, because a failure to detect lands in can't-tell rather than in misses. Sites remain candidates until confirmed. Generated from the committed runs in `showcase/` by `scripts/method_tables.py`; `showcase/track_record.json` is the same data and must agree.
+**10 sites counted: 5 correct, 0 missed, 0 false alarms, 5 can't tell.** The can't-tell count is the honest headline here, and a clean "0 misses, 0 false alarms" should be read alongside it, because a failure to detect lands in can't-tell rather than in misses. Sites remain candidates until confirmed. Generated from the committed runs in `showcase/` by `scripts/method_tables.py`; `showcase/track_record.json` is the same data and must agree.
 
 <!-- END known-answer table -->
 

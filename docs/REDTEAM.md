@@ -1,5 +1,13 @@
 # Red-team review of the change verdict
 
+> **Status, 1 Oct 2026.** This review describes the method as it stood on
+> 2026-09-18. Its two "breaks" (E5, pre-trends called REAL; E7, short floods
+> deleted as haze) and E2 (spillover buffer) and E9 (evidence sentence) are
+> fixed in method v2 (`DECISIONS.md`, 30 Sep 2026), and the matching tests in
+> `tests/test_redteam.py` now pass. The numbers below were **not** re-run after
+> the fixes, so they describe the old method. E6 (the 4x bypass on null cells)
+> is still open.
+
 Adversarial review of the method in `src/app/` (prep → donors → augmented SCM →
 conformal interval → placebos → `verdict.decide`). Written for readers who
 will put the verdict in front of a committee and need to know where it can be

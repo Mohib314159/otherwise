@@ -632,20 +632,20 @@ severity overstates it) / **wrong**.
 |---|---|---|---|---|
 | 1 | BLOCKER | valid | Verified: `verdict.py:68` does bypass the pre-fit gate at `4×`, and the two commits that add the rescuing rules are titled for the behaviour they rescue; Rhodes/Sindh control radii are hand-set in `run_sites.py:23,31` and unreachable from the UI. | No method change. Blind validation (track D) is the only real answer; 34 event runs exist, 0 control runs. Open. |
 | 2 | BLOCKER | partly valid | The unapplied red-team fixes are a logged HANDOFF item, not a hidden flaw — but it is true that `docs/METHOD.md` §9 "Known limits" omits the two failures the repo's own red team calls "breaks", and `README.md` never links `docs/REDTEAM.md`. That gap is the credibility problem, not the backlog. | **Doing now:** publish both breaks in METHOD.md §9 and link REDTEAM.md from README. |
-| 3 | BLOCKER | valid | Independently measured before reading the critique; same root cause. | **Fixed** this session (live profile). Its second half — live runs are threads *inside* the web process, so an OOM kills the showcase too — is valid and **not** fixed. Open: run jobs in a subprocess. |
+| 3 | BLOCKER | valid | Independently measured before reading the critique; same root cause. | **Fixed** this session (live profile). Its second half — live runs are threads *inside* the web process, so an OOM kills the showcase too — is valid and **not** fixed. Open: run jobs in a subprocess. **Update 2026-09-30:** second half fixed, live runs now execute in a spawned child process (see "live runs leave the web process" below). |
 | 4 | MAJOR | valid, and the sharpest finding here | Donors are ranked by pre-event fit **to the treated unit** and truncated to the best K (`donors.py:63-67`), then the in-space placebo is computed over that same treated-optimised pool. That breaks the exchangeability Abadie's placebo test rests on, in the treated unit's favour, so the reported p is anti-conservative on every published run. | No change yet, deliberately. Correct fix is to re-select donors for each placebo unit (each placebo unit gets its own best-K pool), or to drop truncation for the placebo distribution. Highest-priority method question. Open. |
 | 5 | MAJOR | partly valid | Spatial clustering inflating effective n is real and matters (Rhodes' 42 cells sit in 6 compact buckets by construction). But "p = 1/43 is exactly its own floor" describes *resolution*, not bias: with 42 donors 0.023 is the smallest attainable p, and reaching it means no donor beat the treated unit — the strongest available evidence. The defect is presenting it as 42 independent draws. | Open: report effective n / cluster-aware p, or state the resolution limit on the page. |
 | 6 | MAJOR | valid, and it now applies to my own live profile | Wide mode reads the treated area at 10 m and each donor group from its own STAC search at 40 m, giving up co-observation and mixing supports with no intercept. The live profile I added this session does the same thing by design. | Open, and this is precisely what the live-vs-full comparison must quantify. Logged above under the memory fix. |
 | 7 | MAJOR | valid | Verified: the sentence says "*k* of *n* untouched cells showed a divergence this large" (an effect-size count) but computes *k* from `placebo_p`, the RMSPE-**ratio** p. `placebo_p_effect` is computed and stored and never shown. | Quick, but it changes a reported statistic on the verdict page — **awaiting Mohib's go-ahead** on whether to fix the sentence or switch to `p_effect`. |
 | 8 | MAJOR | partly valid | The buckets are defensible (a REAL on a no-change site *does* count as a false alarm, a NOT REAL on a real event *does* count as a miss), so "unfalsifiable" overstates it. What is fair: every *failure to detect* lands in "can't tell", so "0 misses, 0 false alarms" beside "misses included" reads as stronger than it is, with 5 of 9 can't-tell unheadlined. | Open: headline the can't-tell rate next to the record. Blind validation is the substantive fix. |
-| 9 | MAJOR | valid | Verified: `power.py:55` gates on interval + min effect + placebo p only; it omits the pre-fit gate, the controls-shifted gate and the in-time placebo flags that `verdict.decide` applies. The published table therefore characterises a decision rule the product does not use. | Open: either drive `verdict.decide` from `power.py` and re-run, or relabel the table. Re-running changes a published number, so it is not a silent edit. |
+| 9 | MAJOR | valid | Verified: `power.py:55` gates on interval + min effect + placebo p only; it omits the pre-fit gate, the controls-shifted gate and the in-time placebo flags that `verdict.decide` applies. The published table therefore characterises a decision rule the product does not use. | **Code fixed 2026-09-30, table not yet re-run**: `power.py` now builds each unit's `SignalResult` with `run.signal_result` (shared with `_analyse`) and counts `verdict.combine`'s status. See the 2026-09-30 entry. The published `showcase/power.json` still describes the old gate until it is re-run. |
 | 10 | MAJOR | valid | `docs/METHOD.md` §9-10, `showcase/track_record.json` and `showcase/validation.md` disagree on Rhodes and on Grünheide's interval. | Open: regenerate all three from the committed runs, or mark the stale ones stale. Cheap and worth doing next. |
 | 11 | MAJOR | valid | Verified: `select_donors` returns indices into the **coverage-filtered** columns, and `run.py:84` mapped them through an index over **all** cells, so the control-areas map drew the wrong cells whenever any cell was dropped for coverage — most runs. Display only; estimation uses the matrix columns directly and is unaffected. | **Fixed** this session: `DonorSelection.cell_index`, plus a regression test. |
 | 12 | MAJOR | valid | `pollJob` returns silently on every error, forever, so a dead job leaves the UI spinning. | Quick — but it is UI. **Awaiting go-ahead.** |
 | 13 | MAJOR | partly valid | "This area burned" is taken from the user's dropdown and stated as a finding, which is a real wording fault. But the method never claims to identify the mechanism and the page's frame is "you told us what happened, we test whether it moved more than expected", so this is a copy problem, not the causal over-claim the title implies. | UI copy. **Awaiting go-ahead.** |
 | 14 | MAJOR | valid | The largest number on the page is `point / mean(|counterfactual|)` as a percentage, with no interval and no definition anywhere in the UI. | UI. **Awaiting go-ahead.** |
 | 15 | MAJOR | valid | Reproduced: collection aborted on missing `httpx`; with those files skipped, `test_known_answer.py` failed on committed data. | **Fixed** this session. Suite is now 233 passed, 3 skipped, 8 xfailed, 0 failed. |
-| 16 | MINOR | valid | `donor_grid:109` measures `inner_m` centroid-to-polygon, so at ≥200 ha the nearest kept control can share an edge with the treated area — contradicting METHOD.md §3. Costs power rather than causing false alarms. | Open: switch to edge-to-edge distance. Changes donor eligibility and therefore published numbers, so not a silent edit. |
+| 16 | MINOR | valid | `donor_grid:109` measures `inner_m` centroid-to-polygon, so at ≥200 ha the nearest kept control can share an edge with the treated area — contradicting METHOD.md §3. Costs power rather than causing false alarms. | **Fixed in code** (2026-09-30, see entry below): inner gap is edge-to-edge in `donor_grid` and `wide_candidates`. Published showcase numbers predate it and need a re-run. |
 | 17 | MINOR | valid | Both halves true. | **Fixed for live runs** (cloud < 60; controls at 40 m). SCL is still upsampled to 10 m on the treated pass, but that window is now ~3 kpx, so the cost is immaterial. Docs should stop claiming 20 m. |
 | 18 | MINOR | valid | No rate limit, no job timeout, in-memory job state on a tier that spins down. The job timeout is the dangerous one: `_worker` holds the semaphore of 1 for the life of a run, so one wedged job blocks every future live run until restart. | Open. The job timeout is cheap and I recommend doing it before any public link goes out. |
 | 19 | MINOR | valid | `conformal_interval:167` infers whether it is in index units or dB from the magnitude of the pre-RMSE (`1.0 if scale < 0.3 else 10.0`). Fragile by construction. | Open: pass the signal's units explicitly. Method-adjacent, so logged rather than done. |
@@ -1701,6 +1701,238 @@ pages counted twice). No limit hits, no OOM kill. Memory no longer blocks live
 runs on the free tier; CPU time does (that run took 86 min before the 13x S2
 read speed-up).
 
+### Follow-up (2026-09-30): the web process no longer imports the pipeline; parent + child measured
+
+**Change.** `server.py` imports only FastAPI, the report formatter, the review router,
+`jobrunner` and two new light names: `src/app/ids.py` (`RUNS_DIR`, `run_id`; `run.py`
+re-exports both) and `air.cases.AIR_CASES`. `review.py` takes `RUNS_DIR` from `ids`.
+`air/__init__.py` resolves `air_run_id`, `fetch_case_boundary` and `run_air_verdict`
+lazily (module `__getattr__`). Polygon validation (shapely/pyproj/numpy), `SIGNALS`,
+`air_run_id` and the air boundary fetch are imported inside the handlers that use them.
+No analysis code changed, so no number can have changed.
+`tests/test_app_server_imports.py` checks, in a fresh interpreter, that importing the
+server and serving `/`, `/v/<id>`, `/api/runs/<id>`, `/track-record` and the showcase
+loads none of rasterio, scipy, pandas, pystac, odc, xarray or the pipeline modules.
+
+**Measured locally** (Python 3.11, this 4-core box, not on Render):
+
+| | before | after |
+|---|---|---|
+| web process RSS after `import src.app.server` | 192 MB | 42 MB |
+| after serving `/`, `/v/<id>`, `/api/runs/<id>`, `/track-record`, showcase, a thumbnail (TestClient) | 200 MB | 52 MB |
+| real uvicorn parent after start / after page requests | n/a | 46 / 51 MB |
+| real uvicorn parent after one land submit (validation loads shapely/pyproj/numpy) | n/a | 76 MB |
+
+**One cold LIVE-profile run, end to end, through the real server.** uvicorn started
+inside a cgroup v1 memory group with `memory.limit_in_bytes` = 512 MiB, `taskset -c 0,1`,
+`nice -n 19`, `OPENBLAS_NUM_THREADS=1`, empty cache; the run submitted over HTTP. Area: a
+29.24 ha rectangle in Richmond Park, clearing, event 2022-06-01, 12 months (a control-type
+site, not a known-answer case). It finished: 178 S2 scenes read (86 observations), 176 S1
+observations, 120 control cells, verdict CAN'T TELL (pre-event fit too loose). Wall clock
+**86 min** (5,160 s) on two niced cores shared with other jobs (`APP_JOB_TIMEOUT_S` raised to 5400 for the measurement); the S2-controls stage alone
+took 48 min.
+
+| measured peak | MB |
+|---|---|
+| parent VmHWM | 76 |
+| child VmHWM | 295 |
+| multiprocessing resource tracker (spawn start method) | 11 |
+| **sum of the three peaks (upper bound; shared library pages counted twice)** | **382** |
+| cgroup `memory.max_usage_in_bytes` | 272 |
+| cgroup anonymous (`total_rss`) peak | 269 |
+| cgroup `failcnt` / OOM kills | 0 / 0 |
+
+Read the cgroup figure as a lower bound: library pages already in page cache from earlier
+processes were charged to their own cgroups, not this one, whereas a fresh Render container
+pays for them. The 382 MB sum is the conservative figure; it leaves about 130 MB under
+512 MB. This was measured on the method-v1 code before the codex/air-ulez (method v2)
+merge; v2 changes the estimator and verdict, not the fetch that sets the peak, but that has
+not been re-measured.
+
+**What this does not fix: time.** 86 minutes on two cores exceeds the 40-minute
+`APP_JOB_TIMEOUT_S` default, and Render free is 0.1 CPU. Memory is no longer the blocker
+for live runs on 512 MB; CPU is.
+
+## 2026-09-30 — red-team fixes E5 and E7 implemented (METHOD.md section 9)
+
+- **E5: a flagged in-time placebo now forces CAN'T TELL.** `verdict.decide`
+  returns CAN'T TELL with the reason "the same test finds a 'change' at a fake
+  date before the event, so the shift began before the date given" instead of
+  REAL with a caveat, and `SignalResult.pre_fit_ok` no longer applies the 4x
+  bypass when any in-time placebo is flagged. The 24-bin skip in
+  `estimator.time_placebos` (REDTEAM E5 item 3) is not changed here.
+- **E7: the haze despike is NDWI-aware.** `s2.despike(..., ndwi=)` keeps an NDVI
+  dip when that observation's NDWI rises above its neighbours' median by more
+  than the same threshold the NDVI dip cleared, *and* is above 0. The absolute
+  condition is what separates water from haze: haze raises NDWI towards but not
+  above about 0. Without NDWI the rule is unchanged. All five despike call sites
+  in `fetch.py` now pass NDWI.
+- Published numbers (showcase, power table, red-team tables) predate both
+  fixes and must be re-run before METHOD.md section 9 and REDTEAM.md are
+  updated to say the fixes are applied.
+
+## 2026-09-30 — spillover buffer measured edge to edge (CRITIQUE #16, REDTEAM E2)
+
+- `geometry.donor_grid`: a cell is eligible only if `cell.distance(area.utm) >= inner_m`
+  (nearest boundary to nearest boundary, local UTM). Previously the test was the cell
+  *centroid* to the polygon, which let cells within half a cell-side of the area in,
+  and at >= ~200 ha let cells sharing an edge in (kept or dropped by float rounding).
+- Outer limit unchanged: cell centroid within `outer_m` of the polygon. That is a
+  consistent ring (it can only include cells, never break the inner rule), so it
+  was left alone. `distances_m` keeps its meaning (centroid to polygon) so the
+  published `distance_m` fields and the thinning order are unchanged in kind.
+- `geometry.wide_candidates` applies the same edge rule: a draw whose cell comes
+  within `inner_m` of the polygon is rejected and redrawn from the same RNG stream,
+  so a draw with no rejections is identical to before. The placement radius stays
+  centroid to centroid, which is why the old code could put a cell edge inside
+  `inner_m` (by up to half a cell diagonal plus the polygon's extent).
+- Finding: the leak was not confined to >= 200 ha. Real drawn polygons are not
+  squares aligned to the grid, so for the eight ring showcase sites the old rule's
+  nearest kept cell edge was 607-939 m from the area at seven of them (Jaú, 1107 m,
+  was the exception). Because `max_cells = 400` thinning is an even stride over
+  the distance-sorted list, removing even a few inner cells changes which cells
+  survive thinning across the whole ring: 71-305 of 400 candidate cells are shared
+  old vs new at those seven sites (Jaú: all 400). Wide mode: 1 (Rhodes) and 2
+  (Sindh) of 600 candidates replaced.
+- Consequence: donor eligibility changed for every ring site, so the published
+  showcase numbers (and track record / power tables built from them) are stale
+  until `scripts/run_sites.py` is re-run. Not re-run here.
+
+
+## 2026-09-30 — power.py judges units with the product's verdict (CRITIQUE #9)
+
+- **What changed.** The block that built a `SignalResult` inside `run._analyse` is now
+  `run.signal_result` (fit, conformal interval, 60-unit space placebo, three in-time
+  placebos). `_analyse` calls it with no change in behaviour. `scripts/power.py` calls the same helper
+  for each pseudo-treated unit, passes the result to `verdict.combine`, and counts
+  REAL / NOT_REAL / CANT_TELL. `detected` means REAL. The pre-fit gate (with its 4x
+  bypass), the donor, pre-bin and post-bin minima, the controls-shifted rule and the
+  degenerate-interval rule now all apply.
+- **Settings that moved to the product's values as a result.** The space placebo now uses 60 units, up from 30, so the p floor is 1/61. The
+  conformal grid now has 41 points, up from 21. Each unit also gains three in-time placebos. Expected sign = sign of the injected
+  effect, so the null row stays two-sided, as it was under the old gate.
+- **In-time placebo flags do not change the status.** In `verdict.decide` a flagged fake
+  date adds a caution to a REAL verdict but leaves it REAL. The power table reproduces that and reports the count separately
+  (`real_with_time_placebo_flag`). It does not invent a stricter rule than the app's.
+- **Kept for comparison:** `old_gate_detected`, the old three-condition count on the same units.
+- **Still differs from production** (rest of #9): the donors are the 60 best pre-fit cells rather than
+  `select_donors` with filters and a buffer, and the effect is a step.
+- **Radar defaults.** When `VV`, `VH` or `RATIO` is run without `--effects`, the effects are
+  (0, −0.5, −1, −2) dB. Before this, VH was run with the NDVI sizes.
+- **Not re-run.** `showcase/power.json` and the METHOD.md table still show the old gate's
+  numbers, and say so. Re-running is a separate publish step.
+
+## 2026-09-30 — CRITIQUE #4 follow-up: leak-free in-time placebo
+
+This is the defect logged under "Deliberately NOT changed in the same step" in
+the 2026-09-19 CRITIQUE #4 entry, fixed on its own so any movement in the
+published numbers can be attributed to it alone.
+
+**The leak.** `time_placebos` fakes three event dates inside the real
+pre-period (at 1/4, 1/2 and 3/4 of it) and asks whether the method "finds" an
+effect there. It fitted every fake date on the treated unit's donors, which
+`select_donors` had chosen by pre-event similarity over the *whole* real
+pre-period, including the window after each fake date: the window the
+fake-date test scores. It also inherited the ridge penalty tuned on the whole
+pre-period. Donors picked partly for fitting the fake "post" window fit it well
+by construction, so fake-date effects were shrunk towards zero and genuine
+pre-event divergence was less likely to be flagged.
+
+**The fix.** For each fake date, `run._time_selector` re-runs `select_donors`
+for the treated unit (same land-cover and elevation filters, same k, same
+relaxation) with the similarity ranking restricted to the bins before that fake
+date, drawing from the full covered candidate pool; `fit_ascm` then re-chooses
+lambda (`lam=None`) by the usual holdout inside that window. Same pattern as the
+symmetric space placebo (`pool` + selector callable). Fake-date placement is
+unchanged. The coverage filter is not re-run per fake date: it is a
+data-availability rule, not an outcome comparison, and it defines the
+candidate set that both placebos draw from. Air (`air/analysis.py`) already
+re-selected per fake date; this brings land in line.
+
+**Recorded.** `TimePlacebo.reselected`; `charts[sig].time_placebo_reselected`
+and `signals[sig].time_placebo_reselected` in the run JSON. Missing/false means
+the run predates this fix. (`SignalResult` in `verdict.py` was left untouched
+because verdict.py was being changed concurrently; the flag is added to the
+signal dict in `run_verdict` instead.)
+
+**What it did on synthetic panels** (the `tests/test_redteam.py` panel shape,
+60 candidates, k = 20, 3 fake dates each; measured, not asserted exactly):
+
+| Panel | Fake-date tests | Flagged, old | Flagged, new |
+|---|---|---|---|
+| null, production `MIN_EFFECT` gate | 600 (200 seeds) | 0 | 1 |
+| null, no effect gate (conformal only) | 600 (200 seeds) | 84 (14.0%) | 103 (17.2%) |
+| pre-trend (-0.2 NDVI/yr from 1 yr before) | 120 (40 seeds) | 66 | 71 |
+
+Decomposing the raw null rise on the same 600 tests: re-selection alone 91,
+re-tuned lambda alone 83, both 103. So the leak was suppressing flags, as the
+defect description predicted, and removing it raises the raw conformal flag
+rate on nulls by about 3 points. The rate was already above the nominal 10%
+under the old procedure too; that is a property of the short fake pre-windows,
+not of this change, and is noted for later rather than tuned now. Behind the
+production effect gate the null rate stays essentially zero, and pre-trends are
+flagged more often. Fake-date point effects on the pre-trend panels grew in
+magnitude (less flattered fits).
+
+**Cost.** Per signal: 3 extra `select_donors` calls and 18 extra NNLS fits (6
+per fake date for the lambda holdout). Timed at about +0.02–0.03 s per signal
+at n = 120 / k = 40 and n = 400 / k = 80, i.e. negligible next to the space
+placebo.
+
+**Not changed:** `scripts/redteam.py` and `tests/test_redteam.py` build their
+own pipeline and still call the old path (they already used the asymmetric
+space placebo too). Committed showcase/validation runs carry the old in-time
+placebo and no `time_placebo_reselected` field until re-run.
+
+## 2026-09-30 — method v2: one batch, then one set of re-runs
+
+The fixes found by CRITIQUE and REDTEAM land together as "method v2", so that
+the public site never mixes verdicts from two procedures:
+
+- E5: a flagged in-time placebo gives CAN'T TELL, and it switches off the 4x bypass.
+- E7: the haze despike keeps NDVI dips that are water (NDWI rise and NDWI > 0).
+- #16 / E2: the 1 km spillover gap is measured edge to edge (ring and wide mode).
+- #4 follow-up: each fake date re-selects donors and re-tunes lambda on data
+  before that date only.
+- E9: the evidence sentence calls a signal supportive only if `decide` would
+  give it REAL on its own; a clear but gated move is reported with its numbers.
+- #1 disclosure: a REAL that passed the fit check only via the 4x rule says so,
+  and the run JSON records `pre_fit_loose`.
+- #9: `power.py` counts the product's verdict (shared `run.signal_result`).
+- REDTEAM E5 item 3 (lower the 24-bin skip for in-time placebos to 20) is
+  **not** taken. With 20 pre bins the fake pre-windows would be 5, 10 and 15
+  bins, and the leak-free placebo already flags 17% of null fake dates without
+  the effect gate at the current lengths; shorter windows would make the
+  in-time test mostly noise, and under E5 a flag is decisive. Instead, a REAL
+  with no in-time test at all now says so on the page.
+
+Consequences:
+- #16 changes which control cells are fetched at every ring site, so cached
+  fetches cannot be reused: every showcase site and every blind item is re-run
+  from a fresh fetch. (Storing pre-despike data in the cache, so future despike
+  changes can be re-evaluated without refetching, was considered and deferred:
+  it touches `fetch.py` while the fetch speed-up work is in flight, and #16
+  forces a refetch now regardless.)
+- Blind validation "v2" (100 of 247 items, method at 4c98145) is stopped and
+  kept as a superseded partial record. The same sample and seed (20260918) are
+  re-run in full under method v2 as `showcase/blind_v3/`. Same items, same
+  order, same rules for what counts as correct; only the method changes.
+- Order of CPU use on the 4-core box: showcase re-run, then the power table,
+  then blind v3; each at nice 19, OPENBLAS_NUM_THREADS=1.
+- `main` keeps method v1 until the showcase and power re-runs are published.
+
+## 2026-09-30 — method-v2 re-runs moved to the fast fetch (b5377c0)
+
+The container restarted at 10:52 UTC and killed the re-runs; Grünheide and
+Saddleworth had finished. They were restarted at 8c1f2e9, then at 11:16 UTC
+moved to b5377c0, which adds only the S2 read speed-up (2a068cf) and the
+import-light web process. The speed-up gives bit-identical per-zone values (the
+agent's 33-scene comparison, plus an independent check of 27 real 20 m->10 m
+reads on three tiles at odd window offsets: 27 identical). So verdicts from
+8c1f2e9 and b5377c0 are the same procedure on the same numbers, and blind v3
+records b5377c0.
+
+
 ## 2026-09-30 — prototype: server-side control-ring reads (`src/app/remote_s2.py`), not wired in
 
 Render (0.1 CPU) could not finish the live profile's "sentinel-2 controls" stage inside the
@@ -1806,3 +2038,16 @@ Same live run (Richmond Park 29 ha, clearing, 2022-06-01, 12 months), one core
 - verdict and numbers identical: CAN'T TELL, NDVI +0.011, 40 donors, 51 pre / 15 post bins.
 Scaling 57 CPU-seconds to Render's 0.1 CPU suggests about 10 minutes against the
 40-minute limit; confirmed or refuted by the Render probe after this deploy.
+
+## 2026-10-01 — wide fetches checkpoint each stage
+
+Rhodes (full profile, wide mode) needs more than two hours to fetch, longer than
+any single process survives here: the container is reclaimed when idle and a
+tracked task is capped at 2 h. It had restarted six times from zero. `_fetch_wide`
+now pickles the treated-area result and each donor group under
+`<cache>/<key>/partial/` as it finishes (atomic write), and a restart reloads
+them, re-fetching a group only if its cell indices differ. Checkpoints are
+removed once the full AreaData is cached. Output-neutral: a test kills a fetch
+before its last group, resumes, and gets arrays and receipts identical to an
+uninterrupted run.
+

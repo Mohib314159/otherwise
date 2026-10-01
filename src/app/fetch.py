@@ -318,9 +318,10 @@ def _despike_donors(ss: SensorSeries | None, col0: int) -> None:
     if ss is None or "NDVI" not in ss.values:
         return
     nd = ss.values["NDVI"]
+    nw = ss.values.get("NDWI")
     dts = ss.dates.astype("datetime64[D]")
     for j in range(col0, nd.shape[1]):
-        sj = s2mod.despike(dts, nd[:, j])
+        sj = s2mod.despike(dts, nd[:, j], ndwi=nw[:, j] if nw is not None else None)
         for k in ss.values:
             ss.values[k][sj, j] = np.nan
 
@@ -425,7 +426,8 @@ def fetch_area(area_geojson: dict, start: str, end: str, *,
         s2_series = _to_series(obs, "S2", s2mod.INDICES, {"provider": prov.name, "n_scenes": len(s2_scenes)})
         if s2_series is not None:
             # residual cloud/haze on the treated series -> drop the observation
-            sus = s2mod.despike(s2_series.dates.astype("datetime64[D]"), s2_series.treated("NDVI"))
+            sus = s2mod.despike(s2_series.dates.astype("datetime64[D]"), s2_series.treated("NDVI"),
+                                ndwi=s2_series.treated("NDWI") if "NDWI" in s2_series.values else None)
             for i in np.where(sus)[0]:
                 receipts.append(asdict(s2mod.Receipt("S2", str(s2_series.dates[i]), s2_series.scene_ids[i], "haze",
                     f"NDVI {s2_series.treated('NDVI')[i]:.2f} sits well below its neighbours in time; "
@@ -435,9 +437,10 @@ def fetch_area(area_geojson: dict, start: str, end: str, *,
                                      [s for s, k in zip(s2_series.scene_ids, keep) if k], s2_series.meta)
             # and the same test on every donor cell, cell by cell (NaN out, no receipt)
             nd = s2_series.values["NDVI"]
+            nw = s2_series.values.get("NDWI")
             dts = s2_series.dates.astype("datetime64[D]")
             for j in range(1, nd.shape[1]):
-                sj = s2mod.despike(dts, nd[:, j])
+                sj = s2mod.despike(dts, nd[:, j], ndwi=nw[:, j] if nw is not None else None)
                 for k in s2_series.values:
                     s2_series.values[k][sj, j] = np.nan
         timing["s2_s"] = round(time.time() - t, 1)
@@ -495,15 +498,30 @@ def _fetch_wide(area_geojson, start, end, *, providers, inner_m, outer_m, max_ce
     s1_prov = prov if providers == "pc" else PlanetaryComputer()
     receipts: list[dict] = []
     timing = {}
+    # A wide fetch can outlast the process running it (hours, full profile), so
+    # each stage is checkpointed under <cdir>/partial and a restart resumes from
+    # the last finished stage. The checkpoint holds exactly what the stage
+    # computed, so a resumed fetch gives the same AreaData as an uninterrupted one.
+    ckpt = _Checkpoint(os.path.join(cdir, "partial")) if use_cache else None
 
     # 1. treated area alone, full resolution
     t = time.time()
     progress("search", 0, 1)
-    s2_t, s1_t, counts_t = _fetch_group([area.utm], area.epsg, area.wgs84, start, end, prov, s1_prov,
-                                        sensors, progress, receipts, None, True, "",
-                                        cfg=cfg, bin_anchor=event_date)
+    hit = ckpt.load("treated") if ckpt else None
+    if hit is not None:
+        s2_t, s1_t, counts_t, rec_t = hit
+        receipts += rec_t
+    else:
+        rec_t: list[dict] = []
+        s2_t, s1_t, counts_t = _fetch_group([area.utm], area.epsg, area.wgs84, start, end, prov, s1_prov,
+                                            sensors, progress, rec_t, None, True, "",
+                                            cfg=cfg, bin_anchor=event_date)
+        if ckpt:
+            ckpt.save("treated", (s2_t, s1_t, counts_t, rec_t))
+        receipts += rec_t
     if s2_t is not None:
-        sus = s2mod.despike(s2_t.dates.astype("datetime64[D]"), s2_t.treated("NDVI"))
+        sus = s2mod.despike(s2_t.dates.astype("datetime64[D]"), s2_t.treated("NDVI"),
+                            ndwi=s2_t.treated("NDWI") if "NDWI" in s2_t.values else None)
         for i in np.where(sus)[0]:
             receipts.append(asdict(s2mod.Receipt("S2", str(s2_t.dates[i]), s2_t.scene_ids[i], "haze",
                 f"NDVI {s2_t.treated('NDVI')[i]:.2f} sits well below its neighbours in time; likely cloud or haze.")))
@@ -535,10 +553,18 @@ def _fetch_wide(area_geojson, start, end, *, providers, inner_m, outer_m, max_ce
         # Rhodes, 4.47 Mpx with the treated polygon against 0.41 Mpx without --
         # 4-11x per group. It was only there so column 0 could be stripped again
         # afterwards. This is what pushed a wide run to the 512 MiB ceiling.
-        s2_g, s1_g, counts_g = _fetch_group(cells, area.epsg, g_wgs, start, end, prov, s1_prov,
-                                            sensors, progress, receipts, donor_res, False,
-                                            f" group {gi + 1}/{len(buckets)}",
-                                            cfg=cfg, bin_anchor=event_date)
+        hit = ckpt.load(f"group{gi}") if ckpt else None
+        if hit is not None and hit[0] == list(idxs):
+            _, s2_g, s1_g, counts_g, rec_g = hit
+        else:
+            rec_g: list[dict] = []
+            s2_g, s1_g, counts_g = _fetch_group(cells, area.epsg, g_wgs, start, end, prov, s1_prov,
+                                                sensors, progress, rec_g, donor_res, False,
+                                                f" group {gi + 1}/{len(buckets)}",
+                                                cfg=cfg, bin_anchor=event_date)
+            if ckpt:
+                ckpt.save(f"group{gi}", (list(idxs), s2_g, s1_g, counts_g, rec_g))
+        receipts += rec_g
         _despike_donors(s2_g, 0)
         groups.append({"cells_geojson": [mapping(reproject(c, area.epsg, 4326)) for c in cells],
                        "distance_m": [float(cands.distances_m[i]) for i in idxs],
@@ -564,7 +590,39 @@ def _fetch_wide(area_geojson, start, end, *, providers, inner_m, outer_m, max_ce
                     mode="wide", groups=groups)
     if use_cache:
         data.save(cdir)
+        ckpt.clear()
     return data
+
+
+class _Checkpoint:
+    """Pickled stage results for a resumable fetch. Written atomically (tmp +
+    rename), so a process killed mid-write leaves no half checkpoint."""
+
+    def __init__(self, path: str):
+        self.path = path
+
+    def load(self, name: str):
+        import pickle
+        f = os.path.join(self.path, name + ".pkl")
+        if not os.path.exists(f):
+            return None
+        try:
+            with open(f, "rb") as fh:
+                return pickle.load(fh)
+        except Exception:
+            return None
+
+    def save(self, name: str, obj) -> None:
+        import pickle
+        os.makedirs(self.path, exist_ok=True)
+        f = os.path.join(self.path, name + ".pkl")
+        with open(f + ".tmp", "wb") as fh:
+            pickle.dump(obj, fh, protocol=pickle.HIGHEST_PROTOCOL)
+        os.replace(f + ".tmp", f)
+
+    def clear(self) -> None:
+        import shutil
+        shutil.rmtree(self.path, ignore_errors=True)
 
 
 def _ring_groups(area: Area, grid: DonorGrid, group_km: float, max_per_group: int = 60):
@@ -640,7 +698,8 @@ def _fetch_live_ring(area_geojson, start, end, *, providers, inner_m, outer_m, m
                                         sensors, progress, receipts, None, True, "",
                                         cfg=cfg, bin_anchor=event_date)
     if s2_t is not None:
-        sus = s2mod.despike(s2_t.dates.astype("datetime64[D]"), s2_t.treated("NDVI"))
+        sus = s2mod.despike(s2_t.dates.astype("datetime64[D]"), s2_t.treated("NDVI"),
+                            ndwi=s2_t.treated("NDWI") if "NDWI" in s2_t.values else None)
         for i in np.where(sus)[0]:
             receipts.append(asdict(s2mod.Receipt("S2", str(s2_t.dates[i]), s2_t.scene_ids[i], "haze",
                 f"NDVI {s2_t.treated('NDVI')[i]:.2f} sits well below its neighbours in time; "

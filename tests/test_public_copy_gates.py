@@ -106,6 +106,8 @@ def _live_run(rid="live000000000001"):
     """A full committed run under a fresh id, so it renders like a real one."""
     r = copy.deepcopy(showcase_run("CANT_TELL"))
     r["id"] = rid
+    # pin the event type: which committed run is CAN'T TELL changes with re-runs
+    r["change_type"] = "burn"
     r.pop("showcase", None)
     return r
 

@@ -4,8 +4,7 @@
   "label": "Gr\u00fcnheide, Germany: forest cleared for the Tesla factory",
   "event_date": "2020-02-13",
   "problems": [
-   "control 1 before: dated 2020-01-17, not the area's 2020-01-24 (another tile, or cloud on the area's date; date shown on the page)",
-   "control 2 before: dated 2020-02-08, not the area's 2020-01-24 (another tile, or cloud on the area's date; date shown on the page)",
+   "control 2 before: dated 2020-01-17, not the area's 2020-01-24 (another tile, or cloud on the area's date; date shown on the page)",
    "control 3 before: dated 2020-01-17, not the area's 2020-01-24 (another tile, or cloud on the area's date; date shown on the page)"
   ],
   "before": {
@@ -32,17 +31,17 @@
   "controls": [
    {
     "rank": 1,
-    "role": "pool",
-    "weight": 0.0,
-    "before": "2020-01-17",
+    "role": "weighted",
+    "weight": 0.6231,
+    "before": "2020-01-24",
     "after": "2020-03-14",
-    "same_scenes": false
+    "same_scenes": true
    },
    {
     "rank": 2,
     "role": "pool",
     "weight": 0.0,
-    "before": "2020-02-08",
+    "before": "2020-01-17",
     "after": "2020-03-14",
     "same_scenes": false
    },
@@ -124,10 +123,10 @@
    "clear_basis": "scl"
   },
   "after": {
-   "date": "2021-04-30",
-   "clear": 0.87,
-   "scene_id": "S2A_MSIL2A_20210430T081601_R121_T34HBH_20210523T191219",
-   "days_from_event": 12,
+   "date": "2021-08-13",
+   "clear": 0.94,
+   "scene_id": "S2B_MSIL2A_20210813T081609_R121_T34HBH_20210813T220934",
+   "days_from_event": 117,
    "clear_basis": "scl"
   },
   "frames": {
@@ -141,25 +140,25 @@
    {
     "rank": 1,
     "role": "weighted",
-    "weight": 0.1821,
+    "weight": 0.2165,
     "before": "2021-03-16",
-    "after": "2021-04-30",
+    "after": "2021-08-13",
     "same_scenes": true
    },
    {
     "rank": 2,
     "role": "weighted",
-    "weight": 0.1481,
+    "weight": 0.216,
     "before": "2021-03-16",
-    "after": "2021-04-30",
+    "after": "2021-08-13",
     "same_scenes": true
    },
    {
     "rank": 3,
     "role": "weighted",
-    "weight": 0.1413,
+    "weight": 0.1805,
     "before": "2021-03-16",
-    "after": "2021-04-30",
+    "after": "2021-08-13",
     "same_scenes": true
    }
   ],
@@ -169,7 +168,11 @@
   "id": "0423e078c5f38593",
   "label": "Austin, Texas: Tesla Gigafactory built on a gravel-pit site",
   "event_date": "2020-07-22",
-  "problems": [],
+  "problems": [
+   "control 1 before: dated 2020-07-15, not the area's 2020-07-20 (another tile, or cloud on the area's date; date shown on the page)",
+   "control 2 before: dated 2020-07-15, not the area's 2020-07-20 (another tile, or cloud on the area's date; date shown on the page)",
+   "control 3 before: dated 2020-07-18, not the area's 2020-07-20 (another tile, or cloud on the area's date; date shown on the page)"
+  ],
   "before": {
    "date": "2020-07-20",
    "clear": 0.97,
@@ -178,10 +181,10 @@
    "clear_basis": "scl"
   },
   "after": {
-   "date": "2020-08-04",
+   "date": "2020-09-18",
    "clear": 0.98,
-   "scene_id": "S2B_MSIL2A_20200804T165849_R069_T14RPU_20200816T044032",
-   "days_from_event": 13,
+   "scene_id": "S2A_MSIL2A_20200918T165951_R069_T14RPU_20200921T084318",
+   "days_from_event": 58,
    "clear_basis": "scl"
   },
   "frames": {
@@ -195,26 +198,26 @@
    {
     "rank": 1,
     "role": "weighted",
-    "weight": 0.3716,
-    "before": "2020-07-20",
-    "after": "2020-08-04",
-    "same_scenes": true
+    "weight": 0.1916,
+    "before": "2020-07-15",
+    "after": "2020-09-18",
+    "same_scenes": false
    },
    {
     "rank": 2,
     "role": "weighted",
-    "weight": 0.1085,
-    "before": "2020-07-20",
-    "after": "2020-08-04",
-    "same_scenes": true
+    "weight": 0.1436,
+    "before": "2020-07-15",
+    "after": "2020-09-18",
+    "same_scenes": false
    },
    {
     "rank": 3,
     "role": "weighted",
-    "weight": 0.1068,
-    "before": "2020-07-20",
-    "after": "2020-08-04",
-    "same_scenes": true
+    "weight": 0.1355,
+    "before": "2020-07-18",
+    "after": "2020-09-18",
+    "same_scenes": false
    }
   ],
   "key": "austin"
@@ -224,7 +227,7 @@
   "label": "Saddleworth Moor, England: June 2018 moorland fire",
   "event_date": "2018-06-24",
   "problems": [
-   "control 2 before: dated 2018-05-22, not the area's 2018-05-27 (another tile, or cloud on the area's date; date shown on the page)"
+   "control 1 before: dated 2018-05-22, not the area's 2018-05-27 (another tile, or cloud on the area's date; date shown on the page)"
   ],
   "before": {
    "date": "2018-05-27",
@@ -251,23 +254,23 @@
    {
     "rank": 1,
     "role": "weighted",
-    "weight": 0.369,
-    "before": "2018-05-27",
-    "after": "2018-08-05",
-    "same_scenes": true
-   },
-   {
-    "rank": 2,
-    "role": "weighted",
-    "weight": 0.2728,
+    "weight": 0.4436,
     "before": "2018-05-22",
     "after": "2018-08-05",
     "same_scenes": false
    },
    {
+    "rank": 2,
+    "role": "weighted",
+    "weight": 0.2885,
+    "before": "2018-05-27",
+    "after": "2018-08-05",
+    "same_scenes": true
+   },
+   {
     "rank": 3,
     "role": "weighted",
-    "weight": 0.2545,
+    "weight": 0.2099,
     "before": "2018-05-27",
     "after": "2018-08-05",
     "same_scenes": true
@@ -279,12 +282,14 @@
   "id": "2ee1c9c9753b3a11",
   "label": "L\u00fctzerath, Germany: village and fields taken by the Garzweiler mine",
   "event_date": "2023-01-11",
-  "problems": [],
+  "problems": [
+   "control 2 after: dated 2023-02-06, not the area's 2023-01-17 (another tile, or cloud on the area's date; date shown on the page)"
+  ],
   "before": {
-   "date": "2022-11-23",
+   "date": "2022-11-13",
    "clear": 1.0,
-   "scene_id": "S2A_MSIL2A_20221123T104351_R008_T32ULB_20221123T225629",
-   "days_from_event": -49,
+   "scene_id": "S2A_MSIL2A_20221113T104311_R008_T32ULB_20221113T222508",
+   "days_from_event": -59,
    "clear_basis": "scl"
   },
   "after": {
@@ -305,24 +310,24 @@
    {
     "rank": 1,
     "role": "weighted",
-    "weight": 0.3002,
-    "before": "2022-11-23",
+    "weight": 0.3692,
+    "before": "2022-11-13",
     "after": "2023-01-17",
     "same_scenes": false
    },
    {
     "rank": 2,
     "role": "weighted",
-    "weight": 0.266,
-    "before": "2022-11-23",
-    "after": "2023-01-17",
+    "weight": 0.2564,
+    "before": "2022-11-13",
+    "after": "2023-02-06",
     "same_scenes": false
    },
    {
     "rank": 3,
     "role": "weighted",
-    "weight": 0.2138,
-    "before": "2022-11-23",
+    "weight": 0.1212,
+    "before": "2022-11-13",
     "after": "2023-01-17",
     "same_scenes": false
    }
@@ -362,7 +367,7 @@
    {
     "rank": 1,
     "role": "weighted",
-    "weight": 0.1062,
+    "weight": 0.7382,
     "before": "2019-11-21",
     "after": "2020-04-14",
     "same_scenes": true
@@ -391,25 +396,22 @@
   "label": "Sindh, Pakistan: 2022 monsoon floods near Lake Manchar",
   "event_date": "2022-08-25",
   "problems": [
-   "control 1 before: dated 2022-08-03, not the area's 2022-08-04 (another tile, or cloud on the area's date; date shown on the page)",
-   "control 1 after: dated 2022-08-28, not the area's 2022-08-29 (another tile, or cloud on the area's date; date shown on the page)",
-   "control 2 before: dated 2022-08-11, not the area's 2022-08-04 (another tile, or cloud on the area's date; date shown on the page)",
-   "control 2 after: dated 2022-08-31, not the area's 2022-08-29 (another tile, or cloud on the area's date; date shown on the page)",
-   "control 3 before: dated 2022-07-17, not the area's 2022-08-04 (another tile, or cloud on the area's date; date shown on the page)",
-   "control 3 after: dated 2022-08-31, not the area's 2022-08-29 (another tile, or cloud on the area's date; date shown on the page)"
+   "control 1 before: dated 2022-08-03, not the area's 2022-07-30 (another tile, or cloud on the area's date; date shown on the page)",
+   "control 2 before: dated 2022-08-11, not the area's 2022-07-30 (another tile, or cloud on the area's date; date shown on the page)",
+   "control 3 before: dated 2022-07-17, not the area's 2022-07-30 (another tile, or cloud on the area's date; date shown on the page)"
   ],
   "before": {
-   "date": "2022-08-04",
+   "date": "2022-07-30",
    "clear": 1.0,
-   "scene_id": "S2A_MSIL2A_20220804T060641_R134_T42RUR_20220804T155927",
-   "days_from_event": -21,
+   "scene_id": "S2B_MSIL2A_20220730T060639_R134_T42RUQ_20220731T051125",
+   "days_from_event": -26,
    "clear_basis": "scl"
   },
   "after": {
-   "date": "2022-08-29",
-   "clear": 1.0,
-   "scene_id": "S2B_MSIL2A_20220829T060629_R134_T42RUR_20220830T211328",
-   "days_from_event": 4,
+   "date": "2022-09-20",
+   "clear": 0.92,
+   "scene_id": "S2A_MSIL2A_20220920T055641_R091_T42RUR_20220920T165356",
+   "days_from_event": 26,
    "clear_basis": "scl"
   },
   "frames": {
@@ -425,7 +427,7 @@
     "role": "weighted",
     "weight": 0.2904,
     "before": "2022-08-03",
-    "after": "2022-08-28",
+    "after": "2022-09-20",
     "same_scenes": false
    },
    {
@@ -433,7 +435,7 @@
     "role": "weighted",
     "weight": 0.2209,
     "before": "2022-08-11",
-    "after": "2022-08-31",
+    "after": "2022-09-20",
     "same_scenes": false
    },
    {
@@ -441,7 +443,7 @@
     "role": "weighted",
     "weight": 0.1243,
     "before": "2022-07-17",
-    "after": "2022-08-31",
+    "after": "2022-09-20",
     "same_scenes": false
    }
   ],
@@ -477,7 +479,7 @@
    {
     "rank": 1,
     "role": "weighted",
-    "weight": 0.5752,
+    "weight": 0.5296,
     "before": "2022-03-24",
     "after": "2022-06-22",
     "same_scenes": true
@@ -485,15 +487,15 @@
    {
     "rank": 2,
     "role": "weighted",
-    "weight": 0.2656,
+    "weight": 0.4704,
     "before": "2022-03-24",
     "after": "2022-06-22",
     "same_scenes": true
    },
    {
     "rank": 3,
-    "role": "weighted",
-    "weight": 0.1591,
+    "role": "pool",
+    "weight": 0.0,
     "before": "2022-03-24",
     "after": "2022-06-22",
     "same_scenes": true
@@ -509,15 +511,15 @@
   "before": {
    "date": "2022-03-24",
    "clear": 1.0,
-   "scene_id": "S2A_MSIL2A_20220324T143731_R096_T20MNC_20240523T195017",
+   "scene_id": "S2A_MSIL2A_20220324T143731_R096_T20MNC_20220325T050831",
    "days_from_event": -69,
    "clear_basis": "scl"
   },
   "after": {
-   "date": "2022-08-06",
-   "clear": 0.81,
-   "scene_id": "S2B_MSIL2A_20220806T143729_R096_T20MNC_20220807T173421",
-   "days_from_event": 66,
+   "date": "2022-09-10",
+   "clear": 1.0,
+   "scene_id": "S2A_MSIL2A_20220910T143741_R096_T20MNC_20240729T174533",
+   "days_from_event": 101,
    "clear_basis": "scl"
   },
   "frames": {
@@ -533,7 +535,7 @@
     "role": "weighted",
     "weight": 0.2227,
     "before": "2022-03-24",
-    "after": "2022-08-06",
+    "after": "2022-09-10",
     "same_scenes": true
    },
    {
@@ -541,7 +543,7 @@
     "role": "weighted",
     "weight": 0.2,
     "before": "2022-03-24",
-    "after": "2022-08-06",
+    "after": "2022-09-10",
     "same_scenes": true
    },
    {
@@ -549,7 +551,7 @@
     "role": "weighted",
     "weight": 0.1919,
     "before": "2022-03-24",
-    "after": "2022-08-06",
+    "after": "2022-09-10",
     "same_scenes": true
    }
   ],
