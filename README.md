@@ -14,12 +14,16 @@ areas and fake dates to show how often the method finds effects that are not the
 
 ### What is and isn't validated yet
 
-- The known-answer sites are **candidates**, not yet confirmed: of 10, 4 correct
-  REAL, 0 missed, 0 false alarms, **6 can't tell** ([`docs/METHOD.md`](docs/METHOD.md) §10).
-- Every showcase run was re-run on 25 Sep 2026 under the fixed, symmetric placebo
-  test (CRITIQUE #4 in `DECISIONS.md`). No verdict changed; the numbers are the
-  generated tables in [`docs/METHOD.md`](docs/METHOD.md) §10.
-- Blind validation has event runs only and **no false-alarm rate yet**.
+- The known-answer sites are **candidates**, not yet confirmed: of 8 documented
+  events, 5 REAL, 0 missed, 3 can't tell; of 2 no-change sites, 0 false alarms,
+  2 can't tell ([`docs/METHOD.md`](docs/METHOD.md) §10).
+- Every showcase run was re-run on 30 Sep–1 Oct 2026 under "method v2", which
+  fixes the two failures our red team found (pre-trends called REAL; short
+  floods deleted as haze), the placebo leakage and the spillover buffer
+  (`DECISIONS.md`).
+- Blind validation (247 pre-registered items, seed 20260918) is being re-run
+  under method v2; partial results are in `showcase/blind_v3/`, and no headline
+  rate is claimed until it completes.
 - Live runs on the free tier are a "quick check" (coarser controls), not
   equivalent to the showcase runs. On 30 Sep 2026 a 29 ha live run finished
   on the free host in 18 minutes (40-minute limit), after the control scenes
@@ -58,7 +62,7 @@ or false-alarm test of its own. It will not be shown until both exist and pass.
   checks, the verdict thresholds, known limits and validation to date, for
   anyone who wants to check the reasoning rather than take the verdict on
   trust.
-- **What we could not defend:** [`docs/REDTEAM.md`](docs/REDTEAM.md) — an adversarial review of our own method, with numbers. Two of its attacks defeat the method as it stands (pre-trends are still called REAL; floods shorter than about a month are deleted by the haze filter). Both are listed in [`docs/METHOD.md`](docs/METHOD.md) §9 and neither fix is applied yet.
+- **What we could not defend:** [`docs/REDTEAM.md`](docs/REDTEAM.md) — an adversarial review of our own method, with numbers. Its two "breaks" (pre-trends called REAL; short floods deleted as haze) are fixed in method v2; see [`docs/METHOD.md`](docs/METHOD.md) §9. Its tables were measured before the fixes.
 
 ## For institutional users
 
