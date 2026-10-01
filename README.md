@@ -21,9 +21,12 @@ areas and fake dates to show how often the method finds effects that are not the
   fixes the two failures our red team found (pre-trends called REAL; short
   floods deleted as haze), the placebo leakage and the spillover buffer
   (`DECISIONS.md`).
-- Blind validation (247 pre-registered items, seed 20260918) is being re-run
-  under method v2; partial results are in `showcase/blind_v3/`, and no headline
-  rate is claimed until it completes.
+- Blind validation (247 items drawn by script, seed 20260918, all run): of 130
+  real forest-loss and wildfire events, 69 called REAL (53%, 95% CI 45–61%),
+  6 missed, 55 can't tell; of 117 no-change controls, 1 false alarm (0.9%, CI
+  0.2–4.7%). Tropical forest is the weak spot (5 of 23 detected, mostly cloud).
+  It covers forest loss and US wildfire only: no floods, construction or UK
+  sites ([`docs/BLIND_VALIDATION.md`](docs/BLIND_VALIDATION.md)).
 - Live runs on the free tier are a "quick check" (coarser controls), not
   equivalent to the showcase runs. On 30 Sep 2026 a 29 ha live run finished
   on the free host in 18 minutes (40-minute limit), after the control scenes

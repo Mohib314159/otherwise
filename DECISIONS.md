@@ -2051,3 +2051,31 @@ removed once the full AreaData is cached. Output-neutral: a test kills a fetch
 before its last group, resumes, and gets arrays and receipts identical to an
 uninterrupted run.
 
+
+
+## 2026-10-01 — blind validation v3 complete (method v2)
+
+All 247 items of the seed-20260918 sample run under method v2 (`showcase/blind_v3/`,
+report `docs/BLIND_VALIDATION.md`, which now replaces the v1 report; v1 kept as
+`docs/BLIND_VALIDATION_v1.md`, v1 and partial v2 data marked superseded). No item
+dropped, 0 errors. The track-record page now reads v3 (`review.blind_dir` default).
+
+- Events (130): 69 REAL (53.1%, Wilson 95% CI 44.5–61.4), 6 NOT REAL (4.6%),
+  55 CAN'T TELL (42.3%).
+- Controls (117): 1 REAL = false alarm (0.9%, CI 0.2–4.7), 78 NOT REAL, 38 CAN'T TELL.
+- By climate, events detected: tropical 5/23, temperate 27/51, boreal 31/49, dry 6/7.
+  Tropical is the weak spot (cloud: too few clear observations -> CAN'T TELL).
+- Burn (MTBS) 10/15 detected; clearing (Hansen) 59/115.
+
+**The false alarm.** nl-hansen-031: 29 ha boreal forest, Siberia (tile 60N_100E),
+no Hansen loss 2001–2023; NDVI −0.07 (−0.12 to −0.01), placebo p 0.016, 80 donors,
+n_pre exactly 20, so `time_placebos` ran no fake date (needs 24) and the page said
+"no fake-date test was possible". Hansen does not map partial canopy damage, so a
+real unrecorded disturbance is possible, but under the protocol it is a false alarm
+and is reported as one.
+
+**Not changed mid-run.** Candidate rule for a future method version: REAL requires
+at least one in-time placebo to have run (equivalently, a pre-period long enough
+for one). It would have turned this item CAN'T TELL; its cost in detections must be
+measured on a fresh sample (new seed), not on this one, which has now been seen.
+

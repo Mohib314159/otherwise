@@ -269,6 +269,33 @@ Rhodes re-run). Treat `showcase/track_record.json` and the table above as
 authoritative; `validation.md` is superseded until it is regenerated from
 committed inputs.
 
+**Blind validation** (v3, method v2, completed 1 Oct 2026; full protocol and
+per-item results in `docs/BLIND_VALIDATION.md`, data in `showcase/blind_v3/`).
+247 items drawn by script with seed 20260918 before any were run: 115 forest-loss
+events and 115 intact-forest controls from Hansen GFC (nine tiles: tropical,
+temperate, boreal), and 15 burned areas and 2 unburned controls from MTBS (US).
+Every item was run, full profile, nothing dropped. 95% Wilson intervals:
+
+| | Count | Rate (95% CI) |
+|---|---|---|
+| Events detected (REAL) | 69 / 130 | 53.1% (44.5–61.4) |
+| Events missed (NOT REAL) | 6 / 130 | 4.6% (2.1–9.7) |
+| Events CAN'T TELL | 55 / 130 | 42.3% (34.2–50.9) |
+| Controls called REAL (false alarm) | 1 / 117 | 0.9% (0.2–4.7) |
+| Controls correctly NOT REAL | 78 / 117 | 66.7% (57.7–74.6) |
+| Controls CAN'T TELL | 38 / 117 | 32.5% (24.7–41.4) |
+
+By climate (Hansen tiles), events detected: tropical 5/23, temperate 27/51,
+boreal 31/49, dry 6/7. The tropical figure is the weak spot: persistent cloud
+leaves too few clear observations, and those runs end CAN'T TELL rather than
+wrong. The one false alarm (nl-hansen-031, 29 ha of boreal forest in Siberia
+with no Hansen loss 2001–2023) had exactly the minimum 20 pre-event periods, so
+no fake-date test could run, and its page said so; Hansen does not record
+partial canopy damage, so a real but unrecorded disturbance cannot be ruled
+out, but it is counted as a false alarm. What this does **not** cover: floods,
+construction, regrowth, UK sites, and any change type other than forest loss
+and US wildfire.
+
 ## 11. Prior art and how this differs
 
 **PWTT (Ballinger)** runs a Sentinel-1 pixel-wise t-test for building damage
